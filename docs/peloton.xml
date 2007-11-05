@@ -1,0 +1,45 @@
+<?xml version="1.0"?>
+<!DOCTYPE article PUBLIC "-//OASIS//DTD DocBook XML V4.3//EN"
+            "http://www.oasis-open.org/docbook/xml/4.3/docbookx.dtd"
+            [
+            <!ENTITY peloton "Peloton">
+	    <!ENTITY env SYSTEM "peloton_env.xml">
+	    ]>
+<article>
+	<articleinfo>
+		<title>
+			The
+			&peloton;
+			Platform for Distributed Service Provision
+		</title>
+		<author>
+			<firstname>Matthew</firstname>
+			<surname>Pontefract</surname>
+		</author>
+		<releaseinfo>
+			$Id$
+		</releaseinfo>
+		<abstract>
+			<para>
+				The
+				&peloton;
+				service provision framework is presented with
+				instructions for programmers wishing to make use of its
+				services and event mechanisms.
+			</para>
+		</abstract>
+	</articleinfo>
+
+	<sect1 id='components'>
+		<title>
+			&peloton;, an overview
+		</title>
+		<para>
+		</para>
+	</sect1>
+
+<!-- THE CHAPTERS -->
+&env;
+<!-- END OF DOC   -->
+
+</article>

@@ -1,0 +1,12 @@
+peloton/
+This source tree is the root of the core Python Peloton code
+
+install/
+This source tree contains code for installation tools for our supported
+target distributions:
+
+ * Debian
+ * Ubuntu
+ * Gentoo
+ * Redhat/CentOS
+ * Python Easy Install (Egg)
