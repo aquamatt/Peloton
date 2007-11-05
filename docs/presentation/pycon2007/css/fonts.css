@@ -1,0 +1,43 @@
+html{
+	font-size: 100%
+}
+
+a{
+	color: #000;
+}
+
+body{
+	font: normal 16px/1.5em Verdana, Geneva, Arial, Helvetica, sans-serif;
+	color: #38372c;
+}
+
+input, textarea{
+	font: normal 1em Verdana, Geneva, Arial, Helvetica, sans-serif;
+	color: #38372c;
+}
+
+pre, code{
+	font: 1em Courier;
+}
+
+h1{
+	font: normal 2.5em/1em "Franklin Gothic Book", Arial, Helvetica, sans-serif;
+}
+
+h2{
+	font: normal 2em/1em Arial, Helvetica, sans-serif;
+}
+
+h3{
+	font: normal 1.5em/1em Arial, Helvetica, sans-serif;
+}
+
+h4, h5, h6{
+	font: bold 1em Arial, Helvetica, sans-serif;
+}
+
+select{
+	font-size: 100%;
+}
+
+

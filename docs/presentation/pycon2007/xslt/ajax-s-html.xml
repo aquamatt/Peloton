@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsl:stylesheet 
+	version="1.0" 
+	xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+	<xsl:output method="html" indent="no" omit-xml-declaration="yes" doctype-public='DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/DTD/strict.dtd"' />
+	
+	<xsl:param name="pageNo" />
+	
+	<xsl:template match="/">
+		<xsl:choose>
+			<xsl:when test="string-length($pageNo) &gt; 0">
+				<xsl:apply-templates select="ajax-s/pages/page[position() = $pageNo]" />
+			</xsl:when>
+			<xsl:otherwise>
+				<html lang="en">
+				<head>
+					<title>Twisted Movies</title>
+					<link rel="stylesheet" href="../css/ajax-s.css" type="text/css" />
+					<link rel="stylesheet" href="../css/print.css" type="text/css" />
+				</head>
+				
+				<body>
+				
+					<div id="container">
+			
+						<div id="header">
+							<h1>Twisted Movies</h1>
+						</div>
+						
+						<div id="main">						
+							<div id="main-content">
+								<a id="back-to-presentation-link" href="../index.htm">Go back to presentation</a>
+								<xsl:apply-templates select="ajax-s/pages/page" />
+							</div>
+						</div>					
+						
+					</div>
+					
+				</body>
+				</html>
+			</xsl:otherwise>
+		</xsl:choose>		
+	</xsl:template>
+	
+	<xsl:template match="page">		
+		<xsl:copy-of select="child::*" />
+	</xsl:template>
+	
+</xsl:stylesheet>
