@@ -1,5 +1,5 @@
 Peloton depends upon the following third party libraries
 
-Twisted
--------
-www.twistedmatrix.org
+Twisted  2.5
+------------
+www.twistedmatrix.org   

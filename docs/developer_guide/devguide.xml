@@ -1,0 +1,166 @@
+<?xml version="1.0"?>
+<!DOCTYPE article PUBLIC "-//OASIS//DTD DocBook XML V4.3//EN"
+            "http://www.oasis-open.org/docbook/xml/4.3/docbookx.dtd"
+            [
+            <!ENTITY peloton "Peloton">
+	    ]>
+
+<!--
+Peloton is distributed under the terms of the BSD license
+
+Copyright (c) 2007 Matthew Pontefract and the Peloton Group 
+
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without modification, 
+are permitted provided that the following conditions are met:
+
+    * Redistributions of source code must retain the above copyright notice, 
+      this list of conditions and the following disclaimer.
+      
+    * Redistributions in binary form must reproduce the above copyright notice, 
+      this list of conditions and the following disclaimer in the documentation 
+      and/or other materials provided with the distribution.
+      
+    * Neither the name of the Peloton Project nor the names of its contributors 
+      may be used to endorse or promote products derived from this software 
+      without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+-->
+
+<article>
+	<articleinfo>
+		<title>
+			The
+			&peloton; Developer&apos;s Guide
+		</title>
+		<author>
+			<firstname>Matthew</firstname>
+			<surname>Pontefract</surname>
+		</author>
+		<releaseinfo>
+			$Id$
+		</releaseinfo>
+		<abstract>
+			<para>
+				Core &peloton; developers are asked to adhere to certain
+				guidelines described in this document in order to ensure consistency of
+				code layout, design, nomenclature and style. Without wishing to be proscriptive
+				and constrain developers, we wish to ensure that Peloton maintains a coherent,
+				structured and efficient code-base as it grows and evolves.
+			</para>
+		</abstract>
+	</articleinfo>
+
+	<sect1 id='basic_rules'>
+		<title>
+			Basic rules: Style
+		</title>
+		<para>
+			The following layout rules are proscribed for this codebase:
+		</para>
+		<orderedlist>
+			<listitem>
+				<para>
+					Indentation by four (4) white space (0x20) and under 
+					<emphasis>no circumstances</emphasis> are tabs to be substituted. Offenders
+					will have their keyboards forcibly modified.
+				</para>
+			</listitem>
+			<listitem>
+				<para>
+					Classes named with camel-case, starting with an upper-case letter, e.g.
+					<code>MyClass</code> and <code>PelotonCleverServiceModule</code>.
+				</para>
+			</listitem>
+			<listitem>
+				<para>
+					Methods/functions with camel-case, starting with a lower-case letter. e.g.
+					<code>myFunction(self...)</code> or <code>doSomethign</code>.
+				</para>
+			</listitem>
+			<listitem>
+				<para>
+					Doc-strings should be provided at module, class and method/function level.
+				</para>
+			</listitem>
+			<listitem>
+				<para>
+					One module imported per import statement.
+				</para>
+			</listitem>
+		</orderedlist>
+	</sect1>
+
+	<sect1>
+		<title>	
+			Python 3000 compatibility
+		</title>
+		<para>
+			In view of the fact that Python semantics are to change slightly in future versions
+			we ask that developers adhere to future syntax where this is compatible with the 
+			current targeted Python release (2.5 at the time of writing). This means importing from 
+			<code>__future__</code> in a number of cases; failing to do this may result in code
+			that fails in a perplexing manner in the future. We have an opportunity to avoid much
+			of this pain by starting as we mean to continue.
+		</para>
+		<para>
+			The following should be observed and represent a sub-set of changes that should be
+			adhered to as described more fully at 
+<uri url='http://wiki.python.org/moin/FutureProofPython'>http://wiki.python.org/moin/FutureProofPython</uri>:
+		</para>
+		<orderedlist>
+			<listitem>
+				<para>
+					<code>print(s)</code> rather than <code>print s</code>: <code>print</code>
+					is loosing its dual identity as a statement and function in future Python
+					releases.
+				</para>
+			</listitem>
+			<listitem>
+				<para>
+					<code>from __future__ import division</code> : see 
+<uri url='http://wiki.python.org/moin/FutureProofPython'>http://wiki.python.org/moin/FutureProofPython</uri>
+					for an explanation of the new division operator behaviour that returns a float when two operands
+					are used. Behaviour as per the current operator is obtained with a double slash, so:
+					<code>3/2 == 1.5; 3//2 == 1;</code>.
+				</para>
+			</listitem>
+			<listitem>
+				<para>
+					Only use absolute imports.
+				</para>
+			</listitem>
+			<listitem>
+				<para>
+					New style classes. Always. Exclusively.  
+				</para>
+			</listitem>
+			<listitem>
+				<para>
+					When raising exceptions instantiate the exception object with standard object
+					instantiation syntax: <code>raise MyException("Something happened")</code>
+					and NOT <code>raise MyException "Something happened, old-style"</code>.
+				</para>
+			</listitem>
+			<listitem>
+				<para>
+					Always use <code>repr(foo)</code> not the short-hand <code>`foo`</code> which
+					is to be deprecated.
+				</para>
+			</listitem>
+		</orderedlist>
+	</sect1>
+
+</article>
