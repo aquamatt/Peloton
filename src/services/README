@@ -1,0 +1,3 @@
+Below this directory find services likely to be distributed as part
+of the core Peloton distribution. Non-core services must NOT be
+placed here.

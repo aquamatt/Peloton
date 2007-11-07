@@ -10,3 +10,10 @@ target distributions:
  * Gentoo
  * Redhat/CentOS
  * Python Easy Install (Egg)
+
+services/
+Core services that we may wish to distribute as part of the default Peloton
+package. No non-core services should be placed in this location.
+
+tools/
+Tools for running, monitoring and managing Peloton clusters.
