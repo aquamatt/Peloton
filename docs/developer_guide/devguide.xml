@@ -6,9 +6,9 @@
 	    ]>
 
 <!--
-Peloton is distributed under the terms of the BSD license
+Peloton: Grid Computing, batteries included.
 
-Copyright (c) 2007 Matthew Pontefract and the Peloton Group 
+Copyright (c) 2007 Matthew Pontefract
 
 All rights reserved.
 
@@ -163,4 +163,20 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 		</orderedlist>
 	</sect1>
 
+	<sect1>
+		<title>Utility libraries</title>
+		<para>
+			In cases where more than one standard Python library may do a given job look to this document
+			to find the library and version being used in this project. 
+		</para>
+		<orderedlist>
+			<listitem>
+				<para>
+					<code>optparse</code> is the module to be used for parsing command line
+					options by any core scripts that may refer directly to the command line 
+					arguments.
+				</para>
+			</listitem>
+		</orderedlist>
+	</sect1>
 </article>

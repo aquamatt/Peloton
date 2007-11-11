@@ -1,0 +1,6 @@
+Pseudo-mesh test environment
+----------------------------
+
+We need a set of dummy modules that provide a fake message backbone, persistent store
+etc. for the purpose of unit testing code in a running server.
+

@@ -1,0 +1,29 @@
+-> start 
+-> Load Configs 
+-> Hook into msg bus 
+-> Init kernel
+  -> Start router
+  -> Hook into events
+  -> Broadcast arrival
+-> Any services on cmd line, put into mesh launcher
+
+Starting a server should be:
+
+psrv -p <profile_name> -g <grid_name> [-r <runtime_config>] [+ verbosity control etc.]
+
+Forks by default; disable forking and enable verbosity in one --debug argument?
+
+Profile name is actualy a reference to a configuration file really. Defines node characteristics
+and used to determine what services it can run when the mesh is asked to launch a service.
+
+Store configs in PELOTON_CONFIG_PATH under directories named as per runtime_config, e.g. prod, dev,
+test etc.
+
+profile is in a runtime confid dir as well.
+
+after profile, configs read apache style in sorted order, where order can be influenced by
+numerical prefix, e.g. 10_this.conf 12_that.conf
+
+Pick up the on_init() and on_shutdown() methods on the way
+
+Namespacing simple: serviceName and core
