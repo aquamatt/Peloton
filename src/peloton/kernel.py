@@ -45,7 +45,7 @@ the server is stopped. """
 
     def _addAdapters(self):
         """Prepare all protocol adapters for use."""
-        pass
+        raise NotImplementedError("_addAdapters not yet written.")
     
     def _signalClosedown(self, num, frame):
         """ Handle SIGINT/TERM """
