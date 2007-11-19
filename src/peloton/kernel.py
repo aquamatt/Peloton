@@ -1,9 +1,11 @@
 # Copyright 2007 Matthew Pontefract
 # See LICENSE for details
 
-from twisted.internet import reactor
 import peloton.adapters
 import signal
+import sys
+
+from twisted.internet import reactor
 
 ADAPTERS = [peloton.adapters.pb.PelotonPBAdapter,
 #            peloton.adapters.soap.PelotonSoapAdapter,
@@ -32,18 +34,22 @@ the server is stopped. """
         # hook into message bus
         
         # hook in the PB adapter and any others listed
-
+        self._startAdapters()
+        
         # schedule grid-joining workflow to happen on reactor start
         
         # hook up signal handlers    
-            
+
+        # hide sys.exit
+        self._trapExit()
+
         reactor.run()
 
     def closedown(self):
         """Closedown in an orderly fashion"""
         reactor.stop()
 
-    def _addAdapters(self):
+    def _startAdapters(self):
         """Prepare all protocol adapters for use."""
         raise NotImplementedError("_addAdapters not yet written.")
     
@@ -61,6 +67,14 @@ files etc."""
 that tidies up behind itself."""
         signal.signal(signal.SIGINT, self._signalClosedown)
         signal.signal(signal.SIGTERM, self._signalClosedown)
-        signal.signal(signal.SIGHUP, self._signalReload)
-    
+        signal.signal(signal.SIGHUP, self._signalReload)    
+
+    def _trapExit(self):
+        """ Move sys.exit to sys.realexit and put a dummy
+into sys.exit. This prevents service writers from accidentaly
+closing a node down."""
+        def dummyExit():
+            raise Exception("sys.exit disabled to prevent accidental node shutdown.")
         
+        sys.realexit = sys.exit
+        sys.exit = dummyExit
