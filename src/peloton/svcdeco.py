@@ -4,7 +4,7 @@
 """
 
 def testDecorator(f):
-    def _f(self, *args, **kargs):
+    def _f(*args, **kargs):
         print "Called with args: %s, kargs:%s" % (str(args), str(kargs))
         return f(*args, **kargs)
     return _f
