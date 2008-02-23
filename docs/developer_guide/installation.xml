@@ -1,0 +1,98 @@
+<?xml version="1.0"?>
+<!DOCTYPE article PUBLIC "-//OASIS//DTD DocBook XML V4.3//EN"
+            "http://www.oasis-open.org/docbook/xml/4.3/docbookx.dtd"
+            [
+            <!ENTITY peloton "Peloton">
+        ]>
+
+<!--
+##############################################################################
+#
+# Copyright (c) 2007-2008 ReThought Limited and Peloton Contributors
+# All Rights Reserved.
+#
+# This software  is licensed under the terms of the BSD license, a copy of
+# which should accompany this distribution.
+#
+##############################################################################
+-->
+
+<article>
+    <articleinfo>
+        <title>
+            The
+            &peloton; Developer&apos;s Guide
+        </title>
+        <author>
+            <firstname>Peloton Development Team</firstname>
+        </author>
+        <releaseinfo>
+            $Id$
+        </releaseinfo>
+        <abstract>
+            <para>
+                Installation of &peloton; should be straightforward on many platforms
+				but there are always occasions when a manual install may be required. This
+				document details installation procedures and the packages, libraries and
+				applications upon which &peloton; depends.
+            </para>
+        </abstract>
+    </articleinfo>
+
+    <sect1 id='dependencies'>
+        <title>Dependencies: 3rd parth apps and libraries</title>
+		<sect2>
+			<title>Python libraries</title>
+			<para>
+				The following pythonlibraries are either required always (R) or required when using 
+				particular modules (M) and must be installed either by installer scripts 
+				(distutils, Debian package etc) or by the system administrator.
+			</para>
+			<orderedlist>
+	             <listitem>
+	                   <para>
+	                   	    <filename>(R)Twisted</filename> Version &gt;=2.5
+	                   </para>
+	             </listitem>
+	             <listitem>
+	                   <para>
+	                   </para>
+	             </listitem>
+	             <listitem>
+	                   <para>
+	                   </para>
+	             </listitem>
+			</orderedlist>
+		</sect2>
+		<sect2>
+			 <title>Third party applications</title>
+            <orderedlist>
+                 <listitem>
+                       <para>
+                            <filename>RebbitMQ</filename> Version &gt;=1.2.0
+                       </para>
+					   <para>
+					   	   RabbitMQ is a supported messaging backend. MQ servers need
+						   to be running in the &peloton; environment and these can
+						   be downloaded from the RabbitMQ site at <ulink url='http://www.rabbitmq.com/'/>.
+						   Packages are available for many platforms including Debian/Ubunto and Windows -
+						   these include or will cause to be installed the Erlang language libraries.
+					   </para>
+					   <para>
+					   	   Client-side libraries must also be installed. RabbitMQ understands a number of 
+						   protocols, but the provided adapter uses only ????? and thus requries the ?????
+						   library.
+					   </para>
+                 </listitem>
+                 <listitem>
+                       <para>
+                       </para>
+                 </listitem>
+                 <listitem>
+                       <para>
+                       </para>
+                 </listitem>
+            </orderedlist>
+		</sect2>
+    </sect1>
+</article>
