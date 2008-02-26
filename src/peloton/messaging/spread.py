@@ -8,5 +8,8 @@
 #
 ##############################################################################
 
-""" Spread adapter for Peloton messaging """
+""" 
+Spread adapter for Peloton messaging
+http://www.spread.org/
+"""
 

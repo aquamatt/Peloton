@@ -8,8 +8,8 @@
 #
 ##############################################################################
 
-
 """ 
-ActiveMQ adapter classes for Peloton messaging 
-http://activemq.apache.org/
+RabbitMQ adapter for Peloton messaging 
+http://www.rabbitmq.com/
 """
+

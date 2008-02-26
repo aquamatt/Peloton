@@ -36,5 +36,5 @@ used."""
     def remote_fireEvent(self, sessionId, eventChannel, eventName, payload):
         raise NotImplementedError
     
-    def remote_subscribeToEvent(self, sessionId, eventChannel, eventName):
+    def remote_subscribeToEvent(self, sessionId, eventChannel, eventName=None):
         raise NotImplementedError
