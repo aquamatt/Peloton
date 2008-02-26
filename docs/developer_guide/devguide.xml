@@ -151,6 +151,14 @@
 					arguments.
 				</para>
 			</listitem>
+			<listitem>
+			    <para>
+			    	<code>configobj</code> as found at <uri url='http://www.voidspace.org.uk/python/configobj.html'/>
+					is used for the parsing of config files which are all INI style. You should
+					also use this; it is provided in the <filename>thirdparty</filename> directory
+					of the &peloton; distribution.
+			    </para>
+			</listitem>
 		</orderedlist>
 	</sect1>
 </article>

@@ -1,5 +1,2 @@
-Peloton depends upon the following third party libraries
-
-Twisted  2.5
-------------
-www.twistedmatrix.org   
+Libraries for development use only - nothing that is
+a necessary dependency of the product.
