@@ -46,7 +46,6 @@ parser = OptionParser(usage=usage, version="Peloton version %s" % peloton.RELEAS
 parser.set_defaults(nodetach=False)
 parser.add_option("--nodetach",
                   action="store_true",
-                  dest="nodetach",
                   help="Prevent PSC detaching from terminal [default: %default]")
 
 parser.add_option("-c", "--configpath",

@@ -81,7 +81,8 @@ def makeDaemon():
     os.dup2(0, 2)            # standard error (2)
 
 def runGenerator(pipeFD, options, args):
-    """ Listen to the pipe from the PSC and spawn worker processes
+    """ Main loop of the worker generator process.
+Listens to the pipe from the PSC and spawns worker processes
 when requested. This is a two step process:
 
  1) Open the pipe for reading and read one line which is in the format:
@@ -124,8 +125,11 @@ when requested. This is a two step process:
                 return PelotonWorker(host, port, options, args).start() 
         
 class GeneratorInterface(object):
-    """ Callable through which a PelotonKernel can communicate
-with the worker generator. """
+    """ Interface through which a PelotonKernel can communicate
+with the worker generator. PelotonKernel is intended not to have
+dependencies on the topology of the PSC/Worker group so is passed
+an object, such as this, which wraps up the implementation details
+of messaging between the two components."""
     def __init__(self, writePipe):
         self.writePipe = os.fdopen(writePipe, 'wt', 0)
         
