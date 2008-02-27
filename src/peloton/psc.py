@@ -26,7 +26,6 @@ platform-specific code for starting a PSC and associated processes
 or threads after first processing out command line arguments.
 """
 import logging
-import logging.handlers
 import os
 import sys
 from optparse import OptionGroup
@@ -98,18 +97,14 @@ def main():
     #    parser.error("incorrect number of arguments")
 
     pscplatform.DEFAULT_CONFIG_ROOT = options.prefix
-    logger = pscplatform.initLogging(options)
-    logger.info('Options: '+str(options))
-    logger.info('Args: '+str(args))
-    logger.info("Reading configs by default from %s" % options.prefix)
-
+    
     try:
-        ec = pscplatform.start(options, args)
+        exitCode = pscplatform.start(options, args)
     except:
-        logger.exception('Untrapped error in PSC:')
-        ec = 99
+        logging.getLogger().exception('Untrapped error in PSC:')
+        exitCode = 99
         
-    return ec
+    return exitCode
 
 if __name__ == '__main__':
     sys.exit(main())

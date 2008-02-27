@@ -6,6 +6,7 @@
 """ Start a PSC on POSIX compliant platforms """
  
 import logging
+import logging.handlers
 import os
 import sys
 import cPickle as Pickle
@@ -19,21 +20,6 @@ from peloton.utils import chop
 # look for configuration data. Provides the default for $PREFIX in 
 # command line options
 DEFAULT_CONFIG_ROOT='/etc/peloton/'
-
-class NullStream(object):
-    """ File like object bit-bucket providing null output for logging
-if it is to be entirely disabled. """
-    def write(self, *args, **kargs):
-        pass
-    
-    def writeline(self, *args, **kargs):
-        pass
-    
-    def writelines(self, *args, **kargs):
-        pass
-    
-    def flush(self):
-        pass
 
 def initLogging(options):
     """ Configure the logger for this PSC. By default no logging to
@@ -55,7 +41,6 @@ if --nodetach is specified; otherwise logging to the event bus. """
     
     logger = logging.getLogger('')
     logger.name='PSC'
-    logger.handlers=[] # following a fork, clear old handlers out for reset
     logger.setLevel(getattr(logging, options.loglevel))
 
     if options.logfile:
@@ -65,11 +50,6 @@ if --nodetach is specified; otherwise logging to the event bus. """
 
     if options.nodetach:
         logStreamHandler = logging.StreamHandler()
-        logStreamHandler.setFormatter(defaultLogFormatter)
-        logger.addHandler(logStreamHandler)            
-
-    if not logging._handlers:
-        logStreamHandler = logging.StreamHandler(NullStream())
         logStreamHandler.setFormatter(defaultLogFormatter)
         logger.addHandler(logStreamHandler)            
 
@@ -214,10 +194,11 @@ to fork from; forking from the PSC master would be bad as the program stack will
 contain all the initialised PSC code which is quite different to the worker code.
 """
     if options.nodetach:
+        initLogging(options)
         logging.getLogger().debug("PSC is not daemonising (nodetach == True)")
     else:
         makeDaemon()
-        # re-initialise the logging as those file handles will have been closed
+        # init logger once forked off otherwise the file descriptors get closed
         initLogging(options)
 
     pr, pw = os.pipe()
