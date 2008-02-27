@@ -15,9 +15,8 @@ from peloton.worker import PelotonWorker
 from peloton.utils import chop
 
 # every psc implementation has to specify the default place to 
-# look for configuration data and a standard service root
-DEFAULT_CONFIG_PATH='/etc/peloton/config'
-DEFAULT_SERVICE_PATH=['/etc/peloton/services']
+# look for configuration data
+DEFAULT_CONFIG_ROOT='/etc/peloton/'
 
 def makeDaemon():
     """ Detach from the console, redirect stdin/out/err to/from

@@ -28,7 +28,8 @@ or threads after first processing out command line arguments.
 
 import os
 import sys
-from optparse import OptionParser, OptionGroup
+from optparse import OptionGroup
+from peloton.utils.structs import FilteredOptionParser
 import peloton
 
 # Determine the appropriate code to use to start a PSC
@@ -42,22 +43,33 @@ else:
 
 # Let's read the command line    
 usage = "usage: %prog [options]" # add 'arg1 arg2' etc as required
-parser = OptionParser(usage=usage, version="Peloton version %s" % peloton.RELEASE_VERSION)
+parser = FilteredOptionParser(usage=usage, version="Peloton version %s" % peloton.RELEASE_VERSION)
 parser.set_defaults(nodetach=False)
 parser.add_option("--nodetach",
                   action="store_true",
                   help="Prevent PSC detaching from terminal [default: %default]")
 
+parser.add_option("--prefix",
+                  help="Path to directory containing configuration data, links to services etc. [default: %default]",
+                  default=pscplatform.DEFAULT_CONFIG_ROOT)
+
 parser.add_option("-c", "--configpath",
                   help="""Directory containing the master server configuration files
  [default: %default]""",
-                  default=pscplatform.DEFAULT_CONFIG_PATH)
+                  default="$PREFIX/config")
 
 parser.add_option("-v", "--servicepath",
                   help="""Directory containing peloton services. You may specify several
 such directories with multiple instances of this option [default: %default]""",
                   action="append",
-                  default=pscplatform.DEFAULT_SERVICE_PATH)
+                  default="$PREFIX/services")
+
+parser.add_option("-d", "--domain",
+                  help="""Specify the domain to join [default: %default]""",
+                  default="default_domain")
+
+parser.add_option("-k", "--cookie",
+                  help="""Domain cookie file [default: $PREFIX/cookies/<domain>.cookie]""")
 
 parser.add_option("-m", "--mode",
                   help="Run mode, one of prod, test or dev [default: %default]",
@@ -70,7 +82,11 @@ parser.add_option("-m", "--mode",
 #group.add_option('-g', action='store_true', help='Group option.')
 #parser.add_option_group(group)
 
-(options, args) = parser.parse_args()
+options, args = parser.parse_args()
+pscplatform.DEFAULT_CONFIG_ROOT = options.prefix
+# iterate over values making substitutions for $PREFIX
+
+
 # Handling errors and pumping back through the system
 #if len(args) != 1:
 #    parser.error("incorrect number of arguments")
