@@ -201,6 +201,18 @@ contain all the initialised PSC code which is quite different to the worker code
         # init logger once forked off otherwise the file descriptors get closed
         initLogging(options)
 
+    THIS WILL NOT WORK:
+        (a) logfile should be logdir
+        (b) different forks should write to different files with unique names
+        (c) initLogging needs to reset itself between as, for example, the
+            workers will get the generator logger... 
+            
+        ... unless it does so and the handles are NOT closed; thus the
+        generator just writes to a different logger from getLogger
+        
+        When that spawns, mind, it'll have to reset cos the services themselves
+        need a different logger completely - go to different file.
+
     pr, pw = os.pipe()
 
     # Fork off a worker generator
