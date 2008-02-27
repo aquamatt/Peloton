@@ -5,6 +5,7 @@
 # See LICENSE for details
 """ Start a PSC on POSIX compliant platforms """
  
+import logging
 import os
 import sys
 import cPickle as Pickle
@@ -15,8 +16,64 @@ from peloton.worker import PelotonWorker
 from peloton.utils import chop
 
 # every psc implementation has to specify the default place to 
-# look for configuration data
+# look for configuration data. Provides the default for $PREFIX in 
+# command line options
 DEFAULT_CONFIG_ROOT='/etc/peloton/'
+
+class NullStream(object):
+    """ File like object bit-bucket providing null output for logging
+if it is to be entirely disabled. """
+    def write(self, *args, **kargs):
+        pass
+    
+    def writeline(self, *args, **kargs):
+        pass
+    
+    def writelines(self, *args, **kargs):
+        pass
+    
+    def flush(self):
+        pass
+
+def initLogging(options):
+    """ Configure the logger for this PSC. By default no logging to
+file unless explicitly requested on the command line. Logging to stdout/err
+if --nodetach is specified; otherwise logging to the event bus. """    
+
+    # determine the appropriate
+    if options.loglevel:
+        options.loglevel = options.loglevel.upper()
+    else:
+        options.loglevel = {'dev':'DEBUG',
+                           'test':'INFO',
+                           'uat_a':'ERROR',
+                           'uat_b':'ERROR',
+                           'prod':'ERROR'}[options.mode]
+    
+    defaultLogFormatter = logging.Formatter("[%(levelname)s] %(asctime)-4s %(name)s : %(message)s")
+    
+    
+    logger = logging.getLogger('')
+    logger.name='PSC'
+    logger.handlers=[] # following a fork, clear old handlers out for reset
+    logger.setLevel(getattr(logging, options.loglevel))
+
+    if options.logfile:
+        fileHandler = logging.handlers.TimedRotatingFileHandler(options.logfile, 'MIDNIGHT',1,7)
+        fileHandler.setFormatter(defaultLogFormatter)
+        logger.addHandler(fileHandler)
+
+    if options.nodetach:
+        logStreamHandler = logging.StreamHandler()
+        logStreamHandler.setFormatter(defaultLogFormatter)
+        logger.addHandler(logStreamHandler)            
+
+    if not logging._handlers:
+        logStreamHandler = logging.StreamHandler(NullStream())
+        logStreamHandler.setFormatter(defaultLogFormatter)
+        logger.addHandler(logStreamHandler)            
+
+    return logger
 
 def makeDaemon():
     """ Detach from the console, redirect stdin/out/err to/from
@@ -47,7 +104,7 @@ def makeDaemon():
         if (pid == 0):  # The second child.
             os.umask(UMASK)
         else:
-             # exit() or _exit() - See http://aspn.activestate.com/ASPN/Cookbook/Python/Recipe/278731 
+            # exit() or _exit() - See http://aspn.activestate.com/ASPN/Cookbook/Python/Recipe/278731 
             os._exit(0) # Exit parent of the second child - the first child.
     else:
         os._exit(0) # Exit parent of the first child.
@@ -157,9 +214,11 @@ to fork from; forking from the PSC master would be bad as the program stack will
 contain all the initialised PSC code which is quite different to the worker code.
 """
     if options.nodetach:
-        print("PSC: Not daemonising")
+        logging.getLogger().debug("PSC is not daemonising (nodetach == True)")
     else:
         makeDaemon()
+        # re-initialise the logging as those file handles will have been closed
+        initLogging(options)
 
     pr, pw = os.pipe()
 

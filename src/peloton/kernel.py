@@ -4,6 +4,7 @@
 # All Rights Reserved
 # See LICENSE for details
 
+import logging
 import signal
 import sys
 
@@ -15,6 +16,8 @@ ADAPTERS = ["peloton.adapters.pb.PelotonPBAdapter",
 #            "peloton.adapters.xmlrpc.PelotonXMLRPCAdapter",
 #            "peloton.adapters.web.PelotonHTTPAdapter",
             ]
+
+logger = logging.getLogger()
 
 class PelotonKernel(HandlerBase):
     """ The kernel is the core that starts key services of the 
@@ -32,6 +35,8 @@ which the kernel can request a worker to be started for a given service."""
     def start(self):
         """ Start the Twisted event loop. This method returns only when
 the server is stopped. Returns an exit code."""
+        # generate session keys
+
         # hook into cacheing back-end
         
         # hook into persistence back-ends
