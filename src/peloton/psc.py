@@ -82,8 +82,9 @@ def main():
 (defaults for each run mode indicated in brackets).""",
                       choices=['critical', 'fatal', 'error', 'warning', 'info', 'debug'])
     
-    parser.add_option("--logfile", 
-                      help="""Logfile for this PSC""")
+    parser.add_option("--logdir", 
+                      help="""Directory to which log files should be written. By setting this argument
+the logging-to-file system will be enabled.""")
     
     # If we need sub-groups of options:
     #group = OptionGroup(parser, 'Dangerous Options',
@@ -95,6 +96,17 @@ def main():
     # Handling errors and pumping back through the system
     #if len(args) != 1:
     #    parser.error("incorrect number of arguments")
+
+    # determine the appropriate log-level for the root logger based
+    # on supplied arguments.
+    if options.loglevel:
+        options.loglevel = options.loglevel.upper()
+    else:
+        options.loglevel = {'dev':'DEBUG',
+                           'test':'INFO',
+                           'uat_a':'ERROR',
+                           'uat_b':'ERROR',
+                           'prod':'ERROR'}[options.mode]
 
     pscplatform.DEFAULT_CONFIG_ROOT = options.prefix
     

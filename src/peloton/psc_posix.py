@@ -21,34 +21,49 @@ from peloton.utils import chop
 # command line options
 DEFAULT_CONFIG_ROOT='/etc/peloton/'
 
-def initLogging(options):
+def initLogging(loglevel='ERROR', logdir='', logfile='', rootLoggerName='PSC', closeHandlers=False, toConsole=False):
     """ Configure the logger for this PSC. By default no logging to
-file unless explicitly requested on the command line. Logging to stdout/err
-if --nodetach is specified; otherwise logging to the event bus. """    
+file unless explicitly requested by setting logdir. If only logfile is set, no disk
+logging will occur. You must explicitly set logdir to '.' to enable disk logging to
+the current working directory. 
 
-    # determine the appropriate
-    if options.loglevel:
-        options.loglevel = options.loglevel.upper()
-    else:
-        options.loglevel = {'dev':'DEBUG',
-                           'test':'INFO',
-                           'uat_a':'ERROR',
-                           'uat_b':'ERROR',
-                           'prod':'ERROR'}[options.mode]
+Logging to stdout/err enabled if --nodetach is specified; otherwise logging to the 
+event bus only. 
+
+If closeHandlers==True all current handlers FOR THE ROOT LOGGER ONLY will be closed. 
+This is useful after a fork to reset the logger to a virgin state prior to re-configuring.
+It assumes that no other loggers are initialised other than the root; thus if this feature
+is to be used forking must occur before new loggers are initialised. 
+
+By default the root logger is named 'PSC' but this may be overidden by assigning to
+rootLoggerName.
+
+The default log level is 'ERROR'; again you are advised to set explicitly the loglevel
+argument.
+
+By default the console logger is not hooked up; set toConsole=True to enable.
+"""    
+
+    logger = logging.getLogger()
     
+    if closeHandlers:
+        # Remove all log handlers from logger before re-setting
+        while logger.handlers:
+            logger.removeHandler(logger.handlers[-1])
+        
     defaultLogFormatter = logging.Formatter("[%(levelname)s] %(asctime)-4s %(name)s : %(message)s")
     
-    
-    logger = logging.getLogger('')
-    logger.name='PSC'
-    logger.setLevel(getattr(logging, options.loglevel))
+    logger.name=rootLoggerName
+    logger.setLevel(loglevel)
 
-    if options.logfile:
-        fileHandler = logging.handlers.TimedRotatingFileHandler(options.logfile, 'MIDNIGHT',1,7)
+    if logdir:
+        # removes empty elements so allows for logdir being empty
+        filePath = os.sep.join([i for i in [logdir, logfile] if i])
+        fileHandler = logging.handlers.TimedRotatingFileHandler(filePath, 'MIDNIGHT',1,7)
         fileHandler.setFormatter(defaultLogFormatter)
         logger.addHandler(fileHandler)
 
-    if options.nodetach:
+    if toConsole:
         logStreamHandler = logging.StreamHandler()
         logStreamHandler.setFormatter(defaultLogFormatter)
         logger.addHandler(logStreamHandler)            
@@ -103,18 +118,13 @@ def makeDaemon():
             # ERROR, fd wasn't open to begin with (ignored)
             pass
 
-    # Redirect the standard I/O file descriptors to the specified file.  Since
-    # the daemon has no controlling terminal, most daemons redirect stdin,
-    # stdout, and stderr to /dev/null.  This is done to prevent side-effects
-    # from reads and writes to the standard I/O file descriptors.
-
-    # This call to open is guaranteed to return the lowest file descriptor,
-    # which will be 0 (stdin), since it was closed above.
-    os.open(REDIRECT_TO, os.O_RDWR)    # standard input (0)
+    # redirect stdin/out/err to /dev/null (or equivalent) 
+    fd = os.open(REDIRECT_TO, os.O_RDWR)    
     
-    # Duplicate standard input to standard output and standard error.
-    os.dup2(0, 1)            # standard output (1)
-    os.dup2(0, 2)            # standard error (2)
+    # Duplicate fd to standard input, standard output and standard error.
+    os.dup2(fd, 0)            # standard input (0)
+    os.dup2(fd, 1)            # standard output (1)
+    os.dup2(fd, 2)            # standard error (2)
 
 def runGenerator(pipeFD, options, args):
     """ Main loop of the worker generator process.
@@ -132,23 +142,32 @@ when requested. This is a two step process:
     start a PelotonWorker in the child. Parent loops round and reads next
     command off the pipe.
     """
+    logger = initLogging(getattr(logging, options.loglevel),
+                        options.logdir, 
+                        'generator.log',
+                        'PSC-GEN', 
+                        True, 
+                        options.nodetach)
     
+    logger.info("Generator started; pid = %d" % os.getpid())
     pin = os.fdopen(pipeFD, 'rt')
-    
-    # First wait for initialisation string which is simply host:port of
-    # the PSC Twisted RPC interface
-    l = chop(pin.readline())
-    host, port = l.split(':')
+
+    host, port = (None, None)    
     
     # Now enter the loop which spawns worker processes
     while True:
-        l = Pickle.loads(pin.readline())
-        if type(l) == StringType and chop(l)=='STOP':
-            os.close(pipeFD)
+        l = chop(pin.readline())
+        if l=='STOP':
+            logger.info("Generator closing down")
+            pin.close()
             return 0
-        
-        elif type(l) == ListType:
-            name, args = l
+        elif l.startswith('INIT:'):
+            host, port = l[5:].split(':')
+        else:
+            if host==None and port==None:
+                logger.error("Generator asked to fork a worker but master PSC has not initialised")
+                continue
+            name, args = Pickle.loads(pin.readline())
             
             # fork a worker
             try:
@@ -169,8 +188,15 @@ of messaging between the two components."""
     def __init__(self, writePipe):
         self.writePipe = os.fdopen(writePipe, 'wt', 0)
         
+    def initGenerator(self, host, port):
+        self.writePipe.write('INIT:%s:%d' % (host, port))
+        
     def startService(self, serviceName, args):
         self.writePipe.write('%s\n', Pickle.dumps([serviceName, args]))
+        
+    def stop(self):
+        self.writePipe.write('STOP\n')
+        self.writePipe.close()
 
 def start(options, args):
     """ Start a PSC. By default the first step is to double fork to detach
@@ -193,26 +219,16 @@ The generator is required because we need a virgin, non-initialised template
 to fork from; forking from the PSC master would be bad as the program stack will
 contain all the initialised PSC code which is quite different to the worker code.
 """
-    if options.nodetach:
-        initLogging(options)
-        logging.getLogger().debug("PSC is not daemonising (nodetach == True)")
-    else:
+    if not options.nodetach:
         makeDaemon()
-        # init logger once forked off otherwise the file descriptors get closed
-        initLogging(options)
 
-    THIS WILL NOT WORK:
-        (a) logfile should be logdir
-        (b) different forks should write to different files with unique names
-        (c) initLogging needs to reset itself between as, for example, the
-            workers will get the generator logger... 
-            
-        ... unless it does so and the handles are NOT closed; thus the
-        generator just writes to a different logger from getLogger
-        
-        When that spawns, mind, it'll have to reset cos the services themselves
-        need a different logger completely - go to different file.
-
+    logger = initLogging(getattr(logging, options.loglevel),
+                        options.logdir, 
+                        'psc.log',
+                        'PSC', 
+                        True, 
+                        options.nodetach)
+    
     pr, pw = os.pipe()
 
     # Fork off a worker generator
@@ -224,6 +240,12 @@ contain all the initialised PSC code which is quite different to the worker code
     if pid == 0: # am the worker generator
         ex = runGenerator(pr, options, args)
     else:
-        ex = PelotonKernel(GeneratorInterface(pw), options, args).start()
+        genInt = GeneratorInterface(pw)
+        logger.info("Kernel starting; pid = %d" % os.getpid())
+        try:
+            ex = PelotonKernel(genInt, options, args).start()
+        except:
+            genInt.stop()
+            raise
     
     return ex
