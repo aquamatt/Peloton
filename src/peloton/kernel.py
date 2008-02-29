@@ -4,12 +4,14 @@
 # All Rights Reserved
 # See LICENSE for details
 
+import ezPyCrypto
 import logging
 import signal
 import sys
 
 from twisted.internet import reactor
 from peloton.base import HandlerBase
+import peloton.utils.config as config
 
 ADAPTERS = ["peloton.adapters.pb.PelotonPBAdapter",
 #            "peloton.adapters.soap.PelotonSoapAdapter",
@@ -18,6 +20,28 @@ ADAPTERS = ["peloton.adapters.pb.PelotonPBAdapter",
             ]
 
 logger = logging.getLogger()
+
+### THE DEFAULT KERNEL CONFIGURATION ##    
+defaultConfig = """
+[site]
+    siteName=Peloton Site
+    siteLicense=''
+
+[domain]
+    domainName=Pelotonia
+    domainAdmin=admin@example.com
+
+[network]
+    port=9100
+    host=0.0.0.0
+    
+[subsystems]
+    [[messaging]]
+        adapter=peloton.messaging.rabbitmq
+    
+    [[cache]]
+        memcacheHosts=localhost
+"""
 
 class PelotonKernel(HandlerBase):
     """ The kernel is the core that starts key services of the 
@@ -35,7 +59,14 @@ which the kernel can request a worker to be started for a given service."""
     def start(self):
         """ Start the Twisted event loop. This method returns only when
 the server is stopped. Returns an exit code."""
+        # load the configuration
+        self.configuration = config.loadConfig(self.initOptions.configpath, 
+                                               self.initOptions.mode, 
+                                               defaultConfig)
+        
         # generate session keys
+        self.sessionKey = ezPyCrypto.key(512)
+        self.publicKey = self.sessionKey.exportKey()
 
         # hook into cacheing back-end
         
@@ -47,6 +78,7 @@ the server is stopped. Returns an exit code."""
         self._startAdapters()
         
         # schedule grid-joining workflow to happen on reactor start
+        #  -- this checks the domain cookie matches ours; quit if not.
         
         # Write to the generatorInterface to pass host:port of our 
         # twisted RPC interface

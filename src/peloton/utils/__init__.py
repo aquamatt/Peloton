@@ -5,7 +5,7 @@
 # See LICENSE for details
 
 def chop(s, extras=[]):
-    """ Remove \r, \n and all characters in the extras list from 
+    """Remove \\r, \\n and all characters in the extras list from 
 the end of string s and return """
     _ch = ['\r','\n']
     _ch.extend(extras)

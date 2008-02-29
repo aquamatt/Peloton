@@ -161,4 +161,16 @@
 			</listitem>
 		</orderedlist>
 	</sect1>
+	<sect1>
+		<title>Documentation</title>
+		<para>
+			Documenting the API shall be done with EpyDoc (see <uri url='http://epydoc.sourceforge.net/'/>).
+			User documentation, handbooks, manuals, tutorials and other guides to be written
+			with DocBook.
+		</para>
+		<para>
+			EpyDoc does permit a number of markups to be used including JavaDoc. The Peloton
+			project uses EpyText for ALL docstring markup; please adhere to this.
+		</para>
+	</sect1>
 </article>

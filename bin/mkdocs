@@ -1,0 +1,14 @@
+#!/bin/sh
+#
+# This script requires epydoc!
+OUTDIR=docs/api
+ARGS="-n Peloton -u http://www.peloton-grid.net -o $OUTDIR src/peloton"
+epydoc --pdf $ARGS
+epydoc --html $ARGS
+rm $OUTDIR/*.tex
+rm $OUTDIR/*.aux
+mv $OUTDIR/api.pdf $OUTDIR/pelotonapi.pdf
+rm $OUTDIR/api.???
+
+# Completeness check: shame developers into documenting code
+c --check src/peloton

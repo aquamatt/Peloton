@@ -131,16 +131,13 @@ def runGenerator(pipeFD, options, args):
 Listens to the pipe from the PSC and spawns worker processes
 when requested. This is a two step process:
 
- 1) Open the pipe for reading and read one line which is in the format:
- 
-    host:port
+    1.  Open the pipe for reading and read one line which is formatted as
+        "INIT:host:port".Split out the host and the port
     
-    Split these apart then proceed to step 2
-    
- 2) Enter loop reading pickled lists off the pipe. Each list contains two
-    items, the name of a service to start and optional arguments. Fork and
-    start a PelotonWorker in the child. Parent loops round and reads next
-    command off the pipe.
+    2.  Enter loop reading pickled lists off the pipe. Each list contains two
+        items, the name of a service to start and optional arguments. Fork and
+        start a PelotonWorker in the child. Parent loops round and reads next
+        command off the pipe.
     """
     logger = initLogging(getattr(logging, options.loglevel),
                         options.logdir, 

@@ -5,4 +5,4 @@
 # See LICENSE for details
 
 
-""" Peloton interface to live cacheing, primarily memcached """
+""" Peloton interface to live cacheing, probably memcached """
