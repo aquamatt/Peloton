@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://web.resource.org/cc/"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="744.09448819"
+   height="1052.3622047"
+   id="svg1991"
+   sodipodi:version="0.32"
+   inkscape:version="0.44.1"
+   sodipodi:docbase="/home/mp/python/peloton/docs/developer_guide"
+   sodipodi:docname="tick.svg">
+  <defs
+     id="defs1993" />
+  <sodipodi:namedview
+     id="base"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     gridtolerance="10000"
+     guidetolerance="10"
+     objecttolerance="10"
+     inkscape:pageopacity="0.0"
+     inkscape:pageshadow="2"
+     inkscape:zoom="0.7"
+     inkscape:cx="375"
+     inkscape:cy="907.69496"
+     inkscape:document-units="px"
+     inkscape:current-layer="layer1"
+     inkscape:window-width="906"
+     inkscape:window-height="611"
+     inkscape:window-x="187"
+     inkscape:window-y="177" />
+  <metadata
+     id="metadata1996">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1">
+    <path
+       style="fill:black;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       id="path2005"
+       d="M 26.163881,64.740197 C 26.634151,65.485257 26.314961,66.387017 26.387391,67.176527 C 26.296281,67.602867 26.156261,68.016107 26.040721,68.435817 C 25.987801,68.613737 26.130221,68.778237 26.172021,68.938167 C 19.592531,71.653187 13.013054,74.368207 6.4335621,77.083227 C 7.6092911,76.060597 8.0286681,74.359157 8.7561851,73.001517 C 14.150924,63.476687 17.330811,64.837307 31.095711,56.781707 C 35.335231,58.227947 35.981091,61.619527 37.386981,65.639147 C 39.233871,73.143457 39.770811,80.873807 40.493061,88.543807 C 40.587861,92.590957 41.570331,96.567787 42.383421,100.4462 C 22.793641,108.92192 21.480181,114.27662 29.934381,101.65151 C 36.194181,92.053967 42.543171,82.516887 49.056361,73.089417 C 57.256811,61.084687 66.553401,49.914307 76.326621,39.173297 C 81.265791,33.779247 86.513281,28.686907 91.857991,23.700367 C 97.987891,17.987917 106.1374,14.775117 113.23059,10.708927 C 116.90807,10.917567 113.78136,13.714277 113.8882,14.297247 L 94.255121,22.390917 C 94.526941,22.587567 96.671371,19.505167 96.503721,24.017687 C 108.5293,17.093847 120.65287,9.4589865 111.19634,15.849877 C 105.35559,20.847307 99.676441,26.034197 94.378811,31.614157 C 84.416641,42.196007 74.980641,53.268337 66.841101,65.336547 C 60.563011,74.545957 54.482441,83.886347 48.680581,93.404297 C 42.764951,103.12905 37.874671,110.40117 23.898511,110.85836 C 23.278211,106.61247 22.467621,102.28712 22.444381,97.929087 C 21.836811,90.422947 21.413521,82.840277 19.292261,75.567707 C 18.085941,72.527337 17.909431,69.617817 14.621834,70.042547 C 42.158331,53.800007 33.120641,56.606707 27.962771,64.331717 C 27.342641,65.783947 26.409771,67.125767 26.139401,68.718117 C 19.559881,71.457167 1.2403971,72.526887 6.5488591,77.282167 C 6.7344521,76.957207 6.9798381,76.656107 7.1112411,76.297467 C 7.2585741,76.005547 7.4705401,75.241777 7.5823041,75.364127 L 26.163881,64.740197 z "
+       inkscape:export-filename="/home/mp/python/peloton/docs/developer_guide/tick.png"
+       inkscape:export-xdpi="300.1517"
+       inkscape:export-ydpi="300.1517" />
+  </g>
+</svg>

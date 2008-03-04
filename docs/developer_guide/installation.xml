@@ -3,6 +3,7 @@
             "http://www.oasis-open.org/docbook/xml/4.3/docbookx.dtd"
             [
             <!ENTITY peloton "Peloton">
+            <!ENTITY tick "<inlinemediaobject><imageobject><imagedata width='4mm' fileref='tick.png' format='PNG'/></imageobject></inlinemediaobject>">
         ]>
 
 <!--
@@ -17,7 +18,7 @@
     <articleinfo>
         <title>
             The
-            &peloton; Developer&apos;s Guide
+            &peloton; Installation Guide
         </title>
         <author>
             <firstname>Peloton Development Team</firstname>
@@ -40,14 +41,16 @@
 		<sect2>
 			<title>Python libraries</title>
 			<para>
-				The following pythonlibraries are either required always (R) or required when using 
-				particular modules (M) and must be installed either by installer scripts 
-				(distutils, Debian package etc) or by the system administrator.
+				The following pythonlibraries are either required always required when using 
+				particular modulesand must be installed either by installer scripts 
+				(distutils, Debian package etc) or by the system administrator. The summary table
+				(see <xref linkend='dependency_summary_table'/>)
+				details which packages are necessary under what circumstances.
 			</para>
 			<orderedlist>
 	             <listitem>
 	                   <para>
-	                   	    <filename>(R)Twisted</filename> Version &gt;=2.5
+	                   	    <filename>Twisted</filename> Version &gt;=2.5
 	                   </para>
 	             </listitem>
 	             <listitem>
@@ -59,14 +62,16 @@
 	             </listitem>
 	             <listitem>
 	                   <para>
-	                   	   <class>PyCrypto</class> and <class>ezPyCrypto</class>. The former is available from <ulink url='http://www.amk.ca/python/code/crypto.html'/> and 
+	                   	   <classname>PyCrypto</classname> and <classname>ezPyCrypto</classname>. The former is available from <ulink url='http://www.amk.ca/python/code/crypto.html'/> and 
 						   the latter from <ulink url='http://www.freenet.org.nz/ezPyCrypto/'/>. 
 	                   </para>
 					   <para>
-					   	   <class>PyCrypto</class> may be installed on Debian/Ubuntu from the 
+					   	   <classname>PyCrypto</classname> may be installed on Debian from the 
 						   <filename>python-crypto</filename> package although at the time of
 						   writing package depended on Python &lt;= 2.5 which means a manual install
-						   is required (quite un-necessary as far as I can tell).
+						   is required (quite un-necessary as far as I can tell). Ubuntu is better but 
+						   some encryption schemes are missing and this breaks <filename>ezPyCrypto</filename>.
+						   The message seems to be: install from the tarball.
 					   </para>
 	             </listitem>
                  <listitem>
@@ -128,5 +133,105 @@
                  </listitem>
             </orderedlist>
 		</sect2>
+		<sect2 id='dependency_summary'>
+			<title>Dependency summary</title>
+			<para>
+				The following table summarises all the dependencies for &peloton;. The type
+				column indicates what kind of dependency this is: P is a pure python
+				library; PB is a Python built-in library (partly or entirely C code); 
+				A is an independent application. Versions indicated are those tested by
+				the authors and do not imply that other versions of given packages
+				will definitely not work.
+			</para>
+			<para>
+				Where a package is defined as required with a tick in brackets - (&tick;) - 
+				it may be substituted with another providing identical functionality.
+			</para>
+			<table  id='dependency_summary_table'>
+		      <title>Library and application dependencies</title>
+			  <tgroup cols='5'>
+                <colspec colwidth='2cm' colname='c1'/>
+                <colspec colwidth='1.5cm' colname='c2'/>
+                <colspec colwidth='1cm' align='center' colname='c4'/>
+                <colspec colwidth='1cm' align='center' colname='c5'/>
+                <colspec colwidth='9cm' colname='c6'/>
+				<thead>
+					<row>
+                        <entry>Name</entry>
+                        <entry>Version</entry>
+						<entry>Type</entry>
+                        <entry>Reqd</entry>
+                        <entry>Notes</entry>
+					</row>
+				</thead>
+				<tbody>
+                    <row>
+                        <entry>Twisted</entry>
+                        <entry>2.5</entry>
+						<entry>P</entry>
+                        <entry>&tick;</entry>
+                        <entry>Python asynchronous networking library</entry>
+                    </row>
+			        <row>
+                        <entry>memcached</entry>
+                        <entry>1.1.12</entry>
+                        <entry>A</entry>
+                        <entry>&tick;</entry>
+                        <entry>Provides distributed result cache</entry>
+			        </row>
+                    <row>
+                        <entry>cmemcache</entry>
+                        <entry>0.91</entry>
+                        <entry>PB</entry>
+                        <entry>(&tick;)</entry>
+                        <entry>Fast memcache adapter</entry>
+                    </row>
+                    <row>
+                        <entry>python-memcache</entry>
+                        <entry>1.40</entry>
+                        <entry>P</entry>
+                        <entry>(&tick;)</entry>
+                        <entry>Pure Python memcache adapter; a slower alternative to cmemcache</entry>
+                    </row>
+                    <row>
+                        <entry>RabbitMQ</entry>
+                        <entry>1.2.0</entry>
+                        <entry>A</entry>
+                        <entry>(&tick;)</entry>
+                        <entry>AMQP provider; any other provider conformant to the spec may also be used.</entry>
+                    </row>
+                    <row>
+                        <entry>PyAMQPlib</entry>
+                        <entry>0.3</entry>
+                        <entry>P</entry>
+                        <entry>&tick;</entry>
+                        <entry>AMQP interface library</entry>
+                    </row>
+                    <row>
+                        <entry>PyCrypto</entry>
+                        <entry>2.0.1</entry>
+                        <entry>PB</entry>
+                        <entry>&tick;</entry>
+                        <entry>Python cryptography library</entry>
+                    </row>
+                    <row>
+                        <entry>ezPyCrypto</entry>
+                        <entry>0.1.1</entry>
+                        <entry>P</entry>
+                        <entry>&tick;</entry>
+                        <entry>Wrapper to the PyCrypto library</entry>
+                    </row>
+                    <row>
+                        <entry></entry>
+                        <entry></entry>
+                        <entry></entry>
+                        <entry></entry>
+                        <entry></entry>
+                    </row>
+				</tbody>
+			  </tgroup>
+			</table>
+	    </sect2>
     </sect1>
 </article>
+

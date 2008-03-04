@@ -92,7 +92,7 @@
 		<para>
 			The following should be observed and represent a sub-set of changes that should be
 			adhered to as described more fully at 
-<uri url='http://wiki.python.org/moin/FutureProofPython'>http://wiki.python.org/moin/FutureProofPython</uri>:
+<ulink url='http://wiki.python.org/moin/FutureProofPython'>http://wiki.python.org/moin/FutureProofPython</ulink>:
 		</para>
 		<orderedlist>
 			<listitem>
@@ -105,7 +105,7 @@
 			<listitem>
 				<para>
 					<code>from __future__ import division</code> : see 
-<uri url='http://wiki.python.org/moin/FutureProofPython'>http://wiki.python.org/moin/FutureProofPython</uri>
+                    <ulink url='http://wiki.python.org/moin/FutureProofPython'/>
 					for an explanation of the new division operator behaviour that returns a float when two operands
 					are used. Behaviour as per the current operator is obtained with a double slash, so:
 					<code>3/2 == 1.5; 3//2 == 1;</code>.
@@ -153,7 +153,7 @@
 			</listitem>
 			<listitem>
 			    <para>
-			    	<code>configobj</code> as found at <uri url='http://www.voidspace.org.uk/python/configobj.html'/>
+			    	<code>configobj</code> as found at <ulink url='http://www.voidspace.org.uk/python/configobj.html'/>
 					is used for the parsing of config files which are all INI style. You should
 					also use this; it is provided in the <filename>thirdparty</filename> directory
 					of the &peloton; distribution.
@@ -164,7 +164,7 @@
 	<sect1>
 		<title>Documentation</title>
 		<para>
-			Documenting the API shall be done with EpyDoc (see <uri url='http://epydoc.sourceforge.net/'/>).
+			Documenting the API shall be done with EpyDoc (see <ulink url='http://epydoc.sourceforge.net/'/>).
 			User documentation, handbooks, manuals, tutorials and other guides to be written
 			with DocBook.
 		</para>
