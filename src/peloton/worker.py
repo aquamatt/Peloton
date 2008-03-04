@@ -98,4 +98,4 @@ service path configured at runtime."""
         raise NotImplementedError("Cannot yet stop service")
     
     def remote_call(self, service, method, *args, **kwargs):
-        raise NotImplementedError("Cannot yet call a method") 
+        raise NotImplementedError("Cannot yet call a method")

@@ -11,6 +11,7 @@ import sys
 
 from twisted.internet import reactor
 from peloton.base import HandlerBase
+from peloton.persist.memcache import PelotonMemcache
 import peloton.utils.config as config
 
 ADAPTERS = ["peloton.adapters.pb.PelotonPBAdapter",
@@ -34,12 +35,9 @@ defaultConfig = """
 [network]
     bind=0.0.0.0:9100
     
-[subsystems]
-    [[messaging]]
-        adapter=peloton.messaging.rabbitmq
-    
-    [[cache]]
-        memcacheHosts=localhost
+[external]
+    messagingAdapter=peloton.messaging.rabbitmq
+    memcacheHosts=localhost
 """
 
 class PelotonKernel(HandlerBase):
@@ -68,7 +66,8 @@ the server is stopped. Returns an exit code."""
         self.publicKey = self.sessionKey.exportKey()
 
         # hook into cacheing back-end
-        
+        self.memcache = PelotonMemcache.getInstance(self.configuration['external']['memcacheHosts'])
+
         # hook into persistence back-ends
         
         # hook into message bus
@@ -82,6 +81,7 @@ the server is stopped. Returns an exit code."""
         # Write to the generatorInterface to pass host:port of our 
         # twisted RPC interface
 
+        # ready to start!
         reactor.run()
         
         return 0

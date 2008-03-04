@@ -186,7 +186,8 @@ _globalMemcachePool = None
 
 def init(hosts):
     global _globalMemcachePool
-    _globalMemcachePool = MemcachePool(hosts)
+    if _globalMemcachePool == None:
+        _globalMemcachePool = MemcachePool(hosts)
 
 def getMC():
     return _globalMemcachePool
