@@ -11,4 +11,4 @@ mv $OUTDIR/api.pdf $OUTDIR/pelotonapi.pdf
 rm $OUTDIR/api.???
 
 # Completeness check: shame developers into documenting code
-c --check src/peloton
+epydoc --check src/peloton

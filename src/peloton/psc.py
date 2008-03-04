@@ -4,13 +4,13 @@
 # All Rights Reserved
 # See LICENSE for details
 
-""" PSC: Peloton Service Container
+""" PSC: Peloton Service Controller
 
-The service container is the primary unit in the Peloton mesh. 
+The service controller is the primary unit in the Peloton mesh. 
 PSC units link together to form a mesh; each PSC manages a number
 of services.
 
-How those services are managed is dependent on the container; some
+How those services are managed is dependent on the controller; some
 may be developed to work in different ways. The default behaviour
 for this core PSC will be to spawn a worker process to run a service,
 each worker then running a certain number of threads. This allows
@@ -56,12 +56,23 @@ def main():
     
     parser.add_option("-c", "--configpath",
                       help="""Directory containing the master server configuration files
-     [default: %default]""",
+[default: %default]""",
                       default="$PREFIX/config")
+    
+    parser.add_option("-b", "--bind", 
+                      help="""specify the host:port to which this instance should bind. Overides
+values set in configuration.""",
+                      dest='bindhost')
+    
+    parser.add_option("--anyport",
+                      action="store_true",
+                      default=False,
+                      help="""When set, this permits the PSC to seek a free port if the 
+configured port is not available.""")
     
     parser.add_option("-v", "--servicepath",
                       help="""Directory containing peloton services. You may specify several
-    such directories with multiple instances of this option [default: %default]""",
+such directories with multiple instances of this option [default: %default]""",
                       action="append",
                       default="$PREFIX/services")
     

@@ -32,8 +32,7 @@ defaultConfig = """
     domainAdmin=admin@example.com
 
 [network]
-    port=9100
-    host=0.0.0.0
+    bind=0.0.0.0:9100
     
 [subsystems]
     [[messaging]]
