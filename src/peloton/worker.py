@@ -68,9 +68,38 @@ which methods are called."""
     def __init__(self):
         self.services = {}
     
-    def stopService(self, name):
+    def loadService(self, name):
+        """ Loading a service happens as follows:
+    - Locate service class
+    - Validate it's signature cookie ???
+    - Instantiate: Here the configuration files are read and 
+internals are organised. This is generally NOT overidden by the
+service writer who instead provides the startup() method to do logical
+business level initialisation.
+
+Raises Exception if the name is invalid.
+        """
+        pass
+    
+    def startService(self, name):
+        """ Call serviceClass.startup(): this is the method which sets up
+loggers, starts connection pools and does any other initialisation 
+the service might require. 
+
+Raises Exception if the name is invalid."""
         try:
-            self.services[name].stop()
+            self.services[name].startup()
+        except KeyError:
+            raise Exception("Unknown service named: %s" % name)
+        except:
+            raise
+    
+    def stopService(self, name):
+        """ Calls shutdown() on the named service. 
+        
+Raises Exception if the name is invalid."""
+        try:
+            self.services[name].shutdown()
         except KeyError:
             raise Exception("Unknown service named: %s" % name)
         except:

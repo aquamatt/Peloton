@@ -23,12 +23,12 @@ root path. """
         self.conf = ReadOnlyDict()
         # locate config relative to root path of caller... 
     
-    def setup(self):
+    def startup(self):
         """ Executed after configuration is loaded, prior to starting work.
 Can be used to setup database pools etc. Overide in actual services. """
         pass
     
-    def cleanup(self):
+    def shutdown(self):
         """ Executed prior to shuting down this service or the node.
 Can be used to cleanup database pools etc. Overide in actual services. """
         pass
