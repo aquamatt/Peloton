@@ -5,6 +5,7 @@
 # See LICENSE for details
 
 import ezPyCrypto
+import logging
 import signal
 import sys
 
@@ -49,10 +50,10 @@ coreIO interfaces.
                 ]
 
     #: Key is option in the command line options and value is
-    #  the configuration item that it overides if present. This
+    #  the configuration item that it overrides if present. This
     #  latter is written as a dotted path, so 'bind' in the 
     #  [network] section is referred to as network.bind
-    __CONFIG_OVERIDES__ = {'bindhost':'network.bind',
+    __CONFIG_OVERRIDES__ = {'bindhost':'network.bind',
                            'domain' : 'domain.domainName'}
 
     def __init__(self, generatorInterface, options, args):
@@ -61,6 +62,7 @@ which the kernel can request a worker to be started for a given service."""
         HandlerBase.__init__(self, options, args)
         self.generatorInterface = generatorInterface
         self.adapters = {}
+        self.logger = logging.getLogger()
     
     def start(self):
         """ Start the Twisted event loop. This method returns only when
@@ -73,41 +75,52 @@ The bootstrap routine is as follows:
     4. Connect to the persistence back-end
     5. Connect to the message bus
     6. Start all the network protocol adapters
-    7. Schedule grid-joining workflow to start when the reactor starts
-    8. Inform the worker generator as to the port on which the RPC
+    7. Inform the worker generator as to the port on which the RPC
        adapter has started.
-    9. Start the reactor
+    8. Schedule grid-joining workflow to start when the reactor starts
+    9. Start kernel plugins
+    10. Start the reactor
     
-The method ends only when the reactor stops."""
-        # load the configuration
+The method ends only when the reactor stops.
+
+@todo: Workout the kernel plugin API and create a sample plugin
+"""
+        # (1) load the configuration
         self.configuration = config.loadConfig(self.initOptions.configpath, 
                                                self.initOptions.mode, 
                                                __defaultConfig__,
+                                               None,
                                                self.initOptions,
-                                               PelotonKernel.__CONFIG_OVERIDES__)
+                                               PelotonKernel.__CONFIG_OVERRIDES__)
         
-        # generate session keys
+        # (2) generate session keys
         self.sessionKey = ezPyCrypto.key(512)
         self.publicKey = self.sessionKey.exportKey()
 
-        # hook into cacheing back-end
+        # (3) hook into cacheing back-end
         self.memcache = PelotonMemcache.getInstance(
                           self.configuration['external']['memcacheHosts'])
 
-        # hook into persistence back-ends
+        # (4) hook into persistence back-ends
         
-        # hook into message bus
+        # (5) hook into message bus
         
-        # hook in the PB adapter and any others listed
+        # (6) hook in the PB adapter and any others listed
         self._startAdapters()
         
-        # schedule grid-joining workflow to happen on reactor start
-        #  -- this checks the domain cookie matches ours; quit if not.
-        
-        # Write to the generatorInterface to pass host:port of our 
+        # (7) Write to the generatorInterface to pass host:port of our 
         # twisted RPC interface
 
-        # ready to start!
+        # (8)schedule grid-joining workflow to happen on reactor start
+        #  -- this checks the domain cookie matches ours; quit if not.
+
+        # (9) Start any kernel plugins, e.g. scheduler
+
+        # (10) ready to start!
+        ##### REMOVE THESE LINEs ####
+        self.logger.warn("DEBUG LINE CAUSING SHUTDOWN IN 5 SECONDS ACTIVE!")
+        reactor.callLater(5, self.closedown)
+        ##### END REMOVE ############
         reactor.run()
         
         return 0
@@ -118,6 +131,7 @@ The method ends only when the reactor stops."""
         # tidy up kernel
         
         self._stopAdapters()
+        self.generatorInterface.stop()
         
         # stop the reactor
         reactor.stop()
@@ -129,8 +143,9 @@ hooks into the reactor. It is passed the entire config stack
 (self.configuration) and command line options"""
         for adapter in PelotonKernel.__ADAPTERS__:
             cls = getClassFromString(adapter)
-            self.adapters[adapter] = cls
-            adapter.start(self.configuration, self.initOptions)
+            _adapter = cls()
+            self.adapters[adapter] = _adapter
+            _adapter.start(self.configuration, self.initOptions)
     
     def _stopAdapters(self):
         """ Close down all adapters currently bound. """

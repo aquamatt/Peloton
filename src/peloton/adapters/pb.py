@@ -6,26 +6,57 @@
 
 from twisted.internet import reactor
 from twisted.spread import pb
-from twisted.internet import defer
+from twisted.internet.error import CannotListenError
+from peloton.adapters import AbstractPelotonAdapter
+import logging
 
-class PelotonPBAdapter(pb.Root):
+class PelotonPBAdapter(AbstractPelotonAdapter, pb.Root):
     """ The primary client adapter for Peloton is the Python Twisted PB
 RPC mechanism. This provides the most complete and sophisticated
 interface to the Peloton grid. This adapter is just a gate-keeper though;
 anything obtaining this must gain trust and obtain a Referenceable 
 through which real work can be done.
 """
+    def __init__(self):
+        AbstractPelotonAdapter.__init__(self, 'TwistedPB')
+        self.logger = logging.getLogger()
+    
     def start(self, configuration, cmdOptions):
         """ In this startup the adapter seeks to bind to a port. It obtains
 the host/port to which to bind from the configuration offered to it, but it
-may, according to whether anyport switch is set or not, seek an alternative
-port should its chosen target be bound by another application.
+may, according to whether the 'anyport' switch is set or not, seek an 
+alternative port should its chosen target be bound by another application.
 """
-        pass
+        interface,port = configuration['network']['bind'].split(':')
+        port = int(port)
+        
+        svr = pb.PBServerFactory(self)
+        while True:
+            try:
+                self.connection = reactor.listenTCP(port, svr, interface=interface)
+                configuration['network']['bind'] = "%s:%d" % (interface, port)
+                self.enabled = True
+                break
+            except CannotListenError:
+                if cmdOptions.anyport:
+                    port += 1
+                else:
+                    raise RuntimeError("Cannot bind to port %d" % port)
+            except Exception:
+                self.logger.exception("Could not connect %s" % self.adapterName)
+
+        self.logger.info("Bound to %s:%d" % (interface, port))
+         
+    def _stopped(self, x):
+        """ Handler called when reactor has stopped listening to this
+protocol's port."""
+        self.enabled = False
 
     def stop(self):
         """ Close down this adapter. """
-        pass
+        d = self.connection.stopListening()
+        d.addCallback(self._stopped)
+        
         
     def remote_registerPSC(self, remotePSC, token):
         """ A remote PSC will call registerPSC with a token encrypted
