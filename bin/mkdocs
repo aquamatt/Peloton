@@ -1,8 +1,9 @@
 #!/bin/sh
 #
 # This script requires epydoc!
+# call with -v to see errors
 OUTDIR=docs/api
-ARGS="--name=Peloton --url http://www.peloton-grid.net -o $OUTDIR src/peloton"
+ARGS="${1} --name=Peloton --url http://www.peloton-grid.net -o $OUTDIR src/peloton"
 epydoc --pdf $ARGS
 epydoc --html $ARGS
 rm $OUTDIR/*.tex

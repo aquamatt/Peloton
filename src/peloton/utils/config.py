@@ -15,7 +15,9 @@ from cStringIO import StringIO
 from fnmatch import fnmatchcase as fnmatch
 import os
 
-def loadConfig(configDir, runMode, defaultConfig='', defaultConfigFile=None):
+def loadConfig(configDir, runMode, 
+               defaultConfig='', defaultConfigFile=None,
+               overideOptions=None, overideMapping={}):
     """Return a configuration object with config data
 from all configuration files found in configDir. Looks
 first in configDir then configDir/runMode.
@@ -29,6 +31,15 @@ Only files matching the pattern '*.pcfg' will be loaded.
 A default configuration can be passed as a string (defaultConfig) or a file
 name (defaultConfigFile). This default initialises the configuration object. If
 both arguments are supplied the file is used and the string ignored.
+
+If overideOptions is assigned an OptionParser and an overideMapping is provided 
+then the command line options specified in the mapping will be used to overide
+the input configuration as determined by the mapping.
+
+The overideMapping is a dictionary where the key is an option in the OptionParser 
+and the value a path to the configuration entry specified as a dotted path. So
+if there is a section [network] with name bind=0.0.0.0:1111 in the configuration
+file it can be referenced as network.bind.
 """
     dirsToSearch = [i for i in [configDir, os.sep.join([configDir, runMode])] 
                     if os.path.isdir(i)]
@@ -47,5 +58,17 @@ both arguments are supplied the file is used and the string ignored.
         
     for conf in orderedFiles:
         parser.merge(ConfigObj(conf))
+
+    # apply overides
+    if overideMapping and overideOptions:
+        for k,overide in overideMapping.items():
+            if overideOptions.k:
+                overidePath = overide.split('.')[::-1]
+                v = parser
+                while len(overidePath > 1):
+                    v = v[overidePath.pop()]
+                v[overidePath[0]] = overideOptions.k
+
+                TEST THIS IN UNIT TESTS!!!!!
 
     return parser

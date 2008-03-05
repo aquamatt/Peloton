@@ -11,12 +11,13 @@
        be done in any extension of HandlerBase.
 """
 import sys
+import logging
 
 class HandlerBase(object):
     def __init__(self, options, args):
         self.initOptions = options
         self.initArgs = args
-
+        self.logger = logging.getLogger()
         # hide sys.exit
         self._trapExit()
         self._setSignalHandlers

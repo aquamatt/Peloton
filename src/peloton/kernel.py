@@ -5,7 +5,6 @@
 # See LICENSE for details
 
 import ezPyCrypto
-import logging
 import signal
 import sys
 
@@ -14,16 +13,8 @@ from peloton.base import HandlerBase
 from peloton.persist.memcache import PelotonMemcache
 import peloton.utils.config as config
 
-ADAPTERS = ["peloton.adapters.pb.PelotonPBAdapter",
-#            "peloton.adapters.soap.PelotonSoapAdapter",
-#            "peloton.adapters.xmlrpc.PelotonXMLRPCAdapter",
-#            "peloton.adapters.web.PelotonHTTPAdapter",
-            ]
-
-logger = logging.getLogger()
-
 ### THE DEFAULT KERNEL CONFIGURATION ##    
-defaultConfig = """
+__defaultConfig__ = """
 [site]
     siteName=Peloton Site
     siteLicense=''
@@ -47,6 +38,21 @@ and provides the means via which components find each other. For example,
 it is the kernel that gathers together the event transceiver and the
 coreIO interfaces.
 """
+
+    #: List of classes that provide IO adapters for the Peloton node.
+    __ADAPTERS__ = ["peloton.adapters.pb.PelotonPBAdapter",
+    #            "peloton.adapters.soap.PelotonSoapAdapter",
+    #            "peloton.adapters.xmlrpc.PelotonXMLRPCAdapter",
+    #            "peloton.adapters.web.PelotonHTTPAdapter",
+                ]
+
+    #: Key is option in the command line options and value is
+    #  the configuration item that it overides if present. This
+    #  latter is written as a dotted path, so 'bind' in the 
+    #  [network] section is referred to as network.bind
+    __CONFIG_OVERIDES__ = {'bindhost':'network.bind',
+                           'domain' : 'domain.domainName'}
+
     def __init__(self, generatorInterface, options, args):
         """ Prepare the kernel. The generatorInterface is a callable via
 which the kernel can request a worker to be started for a given service."""
@@ -55,11 +61,27 @@ which the kernel can request a worker to be started for a given service."""
     
     def start(self):
         """ Start the Twisted event loop. This method returns only when
-the server is stopped. Returns an exit code."""
+the server is stopped. Returns an exit code.
+
+The bootstrap routine is as follows:
+    1. Load configuration from configuration path
+    2. Generate this PSCs session keys
+    3. Connect to memcache
+    4. Connect to the persistence back-end
+    5. Connect to the message bus
+    6. Start all the network protocol adapters
+    7. Schedule grid-joining workflow to start when the reactor starts
+    8. Inform the worker generator as to the port on which the RPC
+       adapter has started.
+    9. Start the reactor
+    
+The method ends only when the reactor stops."""
         # load the configuration
         self.configuration = config.loadConfig(self.initOptions.configpath, 
                                                self.initOptions.mode, 
-                                               defaultConfig)
+                                               __defaultConfig__,
+                                               self.initOptions,
+                                               PelotonKernel.__CONFIG_OVERIDES__)
         
         # generate session keys
         self.sessionKey = ezPyCrypto.key(512)
@@ -87,7 +109,7 @@ the server is stopped. Returns an exit code."""
         return 0
 
     def closedown(self):
-        """Closedown in an orderly fashion"""
+        """Closedown in an orderly fashion."""
         # Closedown all worker nodes
         # tidy up kernel
         
@@ -95,6 +117,12 @@ the server is stopped. Returns an exit code."""
         reactor.stop()
 
     def _startAdapters(self):
-        """Prepare all protocol adapters for use."""
-        raise NotImplementedError("_startAdapters not yet written.")
+        """Prepare all protocol adapters for use. Each adapter
+has a start(config) method which does initial setup and hooks into the 
+reactor. It is passed the entire config stack (self.configuration)"""
+        for adapter in PelotonKernel.__ADAPTERS__:
+            -- get the real class
+            -- add it to our self.adapters list
+            -- start it
+            adapter.start(self.configuration)
     
