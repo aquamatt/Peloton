@@ -14,3 +14,19 @@ the end of string s and return """
         s = s[:-1]
         
     return s
+
+def getClassFromString(clazz):
+    """ Performn an import given an absolute class reference as a string; returns
+the class object."""
+    packageTree = clazz.split('.')
+    cls = packageTree[-1]
+    packageTree = packageTree[:-1]
+    try:
+        mdle = __import__(".".join(packageTree),{},{},".".join(packageTree[:-1]))
+        handler = getattr(mdle, cls)
+        if callable(handler):
+            return handler
+        else:
+            raise Exception("Class %s is not valid" % clazz)
+    except Exception,ex:
+        raise Exception("Could not find class %s (error: %s)" %(clazz, str(ex)))

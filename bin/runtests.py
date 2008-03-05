@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2.5
 # $Id$
 #
 # Copyright (c) 2007-2008 ReThought Limited and Peloton Contributors

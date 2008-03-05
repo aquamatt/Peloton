@@ -188,8 +188,8 @@ of messaging between the two components."""
     def initGenerator(self, host, port):
         self.writePipe.write('INIT:%s:%d' % (host, port))
         
-    def startService(self, serviceName, args):
-        self.writePipe.write('%s\n', Pickle.dumps([serviceName, args]))
+    def startService(self, serviceName, token, args):
+        self.writePipe.write('%s\n', Pickle.dumps([serviceName, token, args]))
         
     def stop(self):
         self.writePipe.write('STOP\n')

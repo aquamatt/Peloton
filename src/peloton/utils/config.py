@@ -62,13 +62,12 @@ file it can be referenced as network.bind.
     # apply overides
     if overideMapping and overideOptions:
         for k,overide in overideMapping.items():
-            if overideOptions.k:
+            overideValue = getattr(overideOptions, k)
+            if overideValue:
                 overidePath = overide.split('.')[::-1]
                 v = parser
-                while len(overidePath > 1):
+                while len(overidePath) > 1:
                     v = v[overidePath.pop()]
-                v[overidePath[0]] = overideOptions.k
-
-                TEST THIS IN UNIT TESTS!!!!!
+                v[overidePath[0]] = overideValue
 
     return parser

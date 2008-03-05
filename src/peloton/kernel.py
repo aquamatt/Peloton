@@ -11,6 +11,8 @@ import sys
 from twisted.internet import reactor
 from peloton.base import HandlerBase
 from peloton.persist.memcache import PelotonMemcache
+from peloton.utils import getClassFromString
+
 import peloton.utils.config as config
 
 ### THE DEFAULT KERNEL CONFIGURATION ##    
@@ -20,7 +22,7 @@ __defaultConfig__ = """
     siteLicense=''
 
 [domain]
-    domainName=Pelotonia
+    domainName=Pelotonica
     domainAdmin=admin@example.com
 
 [network]
@@ -58,6 +60,7 @@ coreIO interfaces.
 which the kernel can request a worker to be started for a given service."""
         HandlerBase.__init__(self, options, args)
         self.generatorInterface = generatorInterface
+        self.adapters = {}
     
     def start(self):
         """ Start the Twisted event loop. This method returns only when
@@ -88,7 +91,8 @@ The method ends only when the reactor stops."""
         self.publicKey = self.sessionKey.exportKey()
 
         # hook into cacheing back-end
-        self.memcache = PelotonMemcache.getInstance(self.configuration['external']['memcacheHosts'])
+        self.memcache = PelotonMemcache.getInstance(
+                          self.configuration['external']['memcacheHosts'])
 
         # hook into persistence back-ends
         
@@ -113,16 +117,22 @@ The method ends only when the reactor stops."""
         # Closedown all worker nodes
         # tidy up kernel
         
+        self._stopAdapters()
+        
         # stop the reactor
         reactor.stop()
 
     def _startAdapters(self):
         """Prepare all protocol adapters for use. Each adapter
-has a start(config) method which does initial setup and hooks into the 
-reactor. It is passed the entire config stack (self.configuration)"""
+has a start(config, initOptions) method which does initial setup and 
+hooks into the reactor. It is passed the entire config stack 
+(self.configuration) and command line options"""
         for adapter in PelotonKernel.__ADAPTERS__:
-            -- get the real class
-            -- add it to our self.adapters list
-            -- start it
-            adapter.start(self.configuration)
+            cls = getClassFromString(adapter)
+            self.adapters[adapter] = cls
+            adapter.start(self.configuration, self.initOptions)
     
+    def _stopAdapters(self):
+        """ Close down all adapters currently bound. """
+        for adapter in self.adapters.values():
+            adapter.stop()

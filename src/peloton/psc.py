@@ -78,7 +78,7 @@ such directories with multiple instances of this option [default: %default]""",
     
     parser.add_option("-d", "--domain",
                       help="""Specify the domain to join [default: %default]""",
-                      default="default_domain")
+                      default="Pelotonica")
     
     parser.add_option("-k", "--cookie",
                       help="""Domain cookie file [default: $PREFIX/cookies/<domain>.cookie]""")
