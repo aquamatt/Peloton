@@ -32,27 +32,21 @@ from optparse import OptionGroup
 from peloton.utils.structs import FilteredOptionParser
 import peloton
 
-# Determine the appropriate code to use to start a PSC
-# on this platform.
-# os.name is  'posix', 'nt', 'os2', 'mac', 'ce' or 'riscos'
-if os.name in ['posix', 'mac']:
-    import peloton.psc_posix as pscplatform
-else:
-    print("Sorry: your platform (%s) is not yet supported by Peloton" % os.name)
-    sys.exit(1)    
-
 def main():
-    # Let's read the command line    
+    # Let's read the command line
+    pscplatform = peloton.getPlatformPSC()
+        
     usage = "usage: %prog [options]" # add 'arg1 arg2' etc as required
     parser = FilteredOptionParser(usage=usage, version="Peloton version %s" % peloton.RELEASE_VERSION)
-    parser.set_defaults(nodetach=False)
+#    parser.set_defaults(nodetach=False)
     parser.add_option("--nodetach",
                       action="store_true",
+                      default=False,
                       help="Prevent PSC detaching from terminal [default: %default]")
     
     parser.add_option("--prefix",
                       help="Path to directory containing configuration data, links to services etc. [default: %default]",
-                      default=pscplatform.DEFAULT_CONFIG_ROOT)
+                      default=peloton.getPlatformDefaultDir('config'))
     
     parser.add_option("-c", "--configpath",
                       help="""Directory containing the master server configuration files
@@ -80,8 +74,9 @@ such directories with multiple instances of this option [default: %default]""",
                       help="""Specify the domain to join [default: %default]""",
                       default="Pelotonica")
     
-    parser.add_option("-k", "--cookie",
-                      help="""Domain cookie file [default: $PREFIX/cookies/<domain>.cookie]""")
+    parser.add_option("-k", "--domainkey",
+                      help="""Domain key file [default: $PREFIX/keys/<domain>.key]""",
+                      default="$PREFIX/keys/$DOMAIN.key")
     
     parser.add_option("-m", "--mode",
                       help="Run mode, one of prod, test or dev [default: %default]",
@@ -119,8 +114,6 @@ the logging-to-file system will be enabled.""")
                            'uat_b':'ERROR',
                            'prod':'ERROR'}[options.mode]
 
-    pscplatform.DEFAULT_CONFIG_ROOT = options.prefix
-    
     try:
         exitCode = pscplatform.start(options, args)
     except:

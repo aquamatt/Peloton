@@ -16,11 +16,6 @@ from peloton.kernel import PelotonKernel
 from peloton.worker import PelotonWorker
 from peloton.utils import chop
 
-# every psc implementation has to specify the default place to 
-# look for configuration data. Provides the default for $PREFIX in 
-# command line options
-DEFAULT_CONFIG_ROOT='/etc/peloton/'
-
 def initLogging(loglevel='ERROR', logdir='', logfile='', rootLoggerName='PSC', closeHandlers=False, toConsole=False):
     """ Configure the logger for this PSC. By default no logging to
 file unless explicitly requested by setting logdir. If only logfile is set, no disk

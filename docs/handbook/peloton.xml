@@ -3,7 +3,8 @@
             "http://www.oasis-open.org/docbook/xml/4.3/docbookx.dtd"
             [
             <!ENTITY peloton "Peloton">
-	    <!ENTITY env SYSTEM "peloton_env.xml">
+        <!ENTITY env SYSTEM "peloton_env.xml">
+        <!ENTITY quickstart SYSTEM "peloton_quickstart.xml">
 	    ]>
 
 <!--
@@ -50,6 +51,7 @@
 
 <!-- THE CHAPTERS -->
 &env;
+&quickstart;
 <!-- END OF DOC   -->
 
 </article>

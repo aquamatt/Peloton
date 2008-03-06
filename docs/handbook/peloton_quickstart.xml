@@ -1,0 +1,36 @@
+<!--
+# $Id: peloton.xml 31 2008-02-26 10:23:10Z as $
+#
+# Copyright (c) 2007-2008 ReThought Limited and Peloton Contributors
+# All Rights Reserved
+# See LICENSE for details
+-->
+
+<sect1>
+    <title>A Quick Start Overview</title>
+    <para>
+        So you've got &Peloton; and supporting tools installed and you 
+		want to start a grid. Take the following steps:
+    </para>
+	<orderedlist>
+        <listitem>
+            <para>
+            	Create a configuration directory; this is a tree of directories
+				rooted at <filename>/etc/peloton</filename> but it can be anywhere.
+				Create this directory and the <filename>keys</filename> sub-directory.
+            </para>
+        </listitem>
+        <listitem>
+            <para>
+            	Create a domain key file with <filename>newkey.py</filename> as follows:
+            </para>
+			<informalexample>
+		        <programlisting> # newkey.py --prefix=/path/to/config/root -d DomainName</programlisting>		        	
+			</informalexample>
+        </listitem>
+		<listitem>
+			<para>
+			</para>
+		</listitem>
+	</orderedlist>
+</sect1>

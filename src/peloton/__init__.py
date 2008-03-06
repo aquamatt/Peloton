@@ -21,5 +21,25 @@ The main aims of this project are to:
     - Integrate with legacy systems
     - Make trivial the development and sharing of code 
 """
+import os
 
 RELEASE_VERSION = "0.0.1"
+
+def getPlatformDefaultDir(dir):
+    """ Return the default temporary directory for this platform. Argument
+is one of ['temp', 'config'] """
+    posix_dirs = {'temp':'/tmp',
+                  'config':'/etc/peloton'}
+    if os.name in ['posix', 'mac']:
+        return posix_dirs[dir] 
+    else:
+        raise RuntimeError("Sorry: your platform (%s) is not yet supported by Peloton" % os.name)
+
+def getPlatformPSC():
+    """ Return the appropriate PSC implementation for this platform """
+    if os.name in ['posix', 'mac']:
+        import peloton.psc_posix as pscplatform
+        return pscplatform
+    else:
+        raise RuntimeError("Sorry: your platform (%s) is not yet supported by Peloton" % os.name)
+    

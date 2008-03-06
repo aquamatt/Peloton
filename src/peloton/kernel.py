@@ -8,6 +8,7 @@ import ezPyCrypto
 import logging
 import signal
 import sys
+import os
 
 from twisted.internet import reactor
 from peloton.base import HandlerBase
@@ -69,7 +70,8 @@ which the kernel can request a worker to be started for a given service."""
 the server is stopped. Returns an exit code.
 
 The bootstrap routine is as follows:
-    1. Load configuration from configuration path
+    1. Load configuration from configuration path and also read
+       the domain key
     2. Generate this PSCs session keys
     3. Connect to memcache
     4. Connect to the persistence back-end
@@ -93,6 +95,15 @@ The method ends only when the reactor stops.
                                                self.initOptions,
                                                PelotonKernel.__CONFIG_OVERRIDES__)
         
+        # read in the domain cookie
+        if os.path.exists(self.initOptions.domainkey) and \
+            os.path.isfile(self.initOptions.domainkey):
+            o = open(self.initOptions.domainkey, 'rt')
+            keylines = o.readlines()
+        else:
+            raise Exception("Domain key file is unreadable, does not exist or is corrupted: %s" % self.initOptions.domainkey)
+        
+
         # (2) generate session keys
         self.sessionKey = ezPyCrypto.key(512)
         self.publicKey = self.sessionKey.exportKey()

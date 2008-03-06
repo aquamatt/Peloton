@@ -173,4 +173,44 @@
 			project uses EpyText for ALL docstring markup; please adhere to this.
 		</para>
 	</sect1>
+	<sect1>
+        <title>Submitting code</title>
+		<para>
+		  Whether you have write access to SVN or are submitting patches you
+		  <emphasis>must</emphasis> adhere to the following rules; submissions 
+		  failing to do so will not be accepted.
+		</para>
+		<orderedlist>
+           <listitem>
+               <para>
+               	    Only submit or commit code that is tested as functional to the
+					degree stated on submission. Only if you are committing to a
+					private branch may you put 'work in progress' into SVN for 
+					safe keeping. 
+               </para>
+			   <para>
+			   	    Breaking the head through careless committal is a cardinal sin!  
+			   </para>
+           </listitem>
+           <listitem>
+               <para>
+               	    When releasing code to the head or submitting patches you must also
+					ensure that supporting documentation is provided. This is both in the
+					form of adequately documented code (that will be correctly parsed by
+					EpyDoc) and additions to the developer guide, installation guide or
+					&peloton; handbook. New features must be documented in at least one of
+					these - there are to be no 'hidden' features known only to readers of the
+					API documentation.
+               </para>
+           </listitem>
+           <listitem>
+               <para>
+               </para>
+           </listitem>
+           <listitem>
+               <para>
+               </para>
+           </listitem>
+		</orderedlist>
+	</sect1>
 </article>
