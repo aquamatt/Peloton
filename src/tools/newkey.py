@@ -27,9 +27,7 @@ def makeKeyFile(keyfile, toConsole=False):
                       for i in xrange(tokenlength)])
     
     key = ezPyCrypto.key(keylength)
-    
-    contents = cookie+"\n"+key.exportKey()+key.exportKeyPrivate()
-    
+    contents = cookie+"\n"+key.exportKeyPrivate()
     if toConsole:
         print(contents)
     else:

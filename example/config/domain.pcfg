@@ -1,0 +1,17 @@
+# domain configuration
+# there may be many domains in a site
+[domain]
+  name=Front office
+
+  # Allow 'any' service to be started or only
+  #       'registered' services
+  serviceStartupPolicy=any 
+
+  # absolute or relative to location of this config
+  keyfile=fo.key
+
+  administrators=admin@example.com
+
+  # cacheing is restricted to a domain and does not
+  # span a whole site
+  memcacheHosts=localhost

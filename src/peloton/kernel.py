@@ -14,7 +14,7 @@ from twisted.internet import reactor
 from peloton.base import HandlerBase
 from peloton.persist.memcache import PelotonMemcache
 from peloton.utils import getClassFromString
-
+from peloton.utils import chop
 import peloton.utils.config as config
 
 ### THE DEFAULT KERNEL CONFIGURATION ##    
@@ -95,15 +95,27 @@ The method ends only when the reactor stops.
                                                self.initOptions,
                                                PelotonKernel.__CONFIG_OVERRIDES__)
         
-        # read in the domain cookie
+        # read in the domain key - all PSCs in a domain must have access
+        # to this same key file (or identical copy, of course)
         if os.path.exists(self.initOptions.domainkey) and \
             os.path.isfile(self.initOptions.domainkey):
             o = open(self.initOptions.domainkey, 'rt')
-            keylines = o.readlines()
+            self.domainCookie = chop(o.readline())
+            aDomainKey = ""
+            while True:
+                aDomainKey = o.readline() 
+                if aDomainKey.startswith("<StartPycryptoKey>"):
+                    break
+            while True:
+                l = o.readline()
+                aDomainKey = aDomainKey + l
+                if l.startswith("<EndPycryptoKey>"):
+                    break
+            self.domainKey =  ezPyCrypto.key(keyobj=aDomainKey)
+            o.close()
         else:
             raise Exception("Domain key file is unreadable, does not exist or is corrupted: %s" % self.initOptions.domainkey)
         
-
         # (2) generate session keys
         self.sessionKey = ezPyCrypto.key(512)
         self.publicKey = self.sessionKey.exportKey()
@@ -121,6 +133,7 @@ The method ends only when the reactor stops.
         
         # (7) Write to the generatorInterface to pass host:port of our 
         # twisted RPC interface
+        self.generatorInterface.initGenerator(self.configuration['network']['bind'])
 
         # (8)schedule grid-joining workflow to happen on reactor start
         #  -- this checks the domain cookie matches ours; quit if not.

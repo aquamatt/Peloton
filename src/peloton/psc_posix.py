@@ -155,6 +155,8 @@ when requested. This is a two step process:
             return 0
         elif l.startswith('INIT:'):
             host, port = l[5:].split(':')
+            port = int(port)
+            logger.info("Generator initialised with master at %s:%d" % (host, port))
         else:
             if host==None and port==None:
                 logger.error("Generator asked to fork a worker but master PSC has not initialised")
@@ -180,8 +182,9 @@ of messaging between the two components."""
     def __init__(self, writePipe):
         self.writePipe = os.fdopen(writePipe, 'wt', 0)
         
-    def initGenerator(self, host, port):
-        self.writePipe.write('INIT:%s:%d' % (host, port))
+    def initGenerator(self, bindHost):
+        """ bindHost is a string of the form host:port. """
+        self.writePipe.write('INIT:%s\n' % bindHost)
         
     def startService(self, serviceName, token, args):
         self.writePipe.write('%s\n', Pickle.dumps([serviceName, token, args]))

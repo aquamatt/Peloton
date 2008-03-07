@@ -56,8 +56,7 @@ protocol's port."""
         """ Close down this adapter. """
         d = self.connection.stopListening()
         d.addCallback(self._stopped)
-        
-        
+                
     def remote_registerPSC(self, remotePSC, token):
         """ A remote PSC will call registerPSC with a token encrypted
 with the domain key. Provided this decrypts we know the remote PSC is
@@ -75,6 +74,7 @@ referenceable and a token. The token was passed to the worker
 generator and is used simply to verify that this is indeed a valid
 and wanted contact. """
         pass
+    
     
 class PelotonGridAdapter(pb.Referenceable):
     def remote_call(self, clientObj, service, method, *args, **kwargs):
