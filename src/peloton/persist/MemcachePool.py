@@ -27,52 +27,6 @@ except:
     
 import os
 import threading
-
-class Bogus:
-    def __init__(self, selfShuntObj=None):
-        pass
-    
-    def set(self, name, value,time=0):
-        return 0
-    
-    def add(self, name, value,time=0):
-        return 0
-    
-    def replace(self, name, value,time=0):
-        return 0
-    
-    def delete(self, name,time=0):
-        return 0
-    
-    def incr(self, name,value=1):
-        return 0
-    
-    def decr(self, name,value=1):
-        return 0
-    
-    def get(self, name):
-        return None
-    
-    def flush_all(self):
-        pass
-    
-    def debuglog(self, str):
-        pass
-    
-    def disconnect_all(self):
-        pass
-    
-    def forget_dead_hosts(self):
-        pass
-    
-    def get_multi(self, keys):
-        return None
-    
-    def get_stats(self):
-        return None
-    
-    def set_servers(self, keys):
-        pass
     
 class MemcachePool:
     def __init__(self,hosts=None):
@@ -89,17 +43,13 @@ class MemcachePool:
         self.enabled = False
 
     def addConnection(self):
-        try:
-            mc = memcache.Client(self._hosts)
-        except:
-            print "creating bogus exception"
-            mc = Bogus()
+        mc = memcache.Client(self._hosts)
         return mc
 
     def getConnection(self):
         if not self.enabled:
-            return Bogus()
-
+            return None
+        
         self.lock.acquire()
         if len(self._pooled_conns) > 0:
             mc = self._pooled_conns.pop()
@@ -110,7 +60,7 @@ class MemcachePool:
 
     def returnConnection(self,mc):
         # never return bogus memcache client to the pool
-        if  not isinstance(mc,Bogus):
+        if  self.enabled:
             self.lock.acquire()
             self._pooled_conns.append(mc)
             self.lock.release()

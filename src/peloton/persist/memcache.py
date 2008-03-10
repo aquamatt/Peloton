@@ -27,8 +27,9 @@ need not constantly be re-computed. """
         """ Initialise the memcache connector. Hosts is a list
 of available hosts running a memcache daemon."""
         try:
-            MemcachePool.init(hosts)
             self.logger = logging.getLogger()
+            MemcachePool.init(hosts)
+            MemcachePool.getMC().getConnection()
             self.logger.info("Memcache adapter initialised")
         except:
             self.logger.exception("Failed to connect memcache adapter")

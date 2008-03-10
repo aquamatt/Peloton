@@ -30,7 +30,8 @@ __defaultConfig__ = """
     
 [external]
     messagingAdapter=peloton.messaging.rabbitmq
-    memcacheHosts=localhost
+    memcacheHosts=localhost:11211, # comma is important to ensure this
+                                   # is returned as a list
 """
 
 class PelotonKernel(HandlerBase):
