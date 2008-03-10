@@ -6,8 +6,6 @@
 
 import ezPyCrypto
 import logging
-import signal
-import sys
 import os
 
 from twisted.internet import reactor
