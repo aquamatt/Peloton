@@ -1,3 +1,7 @@
 # Individual PSC configuration
 [psc]
   bind=0.0.0.0:9100
+  
+  # Overides for different modes
+  [[mode_test]]
+	  bind=0.0.0.0:9101 

@@ -8,8 +8,9 @@
 from unittest import TestCase
 from peloton.utils.config import loadConfig
 from peloton.utils.structs import FilteredOptionParser
+import os
 
-GRID_CONFIG = """
+GRID_CONFIG = ("megabank.pcfg", """
 # grid config
 [grid]
   name=Megabank Peloton site
@@ -27,9 +28,9 @@ GRID_CONFIG = """
 
   # all domains in a site must use the same message bus
   messagingAdapter=peloton.messaging.rabbitmq
-"""
+""")
 
-DOMAIN_CONFIG = """
+DOMAIN_CONFIG = ("foo_domain.pcfg", """
 # domain configuration
 # there may be many domains in a site
 [domain]
@@ -52,9 +53,9 @@ DOMAIN_CONFIG = """
     
   worker_user=pelotonw
   worker_gropu=peloton
-"""
+""")
 
-DOMAIN_OVERRIDE_CONFIG = """
+DOMAIN_OVERRIDE_CONFIG = ("foo_test_domain.pcfg", """
 # domain configuration
 # there may be many domains in a site
 [domain]
@@ -63,19 +64,30 @@ DOMAIN_OVERRIDE_CONFIG = """
   keyfile=/etc/peloton/testdomain.key
 
   administrators=testadmin@example.com
-"""
+""")
 
-PSC_CONFIG = """
+DOMAIN_OVERRIDE_CONFIG = ("foo_uat_domain.pcfg", """
+# domain configuration
+# there may be many domains in a site
+[domain]
+  name=UAT Front office
+  # absolute or relative to location of this config
+  keyfile=/etc/peloton/testdomain.key
+
+  administrators=testadmin@example.com
+""")
+
+PSC_CONFIG = ("psc.pcfg", """
 # Individual PSC configuration
 [psc]
   bind=0.0.0.0:9100
-"""
+""")
 
-PSC_OVERRIDE_CONFIG="""  
+PSC_OVERRIDE_CONFIG=("psc_test.pcfg", """  
   # Overides for different modes
 [test]
   bind=0.0.0.0:9101 
-"""
+""")
 
 
 class Test_ReadOnlyDict(TestCase):
@@ -84,9 +96,15 @@ class Test_ReadOnlyDict(TestCase):
 
 class Test_PelotonConfig(TestCase):
     def setUp(self):
-        """ """
-        pass
+        """ Create a temp dir and write test config files to it."""
+        self.dirName = os.tempnam()
+        os.makedirs(self.dirName)
+        self.filesMade = []
         
+    def tearDown(self):
+        for f in self.filesMade:
+            os.remove(f)
+        os.removedirs(self.dirName)
 
 
 class Test_FilteredOptionParser(TestCase):
