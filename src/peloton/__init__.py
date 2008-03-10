@@ -23,7 +23,8 @@ The main aims of this project are to:
 """
 import os
 
-RELEASE_VERSION = "0.0.1"
+RELEASE_VERSION = '0.0.1'
+BUILD_REVISION  = '$Revision$'.split(' ')[1]
 
 def getPlatformDefaultDir(dir):
     """ Return the default temporary directory for this platform. Argument
