@@ -44,14 +44,18 @@ def main():
                       default=False,
                       help="Prevent PSC detaching from terminal [default: %default]")
     
-    parser.add_option("--prefix",
+    parser.add_option("--configdirs",
                       help="Path to directory containing configuration data, links to services etc. [default: %default]",
+                      action="append",
                       default=peloton.getPlatformDefaultDir('config'))
     
-    parser.add_option("-c", "--configpath",
-                      help="""Directory containing the master server configuration files
-[default: %default]""",
-                      default="$PREFIX/config")
+    parser.add_option("-g", "--grid",
+                      help="""Short name for the grid to join [default: %default]""",
+                      default="peligrid")
+    
+    parser.add_option("-d", "--domain",
+                      help="""Short name for the domain to join [default: %default]""",
+                      default="pelotonica")
     
     parser.add_option("-b", "--bind", 
                       help="""specify the host:port to which this instance should bind. Overides
@@ -69,20 +73,7 @@ configured port is not available.""")
 such directories with multiple instances of this option [default: %default]""",
                       action="append",
                       default="$PREFIX/services")
-    
-    parser.add_option("-d", "--domain",
-                      help="""Specify the domain to join [default: %default]""",
-                      default="Pelotonica")
-    
-    parser.add_option("-k", "--domainkey",
-                      help="""Domain key file [default: $PREFIX/keys/<domain>.key]""",
-                      default="$PREFIX/keys/$DOMAIN.key")
-    
-    parser.add_option("-m", "--mode",
-                      help="Run mode, one of prod, test or dev [default: %default]",
-                      choices=['prod', 'uat_a', 'uat_b', 'test', 'dev'],
-                      default='dev')
-    
+        
     parser.add_option("--loglevel",
                       help="""Set the logging level to one of critical, fatal, error(uat, prod), warning, info(test), debug(dev).
 (defaults for each run mode indicated in brackets).""",

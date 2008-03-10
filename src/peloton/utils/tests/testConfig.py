@@ -9,25 +9,87 @@ from unittest import TestCase
 from peloton.utils.config import loadConfig
 from peloton.utils.structs import FilteredOptionParser
 
-TEST_CONFIG = """
-[site]
-    siteName=Peloton Site
-    siteLicense=''
+GRID_CONFIG = """
+# grid config
+[grid]
+  name=Megabank Peloton site
+  gridmode=test
+  
+  # absolute or relative path to location of
+  # license file
+  licenseFile=mp.license
+   
+  #options are any or registered
+  domainRegistrationPolicy=any
 
+  # absolute or relative to location of this config
+  keyfile=grid.key
+
+  # all domains in a site must use the same message bus
+  messagingAdapter=peloton.messaging.rabbitmq
+"""
+
+DOMAIN_CONFIG = """
+# domain configuration
+# there may be many domains in a site
 [domain]
-    domainName=Pelotonica
-    domainAdmin=admin@example.com
+  name=Front office
+  # Allow 'any' service to be started or only
+  #       'registered' services
+  serviceStartupPolicy=any 
 
-[network]
-    bind=0.0.0.0:9100
+  # absolute or relative to location of this config
+  keyfile=domain.key
+
+  administrators=admin@example.com
+
+  # cacheing is restricted to a domain and does not
+  # span a whole site
+  memcacheHosts=localhost, # trailing comma ensures a list returned
+  
+  psc_user=peloton
+  psc_group=peloton
     
-[external]
-    messagingAdapter=peloton.messaging.rabbitmq
-    memcacheHosts=localhost
+  worker_user=pelotonw
+  worker_gropu=peloton
+"""
+
+DOMAIN_OVERRIDE_CONFIG = """
+# domain configuration
+# there may be many domains in a site
+[domain]
+  name=Test Front office
+  # absolute or relative to location of this config
+  keyfile=/etc/peloton/testdomain.key
+
+  administrators=testadmin@example.com
+"""
+
+PSC_CONFIG = """
+# Individual PSC configuration
+[psc]
+  bind=0.0.0.0:9100
+"""
+
+PSC_OVERRIDE_CONFIG="""  
+  # Overides for different modes
+[test]
+  bind=0.0.0.0:9101 
 """
 
 
 class Test_ReadOnlyDict(TestCase):
+    pass
+
+
+class Test_PelotonConfig(TestCase):
+    def setUp(self):
+        """ """
+        pass
+        
+
+
+class Test_FilteredOptionParser(TestCase):
     def setUp(self):
         self.parser = FilteredOptionParser()
         self.parser.set_defaults(nodetach=False)

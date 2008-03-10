@@ -15,25 +15,6 @@ from peloton.utils import getClassFromString
 from peloton.utils import chop
 import peloton.utils.config as config
 
-### THE DEFAULT KERNEL CONFIGURATION ##    
-__defaultConfig__ = """
-[site]
-    siteName=Peloton Site
-    siteLicense=''
-
-[domain]
-    domainName=Pelotonica
-    domainAdmin=admin@example.com
-
-[network]
-    bind=0.0.0.0:9100
-    
-[external]
-    messagingAdapter=peloton.messaging.rabbitmq
-    memcacheHosts=localhost:11211, # comma is important to ensure this
-                                   # is returned as a list
-"""
-
 class PelotonKernel(HandlerBase):
     """ The kernel is the core that starts key services of the 
 node, registers with the grid, pulls together all kernel modules
@@ -48,13 +29,6 @@ coreIO interfaces.
     #            "peloton.adapters.xmlrpc.PelotonXMLRPCAdapter",
     #            "peloton.adapters.web.PelotonHTTPAdapter",
                 ]
-
-    #: Key is option in the command line options and value is
-    #  the configuration item that it overrides if present. This
-    #  latter is written as a dotted path, so 'bind' in the 
-    #  [network] section is referred to as network.bind
-    __CONFIG_OVERRIDES__ = {'bindhost':'network.bind',
-                           'domain' : 'domain.domainName'}
 
     def __init__(self, generatorInterface, options, args):
         """ Prepare the kernel. The generatorInterface is a callable via
@@ -87,10 +61,9 @@ The method ends only when the reactor stops.
 @todo: Workout the kernel plugin API and create a sample plugin
 """
         # (1) load the configuration
-        self.configuration = config.loadConfig(self.initOptions.configpath, 
-                                               self.initOptions.mode, 
-                                               __defaultConfig__,
-                                               None,
+        self.configuration = config.loadConfig(self.initOptions.grid, 
+                                               self.initOptions.domain,
+                                               self.initOptions.psc,  
                                                self.initOptions,
                                                PelotonKernel.__CONFIG_OVERRIDES__)
         
