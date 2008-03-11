@@ -13,7 +13,7 @@ from peloton.base import HandlerBase
 from peloton.persist.memcache import PelotonMemcache
 from peloton.utils import getClassFromString
 from peloton.utils import chop
-import peloton.utils.config as config
+from peloton.utils.config import PelotonConfig
 
 class PelotonKernel(HandlerBase):
     """ The kernel is the core that starts key services of the 
@@ -61,11 +61,7 @@ The method ends only when the reactor stops.
 @todo: Workout the kernel plugin API and create a sample plugin
 """
         # (1) load the configuration
-        self.configuration = config.loadConfig(self.initOptions.grid, 
-                                               self.initOptions.domain,
-                                               self.initOptions.psc,  
-                                               self.initOptions,
-                                               PelotonKernel.__CONFIG_OVERRIDES__)
+        self.configuration = PelotonConfig(self.initOptions)
         
         # read in the domain key - all PSCs in a domain must have access
         # to this same key file (or identical copy, of course)

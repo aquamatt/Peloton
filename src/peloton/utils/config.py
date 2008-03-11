@@ -30,15 +30,16 @@ than would be ideal.
     __CONFIG_OVERRIDES__ = {'bindhost':'psc.bind'}
 
     def __init__(self, cmdLineOpts):
-        self.configdirs = [d for d in cmdLineOpts.configdirs 
+        self.configdirs = [d for d in cmdLineOpts.configdirs
                            if os.path.exists(d) and os.path.isdir(d)]
         if not self.configdirs:
             raise Exception("No valid configuration directories found!")
         
         self.gridName = cmdLineOpts.grid
-        self.domainName = cmdLineOpts.domains
-        self.parsers = {}
+        self.domainName = cmdLineOpts.domain
+        self.__parsers = {}
         self.runtimeOpts = cmdLineOpts
+        self.loadConfig()
     
     def loadConfig(self):
         """Initialise this configuration object with config data
@@ -94,12 +95,16 @@ than would be ideal.
     if there is a section [psc] with name bind=0.0.0.0:1111 in the configuration
     file it can be referenced as psc.bind.
     """
-        configFiles = [[os.sep.join([i,j]) for j in os.listdir(i) if fnmatch(j, "*.pcfg")] for i in self.configdirs]
-
+        configFiles = [[os.sep.join([i,j]) for j in os.listdir(i) if fnmatch(j, "*.pcfg") ] for i in self.configdirs]
+        def aext(a,b):
+            a.extend(b)
+            return a
+        configFiles = reduce(aext, configFiles)
+        
         # First load the grid configuration file
         for cf in configFiles:
             fn = cf.split(os.sep)[-1]
-            if fn == "%d.pcfg" % self.gridName:
+            if fn == "%s.pcfg" % self.gridName:
                 self.__parsers['grid'] = ConfigObj(cf)
                 break
         else:
@@ -111,7 +116,7 @@ than would be ideal.
         # Now load all domain config files
         domainConfigs = [p for p in configFiles 
                          if (p.split(os.sep)[-1]=="%s_domain.pcfg" % self.domainName)
-                             or p.split(os.sep)[-1]=="%s_%s_domain.pcfg" % (self.domainName, self.gridConfig['grid']['gridmode'])]
+                             or p.split(os.sep)[-1]=="%s_%s_domain.pcfg" % (self.domainName, self.__parsers['grid']['grid']['gridmode'])]
         
         self.__parsers['domain'] = ConfigObj(domainConfigs[0])
         for conf in domainConfigs[1:]:
@@ -120,7 +125,7 @@ than would be ideal.
         # Now load all PSC config files
         pscConfigs = [p for p in configFiles 
                          if (p.split(os.sep)[-1]=="psc.pcfg")
-                             or p.split(os.sep)[-1]=="psc_%s.pcfg" % (self.gridConfig['grid']['gridmode'])]
+                             or p.split(os.sep)[-1]=="psc_%s.pcfg" % (self.__parsers['grid']['grid']['gridmode'])]
         
         self.__parsers['psc'] = ConfigObj(pscConfigs[0])
         for conf in pscConfigs[1:]:
@@ -128,7 +133,10 @@ than would be ideal.
 
         # apply overrides
         for k,override in PelotonConfig.__CONFIG_OVERRIDES__.items():
-            overrideValue = getattr(self.runtimeOpts, k)
+            try:
+                overrideValue = getattr(self.runtimeOpts, k)
+            except AttributeError:
+                continue
             if overrideValue:
                 overridePath = override.split('.')[::-1]
                 v = self.__parsers[overridePath[-1]]
@@ -137,6 +145,10 @@ than would be ideal.
                 v[overridePath[0]] = overrideValue
 
     def get(self, key, parser='psc'):
-        """ Return a configuration value. Set key to the value required and
-parser to one of 'psc', 'domain', or 'grid'; default is 'psc' """
-        return self.__parsers[parser][key.lower()]
+        """ Return a configuration value. Set key to the value required, e.g. psc.bind
+ and parser to one of 'psc', 'domain', or 'grid'; default is 'psc' """
+        v =  self.__parsers[parser]
+        key = key.split('.')[::-1]
+        while key:
+            v = v[key.pop()]
+        return v

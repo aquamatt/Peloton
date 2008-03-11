@@ -44,10 +44,11 @@ def main():
                       default=False,
                       help="Prevent PSC detaching from terminal [default: %default]")
     
-    parser.add_option("--configdirs",
-                      help="Path to directory containing configuration data, links to services etc. [default: %default]",
+    parser.add_option("-c", "--configdir",
+                      help="Path to directory containing configuration data. You may provide several config directories. [default: %default]",
                       action="append",
-                      default=peloton.getPlatformDefaultDir('config'))
+                      dest="configdirs",
+                      default=[peloton.getPlatformDefaultDir('config')])
     
     parser.add_option("-g", "--grid",
                       help="""Short name for the grid to join [default: %default]""",

@@ -12,6 +12,10 @@ import types
 from optparse import OptionParser
 
 class ReadOnlyDict(dict):
+    """ A dictionary that has entries that may not be
+overwritten once assigned UNLESS the key has been explicitly
+defined as re-writeable by adding it to the rewritable list
+with setRewriteable. """
     def __init__(self, *args, **kargs):
         dict.__init__(self, *args, **kargs)
         self.__REWRITEABLE = []
