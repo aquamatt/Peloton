@@ -193,7 +193,7 @@ of messaging between the two components."""
         self.writePipe.write('STOP\n')
         self.writePipe.close()
 
-def start(options, args):
+def start(options, args, pc):
     """ Start a PSC. By default the first step is to double fork to detach
 from the console; this can be over-ridden by specifying --nodetach on the
 command line.
@@ -238,7 +238,7 @@ contain all the initialised PSC code which is quite different to the worker code
         genInt = GeneratorInterface(pw)
         logger.info("Kernel starting; pid = %d" % os.getpid())
         try:
-            ex = PelotonKernel(genInt, options, args).start()
+            ex = PelotonKernel(genInt, options, args, pc).start()
         except:
             genInt.stop()
             raise

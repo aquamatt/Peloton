@@ -30,21 +30,21 @@ coreIO interfaces.
     #            "peloton.adapters.web.PelotonHTTPAdapter",
                 ]
 
-    def __init__(self, generatorInterface, options, args):
+    def __init__(self, generatorInterface, options, args, config):
         """ Prepare the kernel. The generatorInterface is a callable via
 which the kernel can request a worker to be started for a given service."""
         HandlerBase.__init__(self, options, args)
         self.generatorInterface = generatorInterface
         self.adapters = {}
         self.logger = logging.getLogger()
+        self.config = config
     
     def start(self):
         """ Start the Twisted event loop. This method returns only when
 the server is stopped. Returns an exit code.
 
 The bootstrap routine is as follows:
-    1. Load configuration from configuration path and also read
-       the domain key
+    1. Read the domain and grid keys
     2. Generate this PSCs session keys
     3. Connect to memcache
     4. Connect to the persistence back-end
@@ -59,15 +59,13 @@ The bootstrap routine is as follows:
 The method ends only when the reactor stops.
 
 @todo: Workout the kernel plugin API and create a sample plugin
-"""
-        # (1) load the configuration
-        self.configuration = PelotonConfig(self.initOptions)
-        
-        # read in the domain key - all PSCs in a domain must have access
+"""        
+        # (1) read in the domain key - all PSCs in a domain must have access
         # to this same key file (or identical copy, of course)
-        if os.path.exists(self.initOptions.domainkey) and \
-            os.path.isfile(self.initOptions.domainkey):
-            o = open(self.initOptions.domainkey, 'rt')
+        keyfile = self.config['domain.keyfile']
+        if os.path.exists(keyfile) and \
+            os.path.isfile(keyfile):
+            o = open(keyfile, 'rt')
             self.domainCookie = chop(o.readline())
             aDomainKey = ""
             while True:
@@ -82,7 +80,7 @@ The method ends only when the reactor stops.
             self.domainKey =  ezPyCrypto.key(keyobj=aDomainKey)
             o.close()
         else:
-            raise Exception("Domain key file is unreadable, does not exist or is corrupted: %s" % self.initOptions.domainkey)
+            raise Exception("Domain key file is unreadable, does not exist or is corrupted: %s" % keyfile)
         
         # (2) generate session keys
         self.sessionKey = ezPyCrypto.key(512)

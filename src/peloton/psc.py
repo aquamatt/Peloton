@@ -30,6 +30,7 @@ import os
 import sys
 from optparse import OptionGroup
 from peloton.utils.structs import FilteredOptionParser
+from peloton.utils.config import PelotonConfig
 import peloton
 
 def main():
@@ -95,19 +96,17 @@ the logging-to-file system will be enabled.""")
     #if len(args) != 1:
     #    parser.error("incorrect number of arguments")
 
+    pc = PelotonConfig(options)
+
     # determine the appropriate log-level for the root logger based
     # on supplied arguments.
     if options.loglevel:
         options.loglevel = options.loglevel.upper()
     else:
-        options.loglevel = {'dev':'DEBUG',
-                           'test':'INFO',
-                           'uat_a':'ERROR',
-                           'uat_b':'ERROR',
-                           'prod':'ERROR'}[options.mode]
+        options.loglevel = "INFO"
 
     try:
-        exitCode = pscplatform.start(options, args)
+        exitCode = pscplatform.start(options, args, pc)
     except:
         logging.getLogger().exception('Untrapped error in PSC:')
         exitCode = 99
