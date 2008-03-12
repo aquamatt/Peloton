@@ -17,11 +17,13 @@ Objects in the namespace of the interpreter provide access to the
 mesh and allow administrators to interrogate the mesh and to start and
 stop services as well as make other hot-changes.
 """
-    def start(self):
-        
+
+    def initialise(self):
         self.pmh = PasswordManhole(int(self.config['port']),
                                    self.config['username'],
                                    self.config['password'])
+        
+    def start(self):
         try:
             self.pmh.startService()
             self.running = True

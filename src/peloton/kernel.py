@@ -142,32 +142,46 @@ The method ends only when the reactor stops.
         pluginNames = pluginConfs.keys()
         # iterate over each plugin
         for plugin in pluginNames:
-            if pluginConfs[plugin].has_key('enabled') and \
-                pluginConfs[plugin]['enabled'].upper() == 'TRUE':
-                self.logger.info("Starting plugin: %s" % plugin)
-                self.startPlugin(plugin, pluginConfs[plugin])
-            else:
-                self.logger.info("Plugin %s disabled" % plugin)
+            self.startPlugin(plugin)
     
-    def startPlugin(self, plugin, pconf):
-        """ Start the plugin named 'plugin' with configuration 'pconf'. """
+    def startPlugin(self, plugin):
+        """ Start the plugin named 'plugin'. """
+        pconf = self.config['psc.plugins'][plugin]
         # check that has children, including 'class' otherwise this
         # is just some random key in the 'plugins' section of the 
         # config
         if not pconf.has_key('class'):
             return
 
-        pluginClass = getClassFromString(pconf['class'])
-        plogger = logging.getLogger(plugin)
-        plogger.setLevel(self.initOptions.loglevel)
-        pluginInstance = pluginClass(pconf, plogger)
-        pluginInstance.start()
-        self.plugins[plugin] = pluginInstance
+        if pconf.has_key('enabled') and \
+            pconf['enabled'].upper() == 'TRUE':
+            self.logger.info("Starting plugin: %s" % plugin)
+        else:
+            self.logger.info("Plugin %s disabled" % plugin)
+            
+        if self.plugins.has_key(plugin):
+            if not self.plugins[plugin].started:
+                self.plugins[plugin].start()
+        else:
+            pluginClass = getClassFromString(pconf['class'])
+            plogger = logging.getLogger(plugin)
+            plogger.setLevel(self.initOptions.loglevel)
+            pluginInstance = pluginClass(pconf, plogger)
+            pluginInstance.initialise()
+            pluginInstance.start()
+            self.plugins[plugin] = pluginInstance
 
+    def stopPlugin(self, plugin):
+        if self.plugins.has_key(plugin):
+            if self.plugins[plugin].started:
+                self.logger.info("Stopping plugin: %s"%plugin)
+                self.plugins[plugin].stop()
+        else:
+            raise Exception("Invalid plugin: %s" % plugin)
+            
     def _stopPlugins(self):
-        for p,i in self.plugins.items():
-            self.logger.info("Stopping plugin: %s"%p)
-            i.stop()
+        for p in self.plugins.keys():
+            self.stopPlugin(p)
 
     def _startAdapters(self):
         """Prepare all protocol adapters for use. Each adapter

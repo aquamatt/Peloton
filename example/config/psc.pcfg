@@ -11,7 +11,7 @@ bind=0.0.0.0:9100
   [[manhole]]
     comment=A Manhole-based interface to Peloton
     class=peloton.plugins.manhole.PelotonManholePlugin
-    enabled=True
+    enabled=False
     # plugin conf
     port=9110
     username=admin

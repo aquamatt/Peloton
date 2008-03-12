@@ -3,13 +3,22 @@
 # Copyright (c) 2007-2008 ReThought Limited and Peloton Contributors
 # All Rights Reserved
 # See LICENSE for details
-
-
 """ Core classes referenced by adapters to perform Peloton tasks. No
 adapter provides services that are other than published interfaces
 to methods in these classes."""
 
-class PelotonRequestInterface(object):
+import logging
+
+class PelotonInterface(object):
+    """ Subclasses of the PelotonInterface will all need access to
+common objects, such as a logger and kernel hooks. These are provided 
+through this class. """
+    def __init__(self, kernel, config):
+        self.logger = logging.getLogger()
+        self.config = config
+        self.__kernel__ = kernel
+
+class PelotonRequestInterface(PelotonInterface):
     """ Methods of this class perform the core actions of Peloton nodes
 such as executing a method or posting a request on the execution stack. 
 These methods are exposed via adapters. For clarity, although for no other
@@ -39,7 +48,7 @@ specified time. Return value is the grid-unique execution ID for this call."""
         raise NotImplementedError
 
 
-class PelotonEventInterface(object):
+class PelotonEventInterface(PelotonInterface):
     """ Methods for firing events on and listing to events from the event 
 framework.
 For clarity, although for no other technical reason, methods intended for use 
@@ -54,7 +63,7 @@ via adapters are named public_<name> by convention."""
         raise NotImplementedError
 
 
-class PelotonNodeInterface(object):
+class PelotonNodeInterface(PelotonInterface):
     """ Methods of this class relate to the node itself rather than services. 
 For clarity, although for no other technical reason, methods intended for use 
 via adapters are named public_<name> by convention."""
@@ -63,7 +72,7 @@ via adapters are named public_<name> by convention."""
         """ Return the value sent. A basic node-level ping. """
         return value
     
-class PelotonInternodeInterface(object):
+class PelotonInternodeInterface(PelotonInterface):
     """ Methods for communication between nodes only, for example for relaying method
 calls and exchanging status and profile information.
 For clarity, although for no other technical reason, methods intended for use 
@@ -84,3 +93,19 @@ via adapters are named public_<name> by convention."""
     def public_getPublicKey(self):
         """ Return this node's public key """
         raise NotImplementedError
+    
+class PelotonManagementInterface(PelotonInterface):
+    """ Methods for use by management tools, such as a console, the SSH Manhole
+or similar. Methods are not prefixed public_ because they will be called directly
+by users, so it would seem a trifle odd to do otherwise."""
+    def shutdown(self):
+        self.__kernel__.closedown()
+        
+    def startPlugin(self, plugin):
+        self.__kernel__.startPlugin(plugin)
+        
+    def stopPlugin(self, plugin):
+        self.__kernel__.stopPlugin(plugin)
+        
+    def listPlugins(self):
+        return self.__kernel__.plugins.keys()

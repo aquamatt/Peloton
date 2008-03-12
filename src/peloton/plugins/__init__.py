@@ -69,9 +69,15 @@ class PelotonPlugin(object):
         self.config = pluginConfig
         self.started = False
         
+    def initialise(self):
+        """ Prepare all that is required to start this plugin prior
+to start() being called """
+        raise NotImplementedError()
+        
     def start(self):
-        """ Do all that is required to start this plugin. start() 
-may be called prior to the reactor being started. """
+        """ Start this plugin. start() 
+may be called prior to the reactor being started or may be called 
+after having previously been stopped. """
         raise NotImplementedError()
     
     def stop(self):
