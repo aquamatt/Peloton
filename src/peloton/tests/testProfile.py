@@ -42,5 +42,7 @@ class Test_PelotonProfile(TestCase):
         self.assertRaises(Exception, pp.loadFromConfig, self.config['profile'])
         
     def test_comparison(self):
-        """ Assure ourselves that profiles compare as we expect. """
-        pass
+        """ Assure ourselves that profiles compare as we expect..
+except I've just thought about it more and it's gonna be even better... """
+        hostProfile = PelotonProfile(mem=2024, name='kylie', cpus=1)
+        serviceProfile = PelotonProfile(cpus=1)
