@@ -42,5 +42,5 @@ class Test_PelotonProfile(TestCase):
         self.assertRaises(Exception, pp.loadFromConfig, self.config['profile'])
         
     def test_comparison(self):
-        """ Assure ourselves that profiles compare as we expect... """
+        """ Assure ourselves that profiles compare as we expect. """
         pass
