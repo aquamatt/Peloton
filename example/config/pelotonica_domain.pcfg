@@ -19,4 +19,4 @@ administrators=admin@example.com
 
 # cacheing is restricted to a domain and does not
 # span a whole site
-memcacheHosts=localhost, # trailing comma ensures a list returned
+memcacheHosts=localhost:112211, # trailing comma ensures a list returned

@@ -142,8 +142,12 @@ The method ends only when the reactor stops.
         pluginNames = pluginConfs.keys()
         # iterate over each plugin
         for plugin in pluginNames:
-            self.logger.info("Starting plugin: %s" % plugin)
-            self.startPlugin(plugin, pluginConfs[plugin])
+            if pluginConfs[plugin].has_key('enabled') and \
+                pluginConfs[plugin]['enabled'].upper() == 'TRUE':
+                self.logger.info("Starting plugin: %s" % plugin)
+                self.startPlugin(plugin, pluginConfs[plugin])
+            else:
+                self.logger.info("Plugin %s disabled" % plugin)
     
     def startPlugin(self, plugin, pconf):
         """ Start the plugin named 'plugin' with configuration 'pconf'. """

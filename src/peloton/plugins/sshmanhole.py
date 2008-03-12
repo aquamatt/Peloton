@@ -2,6 +2,11 @@
 # This code modified from source originaly found at
 # http://buildbot.net/repos/trunk/buildbot/manhole.py
 #
+"""
+This code modified from source originaly found at
+
+http://buildbot.net/repos/trunk/buildbot/manhole.py
+"""
 import os.path
 import binascii, base64
 from twisted.python import log

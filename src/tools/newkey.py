@@ -1,4 +1,4 @@
-# $Id: structs.py 35 2008-02-27 11:31:57Z mp $
+# $Id$
 #
 # Copyright (c) 2007-2008 ReThought Limited and Peloton Contributors
 # All Rights Reserved

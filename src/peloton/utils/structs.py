@@ -40,15 +40,15 @@ interface but one which performs on-the-fly translation of values.
 
 Values to substitute are written as $NAME where NAME is one of:
     
-    * the uppercase version of a key in the options dictionary
-    * the uppercase version of a key in the optional list of values
+    - the uppercase version of a key in the options dictionary
+    - the uppercase version of a key in the optional list of values
       supplied to the constructor as the 'data' argument
 
 Substitutions supplied in the data argument override those in the command
 line so this is not a means to add defaults - they should be set with the
 add_option method.
       
-As with options returned by OptionParser, you reference an option as:
+As with options returned by OptionParser, you reference an option as::
 
     options.<key>
 """

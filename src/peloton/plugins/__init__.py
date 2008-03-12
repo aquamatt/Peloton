@@ -14,6 +14,50 @@ Each plugin is initialised with configuration details and has
 to register itself with the reactor in an appropriate manner.
 
 At the time of initialisation the reactor will not be running.
+
+The Plugin Architecture
+=======================
+
+The key feature of a Peloton PSC is that it is extremely light weight;
+cheap to start and cheap to stop a mesh is made robust in part by
+the very simplicity of its components.
+
+In order to help keep the weight down and also to simplify the development
+and customisation process, many kernel features not essential to the
+functioning of any PSC are implemented as kernel plugins.
+
+So, for example, if a particular scheduler is required, or an 
+interface to a bespoke messaging bus on a client site, it may be implemented
+as a kernel plugin and loaded according to configuration at runtime.
+
+Plugins may easily be enabled/disabled in configuration and so may also be
+switched on or off according to the current gridmode.
+
+Be aware that the writing of a kernel plugin is more delicate than writing
+a service. Services run in the sandbox of a separate process and requests
+are handled in a separate thread so a bug might lock the thread but it will
+not lock the system.
+
+A PSC kernel plugin is operating at the heart of the system: locking the event
+loop will completely disable the PSC and prevent requests reaching services that 
+it manages, and results from returning. 
+
+A PSC kernel plugin is NOT a substitute for a service. It is NOT something that
+the 'casual' service writer (the quant in the bank; the accountant who also
+writes a bit of VB script etc) should deal with.
+
+Plugin developers should understand Twisted, network programing and the meaning 
+of threading in Python. If a developer understands all that, the plugin system
+opens up a number of exciting possibilities for extending the Peloton platform.
+
+Security
+========
+
+Plugins have access to all your core PSC functionality: they are un-restricted 
+in their ability to operate in the PSC and as such should NEVER be introduced
+lightly or be permitted to introduce un-guarded functionality to the user
+layer.
+
 """
 
 class PelotonPlugin(object):

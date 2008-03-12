@@ -1,4 +1,4 @@
-# $Id: pb.py 50 2008-03-07 17:29:53Z mp $
+# $Id$
 #
 # Copyright (c) 2007-2008 ReThought Limited and Peloton Contributors
 # All Rights Reserved

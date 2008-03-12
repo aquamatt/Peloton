@@ -1,21 +1,12 @@
-"""Developed by :
-      Jehiah Czebotar
-      Aryeh Katz
+"""
+Released under Apache License 2.0
 
-   Released under Apache License 2.0
-   Version 1.0 - January 24, 2006
+Version 1.0 - January 24, 2006
 
-   http://jehiah.com/download/MemcachePool.py.txt
-   http://jehiah.com/download/Bogus.py.txt
+http://jehiah.com/download/MemcachePool.py.txt
 
-   ---------------------
-
-   edit the MemcachePool.getMCHosts() to suit your needs
-
-   import MemcachePool
-   mc = MemcachePool.getMC()
-   mc.set(...)
-   mc.get(...)
+@author: Jehiah Czebotar
+@author: Aryeh Katz
 """
 #import memcache                        
 try:
