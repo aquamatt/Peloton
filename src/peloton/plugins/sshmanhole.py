@@ -62,7 +62,7 @@ class _BaseManhole(service.MultiService):
     buildbot developers. Connect to this by running an ssh client.
     """
 
-    def __init__(self, port, checker, using_ssh=True):
+    def __init__(self, port, checker, using_ssh=True, namespace={}):
         """
         @type port: string or int
         @param port: what port should the Manhole listen on? This is a
@@ -97,12 +97,7 @@ class _BaseManhole(service.MultiService):
         self.port = port # for comparison later
         self.checker = checker # to maybe compare later
 
-        def makeNamespace():
-            return {'TEST':'matthew',
-                    'TESTII':'wally mallooo'}
-
         def makeProtocol():
-            namespace = makeNamespace()
             p = insults.ServerProtocol(manhole.ColoredManhole, namespace)
             return p
 
@@ -136,7 +131,7 @@ class PasswordManhole(_BaseManhole):
 
     compare_attrs = ["port", "username", "password"]
 
-    def __init__(self, port, username, password):
+    def __init__(self, port, username, password, namespace={}):
         """
         @type port: string or int
         @param port: what port should the Manhole listen on? This is a
@@ -155,7 +150,7 @@ class PasswordManhole(_BaseManhole):
         c = checkers.InMemoryUsernamePasswordDatabaseDontUse()
         c.addUser(username, password)
 
-        _BaseManhole.__init__(self, port, c)
+        _BaseManhole.__init__(self, port, c, namespace=namespace)
 
 class AuthorizedKeysManhole(_BaseManhole):
     """This Manhole accepts ssh connections, and requires that the

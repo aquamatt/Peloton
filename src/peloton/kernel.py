@@ -117,10 +117,6 @@ The method ends only when the reactor stops.
         self._startPlugins()
 
         # (10) ready to start!
-        ##### REMOVE THESE LINEs ####
-        self.logger.warn("DEBUG LINE CAUSING SHUTDOWN IN 35 SECONDS ACTIVE!")
-        reactor.callLater(35, self.closedown)
-        ##### END REMOVE ############
         reactor.run()
         
         return 0
@@ -130,8 +126,11 @@ The method ends only when the reactor stops.
         # Closedown all worker nodes
         # tidy up kernel
         
+        self.logger.info("Stopping adapters")
         self._stopAdapters()
+        self.logger.info("Stopping plugins")
         self._stopPlugins()
+        self.logger.info("Stopping generator")
         self.generatorInterface.stop()
         
         # stop the reactor
@@ -166,7 +165,7 @@ The method ends only when the reactor stops.
             pluginClass = getClassFromString(pconf['class'])
             plogger = logging.getLogger(plugin)
             plogger.setLevel(self.initOptions.loglevel)
-            pluginInstance = pluginClass(pconf, plogger)
+            pluginInstance = pluginClass(self, pconf, plogger)
             pluginInstance.initialise()
             pluginInstance.start()
             self.plugins[plugin] = pluginInstance
@@ -176,6 +175,8 @@ The method ends only when the reactor stops.
             if self.plugins[plugin].started:
                 self.logger.info("Stopping plugin: %s"%plugin)
                 self.plugins[plugin].stop()
+            else:
+                self.logger.info("Plugin not started: %s" % plugin)
         else:
             raise Exception("Invalid plugin: %s" % plugin)
             

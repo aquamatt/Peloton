@@ -6,6 +6,7 @@
 from twisted.internet.error import CannotListenError
 
 from peloton.plugins import PelotonPlugin
+from peloton.coreio import PelotonManagementInterface
 from peloton.plugins.sshmanhole import PasswordManhole
 from twisted.internet.error import CannotListenError
 
@@ -19,20 +20,23 @@ stop services as well as make other hot-changes.
 """
 
     def initialise(self):
+        namespace={'psc':PelotonManagementInterface(self.kernel)}
+        
         self.pmh = PasswordManhole(int(self.config['port']),
                                    self.config['username'],
-                                   self.config['password'])
+                                   self.config['password'],
+                                   namespace)        
         
     def start(self):
         try:
             self.pmh.startService()
-            self.running = True
+            self.started = True
             self.logger.info("Manhole plugin initialised")
         except CannotListenError:
             raise Exception("Manhole cannot listen on port %d" % self.config['port'])
         
     def _stopped(self, *args, **kargs):
-        self.running = False
+        self.started = False
         self.logger.info("Manhole plugin stopped")
         
     def stop(self):

@@ -13,9 +13,9 @@ class PelotonInterface(object):
     """ Subclasses of the PelotonInterface will all need access to
 common objects, such as a logger and kernel hooks. These are provided 
 through this class. """
-    def __init__(self, kernel, config):
+    def __init__(self, kernel):
         self.logger = logging.getLogger()
-        self.config = config
+        self.config = kernel.config
         self.__kernel__ = kernel
 
 class PelotonRequestInterface(PelotonInterface):
@@ -107,5 +107,12 @@ by users, so it would seem a trifle odd to do otherwise."""
     def stopPlugin(self, plugin):
         self.__kernel__.stopPlugin(plugin)
         
-    def listPlugins(self):
-        return self.__kernel__.plugins.keys()
+    def listPlugins(self, verbose=True):
+        theList = []
+        for name, plugin in self.__kernel__.plugins.items():
+            if verbose:
+                theList.append( (name, plugin.comment) )
+            else:
+                theList.append(name)
+        return theList
+        

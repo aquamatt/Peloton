@@ -62,12 +62,15 @@ layer.
 
 class PelotonPlugin(object):
     """ Base class for all Peloton core plugins """
-    def __init__(self, pluginConfig, logger):
+    def __init__(self, kernel, pluginConfig, logger):
         if pluginConfig.has_key('comment'):
             self.comment = pluginConfig['comment']
+        else:
+            self.comment = ""
         self.logger = logger
         self.config = pluginConfig
         self.started = False
+        self.kernel = kernel
         
     def initialise(self):
         """ Prepare all that is required to start this plugin prior
