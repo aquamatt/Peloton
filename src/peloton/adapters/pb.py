@@ -27,14 +27,14 @@ the host/port to which to bind from the configuration offered to it, but it
 may, according to whether the 'anyport' switch is set or not, seek an 
 alternative port should its chosen target be bound by another application.
 """
-        interface,port = configuration['network']['bind'].split(':')
+        interface,port = configuration['psc.bind'].split(':')
         port = int(port)
         
         svr = pb.PBServerFactory(self)
         while True:
             try:
                 self.connection = reactor.listenTCP(port, svr, interface=interface)
-                configuration['network']['bind'] = "%s:%d" % (interface, port)
+                configuration['psc.bind'] = "%s:%d" % (interface, port)
                 self.enabled = True
                 break
             except CannotListenError:

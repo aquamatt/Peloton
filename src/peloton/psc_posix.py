@@ -15,6 +15,7 @@ from types import StringType, ListType
 from peloton.kernel import PelotonKernel
 from peloton.worker import PelotonWorker
 from peloton.utils import chop
+from peloton.utils.config import PelotonConfig
 
 def initLogging(loglevel='ERROR', logdir='', logfile='', rootLoggerName='PSC', closeHandlers=False, toConsole=False):
     """ Configure the logger for this PSC. By default no logging to
@@ -193,7 +194,7 @@ of messaging between the two components."""
         self.writePipe.write('STOP\n')
         self.writePipe.close()
 
-def start(options, args, pc):
+def start(options, args):
     """ Start a PSC. By default the first step is to double fork to detach
 from the console; this can be over-ridden by specifying --nodetach on the
 command line.
@@ -223,6 +224,8 @@ contain all the initialised PSC code which is quite different to the worker code
                         'PSC', 
                         True, 
                         options.nodetach)
+
+    pc = PelotonConfig(options)
     
     pr, pw = os.pipe()
 

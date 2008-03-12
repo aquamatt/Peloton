@@ -3,6 +3,7 @@
 # Copyright (c) 2007-2008 ReThought Limited and Peloton Contributors
 # All Rights Reserved
 # See LICENSE for details
+import os
 
 def chop(s, extras=[]):
     """Remove \\r, \\n and all characters in the extras list from 
@@ -30,3 +31,19 @@ the class object."""
             raise Exception("Class %s is not valid" % clazz)
     except Exception,ex:
         raise Exception("Could not find class %s (error: %s)" %(clazz, str(ex)))
+
+def locateFile(f, paths=[]):
+    """ Looks for 'f' in each dir in paths and returns the fully 
+qualified to the first instance of 'f' that is found. If 'f' starts
+with a '/' it is assumed to be absolute and only that full location is
+tested."""
+    if f.startswith('/'):
+        if os.path.exists(f):
+            return f
+        else:
+            raise Exception("File %s does not exist or is not readable" % f)
+    for p in paths:
+        fqp = os.sep.join([p, f])
+        if os.path.exists(fqp):
+            return fqp
+    raise Exception("Could not find %s in any of the paths provided" % f)

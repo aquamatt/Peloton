@@ -3,16 +3,21 @@
 # Copyright (c) 2007-2008 ReThought Limited and Peloton Contributors
 # All Rights Reserved
 # See LICENSE for details
+from peloton.utils import getClassFromString
+from twisted.python.reflect import getClass
+from peloton.utils import getClassFromString
 
 import ezPyCrypto
 import logging
 import os
 
 from twisted.internet import reactor
+from types import DictType
 from peloton.base import HandlerBase
 from peloton.persist.memcache import PelotonMemcache
 from peloton.utils import getClassFromString
 from peloton.utils import chop
+from peloton.utils import locateFile
 from peloton.utils.config import PelotonConfig
 
 class PelotonKernel(HandlerBase):
@@ -38,6 +43,7 @@ which the kernel can request a worker to be started for a given service."""
         self.adapters = {}
         self.logger = logging.getLogger()
         self.config = config
+        self.plugins = {}
     
     def start(self):
         """ Start the Twisted event loop. This method returns only when
@@ -63,24 +69,27 @@ The method ends only when the reactor stops.
         # (1) read in the domain key - all PSCs in a domain must have access
         # to this same key file (or identical copy, of course)
         keyfile = self.config['domain.keyfile']
-        if os.path.exists(keyfile) and \
-            os.path.isfile(keyfile):
-            o = open(keyfile, 'rt')
-            self.domainCookie = chop(o.readline())
-            aDomainKey = ""
-            while True:
-                aDomainKey = o.readline() 
-                if aDomainKey.startswith("<StartPycryptoKey>"):
-                    break
-            while True:
-                l = o.readline()
-                aDomainKey = aDomainKey + l
-                if l.startswith("<EndPycryptoKey>"):
-                    break
-            self.domainKey =  ezPyCrypto.key(keyobj=aDomainKey)
-            o.close()
-        else:
-            raise Exception("Domain key file is unreadable, does not exist or is corrupted: %s" % keyfile)
+        try:
+            keyfile = locateFile(keyfile, self.initOptions.configdirs)
+            if os.path.isfile(keyfile):
+                o = open(keyfile, 'rt')
+                self.domainCookie = chop(o.readline())
+                aDomainKey = ""
+                while True:
+                    aDomainKey = o.readline() 
+                    if aDomainKey.startswith("<StartPycryptoKey>"):
+                        break
+                while True:
+                    l = o.readline()
+                    aDomainKey = aDomainKey + l
+                    if l.startswith("<EndPycryptoKey>"):
+                        break
+                self.domainKey =  ezPyCrypto.key(keyobj=aDomainKey)
+                o.close()
+            else:
+                raise Exception("Domain key file is unreadable, does not exist or is corrupted: %s" % keyfile)
+        except:
+            raise Exception("Domain key file is unreadable or does not exist: %s" % keyfile)
         
         # (2) generate session keys
         self.sessionKey = ezPyCrypto.key(512)
@@ -88,7 +97,7 @@ The method ends only when the reactor stops.
 
         # (3) hook into cacheing back-end
         self.memcache = PelotonMemcache.getInstance(
-                          self.configuration['external']['memcacheHosts'])
+                          self.config['domain.memcacheHosts'])
 
         # (4) hook into persistence back-ends
         
@@ -99,17 +108,18 @@ The method ends only when the reactor stops.
         
         # (7) Write to the generatorInterface to pass host:port of our 
         # twisted RPC interface
-        self.generatorInterface.initGenerator(self.configuration['network']['bind'])
+        self.generatorInterface.initGenerator(self.config['psc.bind'])
 
         # (8)schedule grid-joining workflow to happen on reactor start
         #  -- this checks the domain cookie matches ours; quit if not.
 
-        # (9) Start any kernel plugins, e.g. scheduler
+        # (9) Start any kernel plugins, e.g. scheduler, manhole
+        self._startPlugins()
 
         # (10) ready to start!
         ##### REMOVE THESE LINEs ####
-        self.logger.warn("DEBUG LINE CAUSING SHUTDOWN IN 5 SECONDS ACTIVE!")
-        reactor.callLater(5, self.closedown)
+        self.logger.warn("DEBUG LINE CAUSING SHUTDOWN IN 35 SECONDS ACTIVE!")
+        reactor.callLater(35, self.closedown)
         ##### END REMOVE ############
         reactor.run()
         
@@ -121,21 +131,50 @@ The method ends only when the reactor stops.
         # tidy up kernel
         
         self._stopAdapters()
+        self._stopPlugins()
         self.generatorInterface.stop()
         
         # stop the reactor
         reactor.stop()
 
+    def _startPlugins(self):
+        pluginConfs = self.config['psc.plugins']
+        pluginNames = pluginConfs.keys()
+        # iterate over each plugin
+        for plugin in pluginNames:
+            self.logger.info("Starting plugin: %s" % plugin)
+            self.startPlugin(plugin, pluginConfs[plugin])
+    
+    def startPlugin(self, plugin, pconf):
+        """ Start the plugin named 'plugin' with configuration 'pconf'. """
+        # check that has children, including 'class' otherwise this
+        # is just some random key in the 'plugins' section of the 
+        # config
+        if not pconf.has_key('class'):
+            return
+
+        pluginClass = getClassFromString(pconf['class'])
+        plogger = logging.getLogger(plugin)
+        plogger.setLevel(self.initOptions.loglevel)
+        pluginInstance = pluginClass(pconf, plogger)
+        pluginInstance.start()
+        self.plugins[plugin] = pluginInstance
+
+    def _stopPlugins(self):
+        for p,i in self.plugins.items():
+            self.logger.info("Stopping plugin: %s"%p)
+            i.stop()
+
     def _startAdapters(self):
         """Prepare all protocol adapters for use. Each adapter
 has a start(config, initOptions) method which does initial setup and 
 hooks into the reactor. It is passed the entire config stack 
-(self.configuration) and command line options"""
+(self.config) and command line options"""
         for adapter in PelotonKernel.__ADAPTERS__:
             cls = getClassFromString(adapter)
             _adapter = cls()
             self.adapters[adapter] = _adapter
-            _adapter.start(self.configuration, self.initOptions)
+            _adapter.start(self.config, self.initOptions)
     
     def _stopAdapters(self):
         """ Close down all adapters currently bound. """

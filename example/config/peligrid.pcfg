@@ -1,3 +1,9 @@
+# $Id: pb.py 50 2008-03-07 17:29:53Z mp $
+#
+# Copyright (c) 2007-2008 ReThought Limited and Peloton Contributors
+# All Rights Reserved
+# See LICENSE for details
+
 # grid config
 name=Megabank Peloton site
 gridmode=test

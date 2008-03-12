@@ -92,6 +92,7 @@ PSC_CONFIG = ("psc.pcfg", """
 
 [special]
   value=123  
+  subst=${bind}
 """)
 
 PSC_OVERRIDE_CONFIG=("psc_test.pcfg", """  
@@ -111,12 +112,19 @@ class Test_PelotonConfig(TestCase):
         self.dirNameB = '/tmp/pelotontest_%s/' % \
             "".join([charset[random.randrange(0,len(charset))] 
                      for i in xrange(5)])
+        self.dirNameC = '/tmp/pelotontest_%s/' % \
+            "".join([charset[random.randrange(0,len(charset))] 
+                     for i in xrange(5)])
         os.makedirs(self.dirNameA)
         os.makedirs(self.dirNameB)
+        os.makedirs(self.dirNameC) # will contain all files in one dir
 
         for flist, _dir in [(self.files_dira, self.dirNameA), (self.files_dirb, self.dirNameB)]:
             for f in flist:
                 o = open(os.sep.join([_dir, f[0]]),'wt')
+                o.writelines(f[1])
+                o.close()
+                o = open(os.sep.join([self.dirNameC, f[0]]), 'wt')
                 o.writelines(f[1])
                 o.close()
              
@@ -140,8 +148,9 @@ class Test_PelotonConfig(TestCase):
         for flist, _dir in [(self.files_dira, self.dirNameA), (self.files_dirb, self.dirNameB)]:
             for f in flist:
                 os.remove(os.sep.join([_dir, f[0]]))
+                os.remove(os.sep.join([self.dirNameC, f[0]]))
             os.removedirs(_dir)
-
+        os.removedirs(self.dirNameC)
 
     def test_loadConfig(self):
         opts,args = self.parser.parse_args(["--configdir=%s"%self.dirNameA, 
@@ -163,6 +172,15 @@ class Test_PelotonConfig(TestCase):
         self.assertEquals(pc['domain.name'], 'Front office')
         self.assertEquals(pc['psc.bind'], '0.0.0.0:9100')
         
+    def test_substitution(self):
+        opts,args = self.parser.parse_args(["--configdir=%s"%self.dirNameA, 
+                                '-c',self.dirNameB,
+                                '-g', 'megabank',
+                                '-d', 'foo'])
+        pc = PelotonConfig(opts)
+        
+        self.assertEquals(pc['psc.special.subst'], pc['psc.bind'])
+
     def test_overideFromCommandLine(self):
         opts,args = self.parser.parse_args(["--configdir=%s"%self.dirNameA, 
                                 '-c',self.dirNameB,
@@ -171,6 +189,17 @@ class Test_PelotonConfig(TestCase):
                                 '--bind=192.168.2.1:9090'])
         pc = PelotonConfig(opts)
         self.assertEquals(pc['psc.bind'], '192.168.2.1:9090')
+
+    def test_updateItems(self):
+        opts,args = self.parser.parse_args(["--configdir=%s"%self.dirNameA, 
+                                '-c',self.dirNameB,
+                                '-g', 'megabank',
+                                '-d', 'foo',
+                                '--bind=192.168.2.1:9090'])
+        pc = PelotonConfig(opts)
+        self.assertEquals(pc['psc.bind'], '192.168.2.1:9090')
+        pc['psc.bind'] = '111.222.333.444:111'
+        self.assertEquals(pc['psc.bind'], '111.222.333.444:111')
         
     def test_deleteitems(self):
         opts,args = self.parser.parse_args(["--configdir=%s"%self.dirNameA, 
@@ -186,3 +215,23 @@ class Test_PelotonConfig(TestCase):
         del pc['psc']
         self.assertRaises(KeyError, pc.__getitem__,'psc.special.value')
         self.assertEquals(pc['psc'], {})
+
+    def test_allInOneDir(self):
+        opts,args = self.parser.parse_args(["--configdir=%s"%self.dirNameC, 
+                                '-g', 'megabank',
+                                '-d', 'foo'])
+        pc = PelotonConfig(opts)
+        
+        self.assertEquals(pc['grid.gridmode'], 'test')
+        self.assertEquals(pc['domain.name'], 'Test Front office')
+        self.assertEquals(pc['psc.bind'], '0.0.0.0:9101')
+        self.assertEquals(pc['psc.special.value'], '123')
+
+        opts,args = self.parser.parse_args(["--configdir=%s"%self.dirNameA, 
+                                '-g', 'megabank',
+                                '-d', 'foo'])
+        pc = PelotonConfig(opts)
+        self.assertEquals(pc['grid.gridmode'], 'test')
+        self.assertEquals(pc['domain.name'], 'Front office')
+        self.assertEquals(pc['psc.bind'], '0.0.0.0:9100')
+        

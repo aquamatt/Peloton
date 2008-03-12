@@ -10,8 +10,25 @@ for Peloton configuration files.
 from configobj import ConfigObj
 from cStringIO import StringIO
 from fnmatch import fnmatchcase as fnmatch
+from types import DictType
 import os
+import logging
 
+class MyConfigObj(ConfigObj):
+    """ Minor extension of ConfigObj that sets the interpolation method
+to Template by default (i.e. substitutions using the ${key} format). Also
+takes keyword argument 'extraKeys' which may be assigned a dictionary of
+values that are copied into the root of the configuration tree. """
+    def __init__(self, *args, **kargs):
+        """ As per ConfigObj but also uses keyword argument 'extraKeys'
+which may be assigned a dictionary of values to be copied into the root of the 
+configuration tree. """
+        ConfigObj.__init__(self, *args, **kargs)
+        self.interpolation = 'Template'
+        if kargs.has_key('extraKeys') and type(kargs['extraKeys'])==DictType:
+            for k,v in kargs['extraKeys']:
+                self.__setitem__(k, v)
+    
 class PelotonConfig(object):
     """ Load and manage access to the Peloton configuration system.
     
@@ -31,6 +48,7 @@ than would be ideal.
     __CONFIG_OVERRIDES__ = {'bindhost':'psc.bind'}
 
     def __init__(self, cmdLineOpts):
+        self.logger = logging.getLogger()
         self.configdirs = [d for d in cmdLineOpts.configdirs
                            if os.path.exists(d) and os.path.isdir(d)]
         if not self.configdirs:
@@ -105,9 +123,16 @@ less privileged component) with::
 
     del pc['psc']    # remove the psc configuration
     del pc['domain'] # remove the domain configuration
+    
+@todo: Fix the directory sorting: sort() is fine but will no doubt allow for error
+to be introduced. Re-jig naming conventions I think.
 """
         configFiles = [[os.sep.join([i,j]) for j in os.listdir(i) if fnmatch(j, "*.pcfg") ] for i in self.configdirs]
+        # sorting ensures that within a directory, files are processed in
+        # sort order.
+        configFiles[0].sort()
         def aext(a,b):
+            b.sort()
             a.extend(b)
             return a
         configFiles = reduce(aext, configFiles)
@@ -116,7 +141,7 @@ less privileged component) with::
         for cf in configFiles:
             fn = cf.split(os.sep)[-1]
             if fn == "%s.pcfg" % self.gridName:
-                self.__parsers['grid'] = ConfigObj(cf)
+                self.__parsers['grid'] = MyConfigObj(cf)
                 break
         else:
             raise Exception("Could no find grid config file: %s.pcfg" % self.gridName)
@@ -129,18 +154,17 @@ less privileged component) with::
                          if (p.split(os.sep)[-1]=="%s_domain.pcfg" % self.domainName)
                              or p.split(os.sep)[-1]=="%s_%s_domain.pcfg" % (self.domainName, self.__parsers['grid']['gridmode'])]
         
-        self.__parsers['domain'] = ConfigObj(domainConfigs[0])
+        self.__parsers['domain'] = MyConfigObj(domainConfigs[0])
         for conf in domainConfigs[1:]:
-            self.__parsers['domain'].merge(ConfigObj(conf))
+            self.__parsers['domain'].merge(MyConfigObj(conf))
 
         # Now load all PSC config files
         pscConfigs = [p for p in configFiles 
                          if (p.split(os.sep)[-1]=="psc.pcfg")
                              or p.split(os.sep)[-1]=="psc_%s.pcfg" % (self.__parsers['grid']['gridmode'])]
-        
-        self.__parsers['psc'] = ConfigObj(pscConfigs[0])
+        self.__parsers['psc'] = MyConfigObj(pscConfigs[0])
         for conf in pscConfigs[1:]:
-            self.__parsers['psc'].merge(ConfigObj(conf))
+            self.__parsers['psc'].merge(MyConfigObj(conf))
 
         # apply overrides
         for k,override in PelotonConfig.__CONFIG_OVERRIDES__.items():
@@ -170,6 +194,14 @@ bindname. The config file might look as follows::
         while key:
             v = v[key.pop()]
         return v
+    
+    def __setitem__(self, key, value):
+        """ Set the key to value. """
+        key = key.split('.')[::-1]
+        v = self.__parsers[key.pop()]
+        while len(key) > 1:
+            v = v[key.pop()]
+        v[key.pop()] = value
     
     def __delitem__(self, key):
         """ Delete the key or, if it's just 'psc' or 'grid' or 'domain', delete
