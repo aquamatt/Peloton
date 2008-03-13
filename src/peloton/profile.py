@@ -8,6 +8,8 @@ Every PSC and service has a profile used either declare the capabilities,
 requirements and restrictions of a component. The PelotonProfile class
 manages a profile and provides for comparing profiles.
 """
+import re
+from fnmatch import fnmatchcase
 
 class PelotonProfile(dict):
     """ A profile enables a component to advertise its properties to others.
@@ -28,6 +30,122 @@ put its details discovered at runtime into its own profile).
 
 Profiles are essentially dictionaries and may indeed be initialised from or
 serialised to such form.
+
+Structure of a profile
+----------------------
+
+A profile is a set of nested dictionaries that can be written also
+as an INI file. It fully describes a component via a set of keys, some
+of which are mandatory, some pre-defined in meaning and the rest 
+free-form
+
+Services include a description of methods and restrictions in them. 
+A service profile looks as follows::
+
+    name=<published name>
+    comment=<short comment>
+    author=<optional author(s)>
+    buildversion=1234
+    version=1.0.1
+    
+    [methods]
+      [[method_a]]
+          # security names map to definitions in
+          # the authorisation system. Peloton imbues
+          # no name with specific meaning.
+          security=public
+        
+          # a transform (or sequence of transforms) is specified
+          # for a protocol. When the edge node receives the result
+          # it will apply the given transform(s) if the client request
+          # is on a protocol for which a transform is specified.
+          # For example, this line transforms the result into a dictionary
+          # (key='value', value= the value) and passes to a template if
+          # and only if the call was for an html response:
+          transform_html=peloton.transform.toDict,peloton.transform.genshi(tmplate)
+
+          # value is passed to the transform callable after any optional arguments
+          # specified in the transform clause (as in the genshi transform above).
+        
+          # the following might do some magic foo to make an FPML document from
+          # this data if that were requested (in some RESTful way, perhaps).
+          transform_fpml=my.transform.toFPML
+    
+          # we may allow for type-casting (useful with HTTP requests where
+          # everything comes in as a string):
+          type_0=int
+          type_1=float
+          type_income=float
+        
+      [[method_b]]
+          # describe method_b 
+          # ...
+
+    [psclimits]
+        # describe minimum requirements for a host PSC
+        minram=2048 # Mb
+        maxram=4096
+        mincpus=2
+        hostname=rc* # regex the name of a host!
+        
+    [launch]
+        # parameters describing configuration of service in the domain
+        # e.g. require that it run in two PSCs spread over two hosts
+        minpscs=2
+        minhosts=2
+        
+Note that many of the entries in, for example, a method section will be set
+from the code (the security setting may be determined by a decorator, for
+example, as also the type cast info).
+
+A PSC is configured with a different profile describing its characteristics::
+    id=<runtime UID on domain>
+    started=<timestamp>
+    hostname=<hostname>
+    ram=4096
+    cpus=4
+    platform=linux
+    # optional specification of the max number of 
+    # services to be managed by the PSC
+    maxservices=10 
+    
+    # strength is a dimensionless unit that quantifies the 
+    # administrators' idea of how powerful or 'big' this PSC
+    # is relative to the others. It's used in routing: if there
+    # are two PSCs, the one ith strength 3 will get three times as
+    # many hits as one with strength 1 (in principle).
+    strength=2.0
+    
+Comparing profiles
+------------------
+
+It is not possible simply to ask if profile_A == profile_B or if 
+profile_A > profile_B (implying some concept of 'exceeds the requirements'
+perhaps) with the simple algebraic comparison operators.
+
+We have instead to specify what keys get involved in the comparison and
+how to do that. For example,  if a service has specified mincpus=2 
+we have to make clear that a PSC with cpus >= mincpus is OK.
+
+The dynamic requirements of this problem are made clear when it is considered
+that arbitrary entries in a profile may be meaningful in certain comparisons.
+
+For this reason comparisons are done with ProfileComparator classes of which
+a number of standard ones are provided and others may be written by 
+developers. The comparison operators in the PelotonProfile are rendered
+un-useable.
+    
+Where strings are being compared, if a value could logicaly be a 
+pattern (e.g. hostname in a service profile) you can indicate
+whether it is a straight comparison, a regex or a fname pattern 
+as follows:
+
+    - r:<pattern> is a regular expression
+    - f:<pattern> is a fnmatch pattern
+    - s:<pattern> is a string. 
+    - <pattern> is also a string (the default)
+    
+@todo: cast values for known keys as defined above
 """
     def loadFromConfig(self, conf):
         """ Supply a config object with a [profile] section from which
@@ -36,12 +154,99 @@ to pull key/value pairs. """
             raise Exception("Config must have a [profile] section!")
         self.update(conf['profile'])
             
+
+class BaseProfileComparator(object):
+    """ Base class for all profile-comparing classes. In all methods,
+if optimistic is set True the test will be generous in the logic of 
+the particular implementation.
+"""
+    def ge(self, x, y, optimistic=True):
+        "Return true if x >= y in the logic of this comparator."
+        raise NotImplementedError()
     
-#    def __cmp__(self, pc):
-#        """ Comparing two profiles seems a little tricky, and indeed more than
-#one method is provided for doing so. However it's handy to be able to get a 
-#meaningful response from a test such as "if hostpc >= servicepc" and this is
-#what we hope loosely to achieve here.
-#
-#Equality is determined if both
-#"""
+    def le(self, x, y, optimistic=True):
+        "Return true if x <= y in the logic of this comparator."
+        raise NotImplementedError()
+    
+    def eq(self, x, y, optimistic=True):
+        "Return true if x == y in the logic of this comparator."
+        raise NotImplementedError()
+    
+    def gt(self, x, y, optimistic=True):
+        "Return true if x > y in the logic of this comparator."
+        raise NotImplementedError()
+    
+    def lt(self, x, y, optimistic=True):
+        "Return true if x < y in the logic of this comparator."
+        raise NotImplementedError()
+
+
+class ServicePSCComparator(BaseProfileComparator):
+    """ Compares a service profile with a PSC profile
+to determine if the PSC is suitable for running the service. In
+the logic of this class only equality is checked for; if svcProfile 
+is determined equal to pscProfile it means that the PSC is adequate
+for the running of this service."""
+    def eq(self, sp, pp, optimistic=True):
+        """ Comparison based on checking the following keys (listed
+as key in service profile.psclimits -- key in PSC profile):
+    - hostname (pattern) -- hostname
+    - [min|max]ram -- ram
+    - [min|max]cpus -- cpus
+    - platform (pattern) -- platform    
+"""
+        sp = sp['psclimits']
+        for service_key in sp.keys():
+            if service_key in ['minram', 'mincpus']:
+                try:
+                    if self.__int_cf__(sp, service_key, pp, service_key[3:]) > 0:
+                        return False
+                except:
+                    if not optimistic:
+                        return False
+
+            elif service_key in ['maxram', 'maxcpus']:
+                try:
+                    if self.__int_cf__(sp, service_key, pp, service_key[3:]) < 0:
+                        return False
+                except:
+                    if not optimistic:
+                        return False
+                            
+            elif service_key in ['hostname', 'platform']:
+                if not self.__pattern_cf__(sp, service_key, pp, service_key):
+                    return False
+                
+        return True
+    
+    def __int_cf__(self, profilea, keya, profileb, keyb):
+        if profileb.has_key(keyb):
+            va = int(profilea[keya])
+            vb = int(profileb[keyb])
+            return cmp(va, vb)
+        else:
+            raise Exception("No key in profile b")
+
+
+    def __pattern_cf__(self, profilea, keya, profileb, keyb):
+        pattern = profilea[keya]
+        if not profileb.has_key(keyb):
+            return False
+        if pattern[:2] == 'r:':
+            # this is a regex
+            regex = re.compile(pattern[2:])
+            if regex.match(profileb[keyb]):
+                return True
+            else:
+                return False
+        elif pattern[:2] == 'f:':
+            # fnmatch pattern
+            pattern = pattern[2:]
+            return fnmatchcase(profileb[keyb], pattern)
+        else:
+            # must be a string; remove initial s: if present
+            if pattern[:2] == 's:':
+                pattern = pattern[2:]
+            return pattern == profileb[keyb]
+            
+        return False

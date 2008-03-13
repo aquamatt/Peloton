@@ -7,6 +7,7 @@
 
 from unittest import TestCase
 from peloton.profile import PelotonProfile
+from peloton.profile import ServicePSCComparator
 from peloton.utils.config import MyConfigObj
 from cStringIO import StringIO
 
@@ -41,8 +42,35 @@ class Test_PelotonProfile(TestCase):
         
         self.assertRaises(Exception, pp.loadFromConfig, self.config['profile'])
         
-    def test_comparison(self):
+    def test_servicePSCcomparison(self):
         """ Assure ourselves that profiles compare as we expect..
-except I've just thought about it more and it's gonna be even better... """
-        hostProfile = PelotonProfile(mem=2024, name='kylie', cpus=1)
-        serviceProfile = PelotonProfile(cpus=1)
+"""
+        hostProfile = PelotonProfile(ram=2048, hostname='kylie', cpus=1)
+        goodSvcProfiles = [dict(mincpus=1),
+                           dict(),
+                           dict(hostname='kylie'),
+                           dict(hostname='s:kylie'),
+                           dict(hostname='r:k.l.*$'),
+                           dict(hostname='f:k?l*'),
+                           dict(minram=2048),
+                           dict(maxram=2048),
+                           dict(minram=2048, maxram=2048),
+                           dict(minram=1024, maxram=4096)]
+                           
+        badSvcProfiles = [dict(mincpus=2),
+                           dict(hostname='billie'),
+                           dict(hostname='s:billie'),
+                           dict(hostname='r:bi.l.*$'),
+                           dict(hostname='f:bi?l*'),
+                           dict(minram=4096),
+                           dict(maxram=1024),
+                           dict(minram=1024, maxram=2000)]
+        
+        
+        sc = ServicePSCComparator()
+        self.assertRaises(NotImplementedError, sc.gt, goodSvcProfiles[0], hostProfile)
+        for p in goodSvcProfiles:
+            self.assertTrue(sc.eq(PelotonProfile(psclimits=p), hostProfile))
+            
+        for p in badSvcProfiles:
+            self.assertFalse(sc.eq(PelotonProfile(psclimits=p), hostProfile))
