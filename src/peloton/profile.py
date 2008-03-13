@@ -12,7 +12,7 @@ import re
 from fnmatch import fnmatchcase
 
 class PelotonProfile(dict):
-    """ A profile enables a component to advertise its properties to others.
+    """A profile enables a component to advertise its properties to others.
 So a PSC will have a profile indicating, perhaps, what kind of host it is
 running on, how much memory is available to it and the maximum number of
 services it is permitted to manage. A service may have a profile describing
@@ -32,7 +32,7 @@ Profiles are essentially dictionaries and may indeed be initialised from or
 serialised to such form.
 
 Structure of a profile
-----------------------
+======================
 
 A profile is a set of nested dictionaries that can be written also
 as an INI file. It fully describes a component via a set of keys, some
@@ -109,15 +109,15 @@ A PSC is configured with a different profile describing its characteristics::
     # services to be managed by the PSC
     maxservices=10 
     
-    # strength is a dimensionless unit that quantifies the 
+    # weight is a dimensionless unit that quantifies the 
     # administrators' idea of how powerful or 'big' this PSC
     # is relative to the others. It's used in routing: if there
-    # are two PSCs, the one ith strength 3 will get three times as
-    # many hits as one with strength 1 (in principle).
-    strength=2.0
+    # are two PSCs, the one with weight 3 will get three times as
+    # many hits as one with weight 1 (in principle).
+    weight=2.0
     
 Comparing profiles
-------------------
+==================
 
 It is not possible simply to ask if profile_A == profile_B or if 
 profile_A > profile_B (implying some concept of 'exceeds the requirements'
@@ -186,7 +186,14 @@ class ServicePSCComparator(BaseProfileComparator):
 to determine if the PSC is suitable for running the service. In
 the logic of this class only equality is checked for; if svcProfile 
 is determined equal to pscProfile it means that the PSC is adequate
-for the running of this service."""
+for the running of this service.
+
+This does not check properties such as the max number of services
+that a PSC is permitted to run as the comparison may be made 
+on a node not privy to such information. Instead, the comparing
+node will request that a host node start a service and the host 
+may choose at that point to reject the request.
+"""
     def eq(self, sp, pp, optimistic=True):
         """ Comparison based on checking the following keys (listed
 as key in service profile.psclimits -- key in PSC profile):
