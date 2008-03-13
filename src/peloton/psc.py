@@ -63,6 +63,10 @@ def main():
 values set in configuration.""",
                       dest='bindhost')
     
+    parser.add_option("-p", "--profile",
+                      help="""Path to a PSC profile""",
+                      dest="profile")
+    
     parser.add_option("--anyport",
                       action="store_true",
                       default=False,

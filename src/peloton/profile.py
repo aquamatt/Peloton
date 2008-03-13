@@ -10,8 +10,12 @@ manages a profile and provides for comparing profiles.
 """
 import re
 from fnmatch import fnmatchcase
+import os
+from types import StringType
+from peloton.utils.config import MyConfigObj
+from peloton.exceptions import ConfigurationError
 
-class PelotonProfile(dict):
+class PelotonProfile(MyConfigObj):
     """A profile enables a component to advertise its properties to others.
 So a PSC will have a profile indicating, perhaps, what kind of host it is
 running on, how much memory is available to it and the maximum number of
@@ -147,14 +151,45 @@ as follows:
     
 @todo: cast values for known keys as defined above
 """
+    def __init__(self, initDict={}, **kargs):
+        MyConfigObj.__init__(self)
+        self.merge(initDict)
+        self.merge(kargs)
+
     def loadFromConfig(self, conf):
         """ Supply a config object with a [profile] section from which
 to pull key/value pairs. """
         if not conf.has_key('profile'):
-            raise Exception("Config must have a [profile] section!")
-        self.update(conf['profile'])
+            raise ConfigurationError("Config must have a [profile] section!")
+        self.merge(conf['profile'])
             
+    def loadFromFile(self, _file, configDirs=[]):
+        """ Expects either:
+        1. an absolute path or one relative to one of the configuration
+           paths specified with -c|--config and supplied as the second argument.
+           or...
+           
+        2. a file-like object
 
+The profile is considered as the entire
+file, from the root. It is merged with the current contents, if any, of this 
+profile.
+"""
+        if type(_file) == StringType:
+            filesToSearch = [_file]
+            filesToSearch.extend([os.sep.join(i, _file) for i in configDirs])
+            
+            for f in filesToSearch:
+                if os.path.exists(f) and os.path.isfile(f):
+                    confobj = MyConfigObj(f)
+                    self.merge(confobj)
+                    break
+            else:
+                raise ConfigurationError("Could not find or open profile %s" % _file)
+        else:
+            confobj = MyConfigObj(_file)
+            self.merge(confobj)
+                        
 class BaseProfileComparator(object):
     """ Base class for all profile-comparing classes. In all methods,
 if optimistic is set True the test will be generous in the logic of 
@@ -196,13 +231,15 @@ may choose at that point to reject the request.
 """
     def eq(self, sp, pp, optimistic=True):
         """ Comparison based on checking the following keys (listed
-as key in service profile.psclimits -- key in PSC profile):
+as key in service profile -- key in PSC profile):
     - hostname (pattern) -- hostname
     - [min|max]ram -- ram
     - [min|max]cpus -- cpus
     - platform (pattern) -- platform    
+    
+If send only the [profile] or [psclimits] section; keys must be in root of
+object provided.
 """
-        sp = sp['psclimits']
         for service_key in sp.keys():
             if service_key in ['minram', 'mincpus']:
                 try:
@@ -232,7 +269,7 @@ as key in service profile.psclimits -- key in PSC profile):
             vb = int(profileb[keyb])
             return cmp(va, vb)
         else:
-            raise Exception("No key in profile b")
+            raise ConfigurationError("No key in profile b")
 
 
     def __pattern_cf__(self, profilea, keya, profileb, keyb):

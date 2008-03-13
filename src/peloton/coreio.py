@@ -95,19 +95,20 @@ via adapters are named public_<name> by convention."""
         raise NotImplementedError
     
 class PelotonManagementInterface(PelotonInterface):
-    """ Methods for use by management tools, such as a console, the SSH Manhole
-or similar. Methods are not prefixed public_ because they will be called directly
-by users, so it would seem a trifle odd to do otherwise."""
-    def shutdown(self):
+    """ Methods for use by management tools, such as a console, 
+the SSH Manhole or similar. All methods prefixed public_ are available 
+for use in such tools."""
+
+    def public_shutdown(self):
         self.__kernel__.closedown()
         
-    def startPlugin(self, plugin):
+    def public_startPlugin(self, plugin):
         self.__kernel__.startPlugin(plugin)
         
-    def stopPlugin(self, plugin):
+    def public_stopPlugin(self, plugin):
         self.__kernel__.stopPlugin(plugin)
         
-    def listPlugins(self, verbose=True):
+    def public_listPlugins(self, verbose=True):
         theList = []
         for name, plugin in self.__kernel__.plugins.items():
             if verbose:
@@ -115,4 +116,7 @@ by users, so it would seem a trifle odd to do otherwise."""
             else:
                 theList.append(name)
         return theList
+    
+    def public_showProfile(self):
+        print self.__kernel__.profile
         

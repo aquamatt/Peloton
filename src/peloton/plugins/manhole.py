@@ -20,7 +20,13 @@ stop services as well as make other hot-changes.
 """
 
     def initialise(self):
-        namespace={'psc':PelotonManagementInterface(self.kernel)}
+        # create an interface, pull out all 'public_*' methods
+        # into our namespace, striping the prefix
+        psc = PelotonManagementInterface(self.kernel)
+        publicMethods =  [i for i in dir(psc) if i.startswith('public_')]
+        namespace={}
+        for m in publicMethods:
+            namespace[m[7:]] = getattr(psc, m)
         
         self.pmh = PasswordManhole(int(self.config['port']),
                                    self.config['username'],

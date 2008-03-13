@@ -181,6 +181,15 @@ class Test_PelotonConfig(TestCase):
         
         self.assertEquals(pc['psc.special.subst'], pc['psc.bind'])
 
+    def test_haskey(self):
+        opts,args = self.parser.parse_args(["--configdir=%s"%self.dirNameA, 
+                                '-c',self.dirNameB,
+                                '-g', 'megabank',
+                                '-d', 'foo'])
+        pc = PelotonConfig(opts)
+        self.assertTrue(pc.has_key('psc.special.subst'))
+        self.assertFalse(pc.has_key('psc.special.foobar'))
+
     def test_overideFromCommandLine(self):
         opts,args = self.parser.parse_args(["--configdir=%s"%self.dirNameA, 
                                 '-c',self.dirNameB,

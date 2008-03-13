@@ -19,6 +19,9 @@ from peloton.utils import getClassFromString
 from peloton.utils import chop
 from peloton.utils import locateFile
 from peloton.utils.config import PelotonConfig
+from peloton.profile import PelotonProfile
+from peloton.exceptions import ConfigurationError
+from peloton.exceptions import PluginError
 
 class PelotonKernel(HandlerBase):
     """ The kernel is the core that starts key services of the 
@@ -44,6 +47,7 @@ which the kernel can request a worker to be started for a given service."""
         self.logger = logging.getLogger()
         self.config = config
         self.plugins = {}
+        self.profile = PelotonProfile()
     
     def start(self):
         """ Start the Twisted event loop. This method returns only when
@@ -51,16 +55,17 @@ the server is stopped. Returns an exit code.
 
 The bootstrap routine is as follows:
     1. Read the domain and grid keys
-    2. Generate this PSCs session keys
-    3. Connect to memcache
-    4. Connect to the persistence back-end
-    5. Connect to the message bus
-    6. Start all the network protocol adapters
-    7. Inform the worker generator as to the port on which the RPC
+    2. Load the profile for this PSC
+    3. Generate this PSCs session keys
+    4. Connect to memcache
+    5. Connect to the persistence back-end
+    6. Connect to the message bus
+    7. Start all the network protocol adapters
+    8. Inform the worker generator as to the port on which the RPC
        adapter has started.
-    8. Schedule grid-joining workflow to start when the reactor starts
-    9. Start kernel plugins
-    10. Start the reactor
+    9. Schedule grid-joining workflow to start when the reactor starts
+    10. Start kernel plugins
+    11. Start the reactor
     
 The method ends only when the reactor stops.
 
@@ -87,36 +92,56 @@ The method ends only when the reactor stops.
                 self.domainKey =  ezPyCrypto.key(keyobj=aDomainKey)
                 o.close()
             else:
-                raise Exception("Domain key file is unreadable, does not exist or is corrupted: %s" % keyfile)
+                raise ConfigurationError("Domain key file is unreadable, does not exist or is corrupted: %s" % keyfile)
         except:
-            raise Exception("Domain key file is unreadable or does not exist: %s" % keyfile)
+            raise ConfigurationError("Domain key file is unreadable or does not exist: %s" % keyfile)
+      
+        # (2) Load the PSC profile
+        # First try to load from a profile section in the main config
+        try:
+            self.profile.loadFromConfig(self.config['psc'])
+        except ConfigurationError:
+            # no profile section.. no big deal
+            pass
         
-        # (2) generate session keys
+        # PSC configuration in a file
+        if self.initOptions.profile:
+            self.profile.loadFromFile(self.initOptions.profile)
+        
+        if not self.profile:
+            raise ConfigurationError("There is no profile for the PSC!")
+        
+        # load and overlay with any profile from file
+        if self.initOptions.profile:
+            self.profile.loadFromFile(self.initOptions.profile, 
+                                      self.initOptions.configdirs)
+            
+        # (3) generate session keys
         self.sessionKey = ezPyCrypto.key(512)
         self.publicKey = self.sessionKey.exportKey()
 
-        # (3) hook into cacheing back-end
+        # (4) hook into cacheing back-end
         self.memcache = PelotonMemcache.getInstance(
                           self.config['domain.memcacheHosts'])
 
-        # (4) hook into persistence back-ends
+        # (5) hook into persistence back-ends
         
-        # (5) hook into message bus
+        # (6) hook into message bus
         
-        # (6) hook in the PB adapter and any others listed
+        # (7) hook in the PB adapter and any others listed
         self._startAdapters()
         
-        # (7) Write to the generatorInterface to pass host:port of our 
+        # (8) Write to the generatorInterface to pass host:port of our 
         # twisted RPC interface
         self.generatorInterface.initGenerator(self.config['psc.bind'])
 
-        # (8)schedule grid-joining workflow to happen on reactor start
+        # (9)schedule grid-joining workflow to happen on reactor start
         #  -- this checks the domain cookie matches ours; quit if not.
 
-        # (9) Start any kernel plugins, e.g. scheduler, manhole
+        # (10) Start any kernel plugins, e.g. scheduler, manhole
         self._startPlugins()
 
-        # (10) ready to start!
+        # (11) ready to start!
         reactor.run()
         
         return 0
@@ -178,7 +203,7 @@ The method ends only when the reactor stops.
             else:
                 self.logger.info("Plugin not started: %s" % plugin)
         else:
-            raise Exception("Invalid plugin: %s" % plugin)
+            raise PluginError("Invalid plugin: %s" % plugin)
             
     def _stopPlugins(self):
         for p in self.plugins.keys():

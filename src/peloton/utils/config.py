@@ -8,11 +8,11 @@ for Peloton configuration files.
 """
 
 from configobj import ConfigObj
-from cStringIO import StringIO
 from fnmatch import fnmatchcase as fnmatch
 from types import DictType
 import os
 import logging
+from peloton.exceptions import ConfigurationError
 
 class MyConfigObj(ConfigObj):
     """ Minor extension of ConfigObj that sets the interpolation method
@@ -52,7 +52,7 @@ than would be ideal.
         self.configdirs = [d for d in cmdLineOpts.configdirs
                            if os.path.exists(d) and os.path.isdir(d)]
         if not self.configdirs:
-            raise Exception("No valid configuration directories found!")
+            raise ConfigurationError("No valid configuration directories found!")
         
         self.gridName = cmdLineOpts.grid
         self.domainName = cmdLineOpts.domain
@@ -74,7 +74,7 @@ There are three levels of configuration:
     the overall nature of this group. This value is used to select 
     specific configuration files for the domain and PSC.
     
-    There is only ONE grid configuration file called <shortname>_grid.pcfg
+    There is only ONE grid configuration file called <shortname>.pcfg
     and the first such file found as the config directories are searched is
     the one used.
             
@@ -144,10 +144,10 @@ to be introduced. Re-jig naming conventions I think.
                 self.__parsers['grid'] = MyConfigObj(cf)
                 break
         else:
-            raise Exception("Could no find grid config file: %s.pcfg" % self.gridName)
+            raise ConfigurationError("Could no find grid config file: %s.pcfg" % self.gridName)
 
         if not self.__parsers['grid']['gridmode']:
-            raise Exception("gridmode is not assigned in the grid configuration file %s" % cf)
+            raise ConfigurationError("gridmode is not assigned in the grid configuration file %s" % cf)
 
         # Now load all domain config files
         domainConfigs = [p for p in configFiles 
@@ -178,6 +178,16 @@ to be introduced. Re-jig naming conventions I think.
                 while len(overridePath)>1:
                     v = v[overridePath.pop()]
                 v[overridePath[0]] = overrideValue
+
+    def has_key(self, key):
+        """ Emulates a dict.has_key, but not efficient as it ends up
+calling __getitem__ and trapping the error. It's convenience that will 
+result in people making two calls to do the same thing effectively. """
+        try:
+            self.__getitem__(key)
+            return True
+        except:
+            return False
 
     def __getitem__(self, key):
         """ Return a configuration value. The key is [grid|domain|psc].path.to.key.
@@ -214,3 +224,6 @@ that whole configuration. """
             while len(key) > 1:
                 v = v[key.pop()]
             del v[key.pop()]
+            
+            
+    
