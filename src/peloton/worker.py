@@ -32,6 +32,10 @@ The worker is now able to receive instructions from the PSC and is also
 able to register with events on the PSC as well as pass other messages back.
 """
 
+# ensure threading is OK with twisted
+from twisted.python import threadable
+threadable.init()
+
 from twisted.internet import reactor
 from twisted.spread import pb
 from peloton.base import HandlerBase

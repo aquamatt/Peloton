@@ -4,6 +4,11 @@
 # All Rights Reserved
 # See LICENSE for details
 from peloton.utils import getClassFromString
+
+# ensure threading is OK with twisted
+from twisted.python import threadable
+threadable.init()
+
 from twisted.python.reflect import getClass
 from peloton.utils import getClassFromString
 

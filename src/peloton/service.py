@@ -4,31 +4,99 @@
 # All Rights Reserved
 # See LICENSE for details
 
-from svcdeco import testDecorator
-from peloton.utils.structs import ReadOnlyDict
+from peloton.profile import PelotonProfile
+from peloton.exceptions import ConfigurationError
+import os
 
 class PelotonService(object):
     """ Base class for all services. Public methods all have names prefixed
 'public_', much as twisted spread remote callable methods are prefixed 'remote_'.
+
+Configuration
+=============
+
+Services live in a strictly regimented structure on the file system. This simplifies
+auto-generation of code and automated loading with minimal magic.
+
+The root path points to a directory
+which contains the service directory. The service directory is laid out as 
+follows, where the service is called FooBar::
+
+    service_root/foobar/config/common.pcfg
+                              /<gridmode>.pcfg
+                              /<gridmode>.pcfg
+                              /<...>
+                              /profile.pcfg
+                              /<gridmode>_profile.pcfg
+                       /foobar.py
+                       /<supporting code>
+                       /resource/... to be defined later ...
+
+Note that nomenclature is relatively simple; the service directory must be called
+the same as the service shortname (when lowercased). The configuration files 
+are named 'common.pcfg', 'test.pcfg' etc.
+
+The service directory must contain at the very least a file called foobar.py (note
+lower case) containing the class FooBar(PelotonService,...). Here FooBar retains
+it's original capitalisation and, indeed, it is a matter of convention
+that the service name should be camel case.            
 """
-    def __init__(self, rootPath):
-        """ Root path passed in on construction because from this module
-cannot find where the sub-class lives. Configurations are found relative to this
-root path. """
-        self.rootPath = rootPath
-        self.loadConfig()
+    def __init__(self, name, homePath, gridmode):
+        """ homePath passed in on construction because from this module
+cannot find where the concrete sub-class lives. Configurations are found relative to this
+homePath in homePath/config. """
+        self.name = name
+        self.homePath = homePath
+        self.gridmode = gridmode
+        self.config = PelotonProfile()
+        self.profile = PelotonProfile()
         
-    def loadConfig(self):
-        """ Load the configuration and put into self.conf """
-        self.conf = ReadOnlyDict()
-        # locate config relative to root path of caller... 
+    def loadConfig(self, extendProfile = True):
+        """ Configuration process as follows:
+        
+        1. load the configuration and put into self.config. Configuration
+            files are stored relative to the homePath as described in the PelotonService
+            class documentation.
+
+        2. load the profile. 
+        
+        3. If extendProfile==True (default) add method meta-data to the profile
+"""
+        configFiles = (self.config, ["config.pcfg" % self.homePath, 
+                       "%s.pcfg" % self.gridmode])
+        profileFiles = (self.profile, ["profile.pcfg" % self.homePath, 
+                       "%s_profile.pcfg" % self.gridmode])
+
+        for conf, fileList in [configFiles, profileFiles]:
+            for cf in fileList:
+                try:
+                    conf.loadFromFile(cf, ["%s/config" % self.homePath])
+                except:
+                    # file not present. 
+                    pass
+            if not conf:
+                raise ConfigurationError("Service %s cannot be started: missing configuration or profile" % self.name)
+        
+        if extendProfile:
+            publicMethods = [m for m in dir(self) if m.startswith('public_') and callable(getattr(self, m))]
+            if not self.profile.has_key('methods'):
+                self.profile['methods'] = {}
     
-    def startup(self):
+            methods = self.profile['methods']
+            for nme in publicMethods:
+                mthd = getattr(self, nme)
+                shortname = nme[7:]
+                if not methods.has_key(shortname):
+                    methods[shortname] = {}
+                record = methods[shortname]
+                record['doc'] = mthd.__doc__
+
+    def start(self):
         """ Executed after configuration is loaded, prior to starting work.
 Can be used to setup database pools etc. Overide in actual services. """
         pass
     
-    def shutdown(self):
+    def stop(self):
         """ Executed prior to shuting down this service or the node.
 Can be used to cleanup database pools etc. Overide in actual services. """
         pass

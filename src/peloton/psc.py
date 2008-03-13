@@ -73,11 +73,11 @@ values set in configuration.""",
                       help="""When set, this permits the PSC to seek a free port if the 
 configured port is not available.""")
     
-    parser.add_option("-v", "--servicepath",
+    parser.add_option("-s", "--servicepath",
                       help="""Directory containing peloton services. You may specify several
 such directories with multiple instances of this option [default: %default]""",
                       action="append",
-                      default="$PREFIX/services")
+                      default=["$PREFIX/services"])
         
     parser.add_option("--loglevel",
                       help="""Set the logging level to one of critical, fatal, error(uat, prod), warning, info(test), debug(dev).

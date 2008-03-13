@@ -43,6 +43,7 @@ class Test_PelotonProfile(TestCase):
     def test_loadFromConfig(self):
         pp = PelotonProfile()
         pp.loadFromConfig(self.config)
+        self.assertTrue(pp.has_key('a'))
         self.assertEquals(pp['a'], 'hello')
         self.assertEquals(pp['b'], 'world')
         self.assertEquals(pp['c'], '10')

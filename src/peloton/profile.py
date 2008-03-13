@@ -53,6 +53,7 @@ A service profile looks as follows::
     version=1.0.1
     
     [methods]
+      # would generally be auto-generated at run-time
       [[method_a]]
           # security names map to definitions in
           # the authorisation system. Peloton imbues
