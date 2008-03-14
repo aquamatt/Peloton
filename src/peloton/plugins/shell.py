@@ -10,7 +10,7 @@ from peloton.coreio import PelotonManagementInterface
 from peloton.plugins.sshmanhole import PasswordManhole
 from twisted.internet.error import CannotListenError
 
-class PelotonManholePlugin(PelotonPlugin):
+class PelotonShell(PelotonPlugin):
     """ Provides an interpreter inside the event loop to which
 one can connect by SSH using a pre-specified username/password.
 
@@ -37,15 +37,15 @@ stop services as well as make other hot-changes.
         try:
             self.pmh.startService()
             self.started = True
-            self.logger.info("Manhole plugin initialised")
+            self.logger.info("SSH shell plugin initialised")
         except CannotListenError:
-            raise Exception("Manhole cannot listen on port %d" % self.config['port'])
+            raise Exception("SSH Shell cannot listen on port %d" % self.config['port'])
         
     def _stopped(self, *args, **kargs):
         self.started = False
-        self.logger.info("Manhole plugin stopped")
+        self.logger.info("SSH shell plugin stopped")
         
     def stop(self):
-        self.logger.info("Manhole plugin stopping")
+        self.logger.info("SSH shell plugin stopping")
         d = self.pmh.stopService()
         d.addCallback(self._stopped)

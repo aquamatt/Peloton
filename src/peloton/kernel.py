@@ -145,7 +145,7 @@ The method ends only when the reactor stops.
         # (9)schedule grid-joining workflow to happen on reactor start
         #  -- this checks the domain cookie matches ours; quit if not.
 
-        # (10) Start any kernel plugins, e.g. scheduler, manhole
+        # (10) Start any kernel plugins, e.g. scheduler, shell 
         self._startPlugins()
 
         # (11) ready to start!

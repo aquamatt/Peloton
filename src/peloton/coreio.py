@@ -96,7 +96,7 @@ via adapters are named public_<name> by convention."""
     
 class PelotonManagementInterface(PelotonInterface):
     """ Methods for use by management tools, such as a console, 
-the SSH Manhole or similar. All methods prefixed public_ are available 
+the SSH terminal or similar. All methods prefixed public_ are available 
 for use in such tools."""
 
     def public_shutdown(self):
