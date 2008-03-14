@@ -91,7 +91,7 @@ A service profile looks as follows::
         minram=2048 # Mb
         maxram=4096
         mincpus=2
-        hostname=rc* # regex the name of a host!
+        hostname=r:rc.* # regex the name of a host!
         
     [launch]
         # parameters describing configuration of service in the domain

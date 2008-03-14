@@ -119,4 +119,7 @@ for use in such tools."""
     
     def public_showProfile(self):
         print self.__kernel__.profile
+    
+    def public_launchService(self, serviceName):
+        self.__kernel__.launchService(serviceName)
         

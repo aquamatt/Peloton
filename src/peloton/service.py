@@ -18,7 +18,7 @@ Configuration
 Services live in a strictly regimented structure on the file system. This simplifies
 auto-generation of code and automated loading with minimal magic.
 
-The root path points to a directory
+The root path points to a http://news.bbc.co.uk/directory
 which contains the service directory. The service directory is laid out as 
 follows, where the service is called FooBar::
 
@@ -51,7 +51,7 @@ homePath in homePath/config. """
         self.config = PelotonProfile()
         self.profile = PelotonProfile()
         
-    def loadConfig(self, extendProfile = True):
+    def loadConfig(self):
         """ Configuration process as follows:
         
         1. load the configuration and put into self.config. Configuration
@@ -77,19 +77,18 @@ homePath in homePath/config. """
             if not conf:
                 raise ConfigurationError("Service %s cannot be started: missing configuration or profile" % self.name)
         
-        if extendProfile:
-            publicMethods = [m for m in dir(self) if m.startswith('public_') and callable(getattr(self, m))]
-            if not self.profile.has_key('methods'):
-                self.profile['methods'] = {}
-    
-            methods = self.profile['methods']
-            for nme in publicMethods:
-                mthd = getattr(self, nme)
-                shortname = nme[7:]
-                if not methods.has_key(shortname):
-                    methods[shortname] = {}
-                record = methods[shortname]
-                record['doc'] = mthd.__doc__
+        publicMethods = [m for m in dir(self) if m.startswith('public_') and callable(getattr(self, m))]
+        if not self.profile.has_key('methods'):
+            self.profile['methods'] = {}
+
+        methods = self.profile['methods']
+        for nme in publicMethods:
+            mthd = getattr(self, nme)
+            shortname = nme[7:]
+            if not methods.has_key(shortname):
+                methods[shortname] = {}
+            record = methods[shortname]
+            record['doc'] = mthd.__doc__
 
     def start(self):
         """ Executed after configuration is loaded, prior to starting work.

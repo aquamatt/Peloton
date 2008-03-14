@@ -24,6 +24,7 @@ from peloton.utils import getClassFromString
 from peloton.utils import chop
 from peloton.utils import locateFile
 from peloton.utils.config import PelotonConfig
+from peloton.mapping import ServiceLoader
 from peloton.profile import PelotonProfile
 from peloton.exceptions import ConfigurationError
 from peloton.exceptions import PluginError
@@ -53,6 +54,7 @@ which the kernel can request a worker to be started for a given service."""
         self.config = config
         self.plugins = {}
         self.profile = PelotonProfile()
+        self.serviceLoader = ServiceLoader(self)
     
     def start(self):
         """ Start the Twisted event loop. This method returns only when
@@ -229,3 +231,7 @@ hooks into the reactor. It is passed the entire config stack
         """ Close down all adapters currently bound. """
         for adapter in self.adapters.values():
             adapter.stop()
+
+    def launchService(self, serviceName):
+        """ Initiate the process of launching a service. """
+        self.serviceLoader.launchService(serviceName)

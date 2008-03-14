@@ -16,7 +16,11 @@ a class in this module:
 The RoutingTable is required by all.
 """
 
+import os
+import logging
 from twisted.internet import reactor
+from peloton.exceptions import ServiceNotFoundError
+from peloton.profile import PelotonProfile
 
 class ServiceLoader(object):
     """ The loader consults the routing table to find a set of PSCs 
@@ -31,15 +35,15 @@ is placed on a queue to be re-tried in some seconds.
 """
 
     def __init__(self, kernel):
-        pass
-    
+        self.kernel = kernel
+        self.logger = logging.getLogger()
+        
     def launchService(self, serviceName):
         """ Start the process of launching a service which will require
 the following steps:
     
-    1. Locate the service and ensure  it exists
-    2. Load the profile, extract the psclimits and launch parameters
-    3. Search through routing table for all PSCs, filter on those that 
+    1. Locate the profile, extract the psclimits and launch parameters
+    2. Search through routing table for all PSCs, filter on those that 
        match the psclimits for the service.
     3. Create a service launch request
     4. Request a suitable number of PSCs from the filtered batch
@@ -48,8 +52,29 @@ the following steps:
     6. If run out of PSCs before satisfying launch parameters, put
        the serivce launch request onto the stack for trying later.
  """
-        pass
+        self.logger.info("Mapping launch request for service %s" % serviceName)
+        # 1. locate and load the profile
+        #    search through service path
+        serviceDir = serviceName.lower()
+        locations = ["%s/%s" % (i, serviceDir) 
+                     for i in self.kernel.initOptions.servicepath 
+                     if os.path.exists("%s/%s" % (i, serviceDir)) 
+                        and os.path.isdir("%s/%s" % (i, serviceDir))]
+        
+        # locations will hopefuly only be one item long; if not make 
+        # a note in the logs and take the first location
+        if len(locations) > 1:
+            self.logger.info("ServiceLoader found more than one location for service %s (using first)" % serviceName)
+        if not locations:
+            raise ServiceNotFoundError("Could not find service %s" % serviceName)
     
+        configDir = os.sep.join([locations[0], 'config'])
+        profiles = ["profile.pcfg", "%s_profile.pcfg" % self.kernel.config['grid.gridmode']]
+        serviceProfile = PelotonProfile()
+        for profile in profiles:
+            serviceProfile.loadFromFile("%s/%s" % (configDir, profile))
+        print(serviceProfile)
+        
 class ServiceLaunchRequest(object):
     """ State object used to keep track of a particular request to launch 
 a service. As the loading is an asynchronous process it is easiest to track

@@ -24,3 +24,6 @@ class PluginError(PelotonError):
     """ To be raised on the whole if a general plugin error occurs; specific
 plugins may wish to provide a little more specific exceptions. """
     pass
+
+class ServiceNotFoundError(PelotonError):
+    pass

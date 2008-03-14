@@ -39,6 +39,9 @@ def main():
     usage = "usage: %prog [options]" # add 'arg1 arg2' etc as required
     parser = FilteredOptionParser(usage=usage, version="Peloton version %s" % peloton.RELEASE_VERSION)
 #    parser.set_defaults(nodetach=False)
+    parser.add_option("--prefix",
+                     help="Prefix directory to help with setting paths")
+    
     parser.add_option("--nodetach",
                       action="store_true",
                       default=False,
@@ -77,7 +80,7 @@ configured port is not available.""")
                       help="""Directory containing peloton services. You may specify several
 such directories with multiple instances of this option [default: %default]""",
                       action="append",
-                      default=["$PREFIX/services"])
+                      default=["$PREFIX/service"])
         
     parser.add_option("--loglevel",
                       help="""Set the logging level to one of critical, fatal, error(uat, prod), warning, info(test), debug(dev).
@@ -98,6 +101,11 @@ the logging-to-file system will be enabled.""")
     # Handling errors and pumping back through the system
     #if len(args) != 1:
     #    parser.error("incorrect number of arguments")
+
+    # add any sevice directories to sys.path if not already there
+    for sd in options.servicepath:
+        if sd not in sys.path:
+            sys.path.append(sd)
 
     # determine the appropriate log-level for the root logger based
     # on supplied arguments.
