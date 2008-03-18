@@ -17,8 +17,8 @@ interface to the Peloton grid. This adapter is just a gate-keeper though;
 anything obtaining this must gain trust and obtain a Referenceable 
 through which real work can be done.
 """
-    def __init__(self):
-        AbstractPelotonAdapter.__init__(self, 'TwistedPB')
+    def __init__(self, kernel):
+        AbstractPelotonAdapter.__init__(self, kernel, 'TwistedPB')
         self.logger = logging.getLogger()
     
     def start(self, configuration, cmdOptions):
@@ -75,6 +75,9 @@ generator and is used simply to verify that this is indeed a valid
 and wanted contact. """
         pass
     
+    def remote_getInterface(self, name):
+        """ Return the named interface to a plugin. """
+        return self.kernel.getCallable(name)
     
 class PelotonGridAdapter(pb.Referenceable):
     def remote_call(self, clientObj, service, method, *args, **kwargs):

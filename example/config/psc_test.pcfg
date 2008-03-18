@@ -1,3 +1,13 @@
 [profile]
   cpus=1
   ram=1024
+  
+[plugins]
+ [[shell]]
+   enabled=True
+   
+ [[backpack]]
+   enabled=False
+   
+ [[amqp]]
+   enabled=True

@@ -7,8 +7,7 @@ from twisted.internet.error import CannotListenError
 
 from peloton.plugins import PelotonPlugin
 from peloton.coreio import PelotonManagementInterface
-from peloton.plugins.sshmanhole import PasswordManhole
-from twisted.internet.error import CannotListenError
+from peloton.plugins.support.sshmanhole import PasswordManhole
 
 class PelotonShell(PelotonPlugin):
     """ Provides an interpreter inside the event loop to which
@@ -27,7 +26,7 @@ stop services as well as make other hot-changes.
         namespace={}
         for m in publicMethods:
             namespace[m[7:]] = getattr(psc, m)
-        
+
         self.pmh = PasswordManhole(int(self.config['port']),
                                    self.config['username'],
                                    self.config['password'],
@@ -36,13 +35,11 @@ stop services as well as make other hot-changes.
     def start(self):
         try:
             self.pmh.startService()
-            self.started = True
             self.logger.info("SSH shell plugin initialised")
         except CannotListenError:
             raise Exception("SSH Shell cannot listen on port %d" % self.config['port'])
         
     def _stopped(self, *args, **kargs):
-        self.started = False
         self.logger.info("SSH shell plugin stopped")
         
     def stop(self):

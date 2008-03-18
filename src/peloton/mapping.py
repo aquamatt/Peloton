@@ -23,17 +23,8 @@ from peloton.exceptions import ServiceNotFoundError
 from peloton.profile import PelotonProfile
 
 class ServiceLoader(object):
-    """ The loader consults the routing table to find a set of PSCs 
-that conform to a service profile's [psclimits]. Once a subset has been 
-found that could run it, a number are chosen to conform to the profile's
-[launch] configuration (ie n hosts, m PSCs etc).
-
-The chosen PSCs are instructed to start the service; if a PSC refuses for
-whatever reason then another is chosen. If there are  no suitable PSCs 
-remaining the issue is logged and the request for the un-satisfied launches
-is placed on a queue to be re-tried in some seconds.
-"""
-
+    """ The loader is the front-end to the launch sequencer. It's tasks are simply
+to locate the service, load the profiles and instantiate the launch sequencer."""
     def __init__(self, kernel):
         self.kernel = kernel
         self.logger = logging.getLogger()
@@ -43,14 +34,7 @@ is placed on a queue to be re-tried in some seconds.
 the following steps:
     
     1. Locate the profile, extract the psclimits and launch parameters
-    2. Search through routing table for all PSCs, filter on those that 
-       match the psclimits for the service.
-    3. Create a service launch request
-    4. Request a suitable number of PSCs from the filtered batch
-       to start the service.
-    5. Any failures/refusals; select from 'spares' list
-    6. If run out of PSCs before satisfying launch parameters, put
-       the serivce launch request onto the stack for trying later.
+    3. Create a service launch sequencer with the profile and start it
  """
         self.logger.info("Mapping launch request for service %s" % serviceName)
         # 1. locate and load the profile
@@ -68,16 +52,82 @@ the following steps:
         if not locations:
             raise ServiceNotFoundError("Could not find service %s" % serviceName)
     
-        configDir = os.sep.join([locations[0], 'config'])
+        servicePath = locations[0]
+        configDir = os.sep.join([servicePath, 'config'])
         profiles = ["profile.pcfg", "%s_profile.pcfg" % self.kernel.config['grid.gridmode']]
         serviceProfile = PelotonProfile()
         for profile in profiles:
             serviceProfile.loadFromFile("%s/%s" % (configDir, profile))
-        print(serviceProfile)
-        
-class ServiceLaunchRequest(object):
+            
+        # 2. Start the sequencer
+        ServiceLaunchSequencer(kernel, servicePath, serviceName, profile).start()
+
+class ServiceLaunchSequencer(object):
     """ State object used to keep track of a particular request to launch 
-a service. As the loading is an asynchronous process it is easiest to track
-by keeping all state in one object. """
-    def __init__(self):
-        pass
+a service. Loading is an asynchronous process so an instance of this class is 
+used to manage and track the loading of a single service. 
+
+Starting the service involves the following process chain:
+
+    1. Search through routing table for all PSCs, filter on those that 
+       match the psclimits for the service.
+    2. Request a suitable number of PSCs from the filtered batch
+       to start the service.
+    3. Any failures/refusals; select from 'spares' list
+    6. If run out of PSCs before satisfying launch parameters, sleep until
+       more PSCs become available.
+"""
+    def __init__(self, kernel, servicePath, serviceName, profile):
+        self.kernel = kernel
+        self. servicePath = servicePath
+        self.serviceName = serviceName
+        self.profile = profile
+        
+    def start(self):
+        """ Initiate the sequence by calling upon the reactor to schedule the 
+first step. """
+        # this puts the next step onto the reactor queue thus freeing the reactor
+        # to handle other requests that may have arrived since the service launch
+        # request came in.
+        reactor.callLater(0, self.findPSCs)
+        
+    def findPSCs(self):
+        """ Search the PSC library for all PSCs that could, in principle, run
+this service. """
+        self.pscList = self.kernel.routingTable.matchPSC(self.profile['psclimits'])
+        reactor.callLater(0, self.selectPSCs)
+        
+    def selectPSCs(self):
+        """ Select from the list of valid PSCs a subset that would satisfy
+the launch requirements of this service. """
+        # split pscs by host
+        self.pscsByHost = {}
+        for psc in self.pscList:
+            self.pscsByHost[psc.host] = psc
+        
+class RemotePSC(object):        
+    """ Container for information relating to a PSC """
+    def __init__(self, pscRef, profile, services=[]):
+          self.ref = pscRef
+          self.profile = profile
+          self.services = services
+          
+class ServiceLibrary(object):
+    """ Maintain a live database of all PSCs in the domain complete with their
+profiles, the list of all services that they run and a library of all service profiles. """
+    def __init__(self, kernel):
+        self.kernel = kernel
+        self.localProfile = kernel.profile
+        self.services={}
+        self.pscs=[]
+        self.pscByHost={}
+    
+    def addPSC(self, remotePsc):
+        self.pscs.append(remotePsc)
+        self.pscByHost[remotePsc.profile.hostname] = remotePsc
+        for service in remotePsc.services:
+            self.addService(service)
+    
+    def addService(self, profile):
+        self.services[profile.name] = profile
+    

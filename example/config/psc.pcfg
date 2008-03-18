@@ -6,13 +6,36 @@
 
 # Individual PSC configuration
 bind=0.0.0.0:9100
-  
+pscFolder=/tmp/psc
+
 [plugins]
   [[shell]]
     comment=An SSH interface to Peloton
     class=peloton.plugins.shell.PelotonShell
-    enabled=True
+    enabled=False
     # plugin conf
     port=9110
     username=admin
     password=admin
+    
+  [[backpack]]
+    name=keystore # overide name to standard
+                  # so that whatever the implementation,
+                  # the keystore is always obtained wiht
+                  # this name
+    comment=The Peloton key store
+    class=peloton.plugins.backpack.BackPackPlugin
+    enabled=False
+    # plugin conf
+    storageNode=True
+    storageBackend=peloton.plugins.backpack.BackPackZODB
+    storageRoot=$pscFolder
+    
+  [[amqp]]
+    name=eventbus
+    comment=AMQP message bus interface
+    class=peloton.plugins.amqp.AMQPEventBus
+    enabled=True
+    # plugin conf
+    username=peloton_sys
+    password=pelotonica

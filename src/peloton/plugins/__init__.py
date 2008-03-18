@@ -62,15 +62,24 @@ layer.
 
 class PelotonPlugin(object):
     """ Base class for all Peloton core plugins """
-    def __init__(self, kernel, pluginConfig, logger):
+    def __init__(self, kernel, name, pluginConfig, logger):
         if pluginConfig.has_key('comment'):
             self.comment = pluginConfig['comment']
         else:
             self.comment = ""
+        if pluginConfig.has_key('name'):
+            self.name = pluginConfig['name']
+        else:
+            self.name = name
         self.logger = logger
         self.config = pluginConfig
         self.started = False
         self.kernel = kernel
+        
+    def registerCallable(self, name, iface):
+        """ Register a plugin's 'referenceable' interface so that
+clients of this node can obtain it by name 'name'. """
+        self.kernel.registerCallable(name, iface)
         
     def initialise(self):
         """ Prepare all that is required to start this plugin prior

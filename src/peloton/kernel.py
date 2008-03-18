@@ -17,6 +17,7 @@ import logging
 import os
 
 from twisted.internet import reactor
+from twisted.spread import pb
 from types import DictType
 from peloton.base import HandlerBase
 from peloton.persist.memcache import PelotonMemcache
@@ -24,7 +25,7 @@ from peloton.utils import getClassFromString
 from peloton.utils import chop
 from peloton.utils import locateFile
 from peloton.utils.config import PelotonConfig
-from peloton.mapping import ServiceLoader
+from peloton.mapping import ServiceLoader, ServiceLibrary
 from peloton.profile import PelotonProfile
 from peloton.exceptions import ConfigurationError
 from peloton.exceptions import PluginError
@@ -55,7 +56,11 @@ which the kernel can request a worker to be started for a given service."""
         self.plugins = {}
         self.profile = PelotonProfile()
         self.serviceLoader = ServiceLoader(self)
-    
+        self.serviceLibrary = ServiceLibrary(self)
+        
+        # callables are plugin interfaces (pb.Referenceable) that 
+        # can be requested by some name by clients
+        self.callables = {}
     def start(self):
         """ Start the Twisted event loop. This method returns only when
 the server is stopped. Returns an exit code.
@@ -63,7 +68,7 @@ the server is stopped. Returns an exit code.
 The bootstrap routine is as follows:
     1. Read the domain and grid keys
     2. Load the profile for this PSC
-    3. Generate this PSCs session keys
+    3. Generate this PSCs session keys and our UID
     4. Connect to memcache
     5. Connect to the persistence back-end
     6. Connect to the message bus
@@ -78,30 +83,12 @@ The method ends only when the reactor stops.
 
 @todo: Workout the kernel plugin API and create a sample plugin
 """        
-        # (1) read in the domain key - all PSCs in a domain must have access
-        # to this same key file (or identical copy, of course)
-        keyfile = self.config['domain.keyfile']
-        try:
-            keyfile = locateFile(keyfile, self.initOptions.configdirs)
-            if os.path.isfile(keyfile):
-                o = open(keyfile, 'rt')
-                self.domainCookie = chop(o.readline())
-                aDomainKey = ""
-                while True:
-                    aDomainKey = o.readline() 
-                    if aDomainKey.startswith("<StartPycryptoKey>"):
-                        break
-                while True:
-                    l = o.readline()
-                    aDomainKey = aDomainKey + l
-                    if l.startswith("<EndPycryptoKey>"):
-                        break
-                self.domainKey =  ezPyCrypto.key(keyobj=aDomainKey)
-                o.close()
-            else:
-                raise ConfigurationError("Domain key file is unreadable, does not exist or is corrupted: %s" % keyfile)
-        except:
-            raise ConfigurationError("Domain key file is unreadable or does not exist: %s" % keyfile)
+        # (1) read in the domain and grid key - all PSCs in a domain must have 
+        # access to the same key file (or identical copy, of course)
+        self.domainCookie, self.domainKey = \
+            self._readKeyFile(self.config['domain.keyfile'])
+        self.gridCookie, self.gridKey = \
+            self._readKeyFile(self.config['grid.keyfile'])
       
         # (2) Load the PSC profile
         # First try to load from a profile section in the main config
@@ -126,6 +113,7 @@ The method ends only when the reactor stops.
         # (3) generate session keys
         self.sessionKey = ezPyCrypto.key(512)
         self.publicKey = self.sessionKey.exportKey()
+        self.logger.info("MUST CREATE PSC GUID AND PUT INTO PROFILE")
 
         # (4) hook into cacheing back-end
         self.memcache = PelotonMemcache.getInstance(
@@ -152,6 +140,33 @@ The method ends only when the reactor stops.
         reactor.run()
         
         return 0
+
+    def _readKeyFile(self, keyfile):
+        """ Read in the named keyfile and return a tuple of cookie and
+key."""
+        try:
+            keyfile = locateFile(keyfile, self.initOptions.configdirs)
+            if os.path.isfile(keyfile):
+                o = open(keyfile, 'rt')
+                cookie = chop(o.readline())
+                aKey = ""
+                while True:
+                    aKey = o.readline() 
+                    if aKey.startswith("<StartPycryptoKey>"):
+                        break
+                while True:
+                    l = o.readline()
+                    aKey = aKey + l
+                    if l.startswith("<EndPycryptoKey>"):
+                        break
+                key =  ezPyCrypto.key(keyobj=aKey)
+                o.close()
+            else:
+                raise ConfigurationError("Domain key file is unreadable, does not exist or is corrupted: %s" % keyfile)
+        except:
+            raise ConfigurationError("Domain key file is unreadable or does not exist: %s" % keyfile)
+
+        return(cookie, key)
 
     def closedown(self):
         """Closedown in an orderly fashion."""
@@ -189,24 +204,34 @@ The method ends only when the reactor stops.
             self.logger.info("Starting plugin: %s" % plugin)
         else:
             self.logger.info("Plugin %s disabled" % plugin)
+            return
             
         if self.plugins.has_key(plugin):
             if not self.plugins[plugin].started:
-                self.plugins[plugin].start()
+                try:
+                    self.plugins[plugin].start()
+                    self.plugins[plugin].started=True
+                except:
+                    raise
         else:
             pluginClass = getClassFromString(pconf['class'])
             plogger = logging.getLogger(plugin)
             plogger.setLevel(self.initOptions.loglevel)
-            pluginInstance = pluginClass(self, pconf, plogger)
-            pluginInstance.initialise()
-            pluginInstance.start()
-            self.plugins[plugin] = pluginInstance
+            try:
+                pluginInstance = pluginClass(self, plugin, pconf, plogger)
+                pluginInstance.initialise()
+                pluginInstance.start()
+                pluginInstance.started=True
+                self.plugins[pluginInstance.name] = pluginInstance
+            except:
+                raise
 
     def stopPlugin(self, plugin):
         if self.plugins.has_key(plugin):
             if self.plugins[plugin].started:
                 self.logger.info("Stopping plugin: %s"%plugin)
                 self.plugins[plugin].stop()
+                self.plugins[plugin].started=False
             else:
                 self.logger.info("Plugin not started: %s" % plugin)
         else:
@@ -223,7 +248,7 @@ hooks into the reactor. It is passed the entire config stack
 (self.config) and command line options"""
         for adapter in PelotonKernel.__ADAPTERS__:
             cls = getClassFromString(adapter)
-            _adapter = cls()
+            _adapter = cls(self)
             self.adapters[adapter] = _adapter
             _adapter.start(self.config, self.initOptions)
     
@@ -235,3 +260,28 @@ hooks into the reactor. It is passed the entire config stack
     def launchService(self, serviceName):
         """ Initiate the process of launching a service. """
         self.serviceLoader.launchService(serviceName)
+
+    def getCallable(self, name):
+        """ Return the callable as named"""
+        if not self.callables.has_key(name):
+            raise PluginError("No plugin interface known by name %s" % name)
+        return self.callables[name]
+    
+    def registerCallable(self, name, iface):
+        """ Register a pb.Referenceable interface by name so that
+it can be obtained by remote clients. This is the mechanism by which
+kernel plugins may publish callable interfaces. """
+        if isinstance(pb.Referenceable, iface):
+            self.logger.info("Registering interface: %s" % name)
+            self.callables[name] = iface
+        else:
+            raise PluginError("Cannot register interface for %s: Not referenceable" % name)
+        
+    def deregisterCallable(self, name):
+        """ Un-register the named interface """
+        if not self.callables.has_key(name):
+            self.logger.info("De-Registering interface: %s not registered!" % name)
+        else:
+            del(self.callables[name])
+            self.logger.info("De-Registering interface: %s" % name)
+        

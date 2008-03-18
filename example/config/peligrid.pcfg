@@ -20,3 +20,10 @@ keyfile=grid.key
 
 # all domains in a site must use the same message bus
 messagingAdapter=peloton.messaging.rabbitmq
+
+# The bus *must* be AMQP, whatever the implementation. Each
+# grid defines its own vhost in the AMQP server.
+messagingVHost=peloton
+
+# optionaly specify hostname:port
+messagingHost=localhost 

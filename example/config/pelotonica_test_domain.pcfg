@@ -6,6 +6,4 @@
 
 keyfile=test_domain.key # readable by all developers
   	
-[plugins]
-  [[manhole]]
-    enabled=True
+
