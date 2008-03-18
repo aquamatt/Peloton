@@ -1,0 +1,7 @@
+#!/bin/sh
+# RUN AS ROOT
+rabbitmqctl add_vhost peloton
+rabbitmqctl add_user peloton pelotonica
+rabbitmqctl map_user_vhost peloton peloton
+rabbitmqctl set_permissions peloton peloton /data all
+rabbitmqctl set_permissions peloton peloton /admin all
