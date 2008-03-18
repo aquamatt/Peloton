@@ -1,7 +1,16 @@
 #!/bin/sh
 # RUN AS ROOT
 rabbitmqctl add_vhost peloton
-rabbitmqctl add_user peloton pelotonica
-rabbitmqctl map_user_vhost peloton peloton
-rabbitmqctl set_permissions peloton peloton /data all
-rabbitmqctl set_permissions peloton peloton /admin all
+rabbitmqctl add_user peloton_sys pelotonica
+rabbitmqctl add_user peloton_client rethought
+rabbitmqctl map_user_vhost peloton_sys peloton
+rabbitmqctl map_user_vhost peloton_client peloton
+rabbitmqctl delete_realm peloton /admin
+rabbitmqctl delete_realm peloton /data
+rabbitmqctl add_realm peloton /event
+rabbitmqctl add_realm peloton /core
+rabbitmqctl set_permissions peloton_sys peloton /event all
+rabbitmqctl set_permissions peloton_sys peloton /core all
+rabbitmqctl set_permissions peloton_client peloton /event read
+rabbitmqctl set_permissions peloton_client peloton /core read
+
