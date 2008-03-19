@@ -15,6 +15,7 @@ from peloton.utils import getClassFromString
 import ezPyCrypto
 import logging
 import os
+import uuid
 
 from twisted.internet import reactor
 from twisted.spread import pb
@@ -59,25 +60,25 @@ which the kernel can request a worker to be started for a given service."""
         self.serviceLibrary = ServiceLibrary(self)
         
         # callables are plugin interfaces (pb.Referenceable) that 
-        # can be requested by some name by clients
+        # can be requested by name by clients
         self.callables = {}
+        
     def start(self):
         """ Start the Twisted event loop. This method returns only when
 the server is stopped. Returns an exit code.
 
 The bootstrap routine is as follows:
-    1. Read the domain and grid keys
-    2. Load the profile for this PSC
-    3. Generate this PSCs session keys and our UID
-    4. Connect to memcache
-    5. Connect to the persistence back-end
-    6. Connect to the message bus
-    7. Start all the network protocol adapters
-    8. Inform the worker generator as to the port on which the RPC
-       adapter has started.
-    9. Schedule grid-joining workflow to start when the reactor starts
-    10. Start kernel plugins
-    11. Start the reactor
+    1.  Read the domain and grid keys
+    2.  Load the profile for this PSC
+    3.  Generate this PSCs session keys and our UID
+    4.  Connect to memcache
+    5.  Connect to the persistence back-end
+    6.  Start all the network protocol adapters
+    7.  Inform the worker generator as to the port on which the RPC
+        adapter has started.
+    8.  Schedule grid-joining workflow to start when the reactor starts
+    9.  Start kernel plugins
+    10. Start the reactor
     
 The method ends only when the reactor stops.
 
@@ -113,30 +114,30 @@ The method ends only when the reactor stops.
         # (3) generate session keys
         self.sessionKey = ezPyCrypto.key(512)
         self.publicKey = self.sessionKey.exportKey()
-        self.logger.info("MUST CREATE PSC GUID AND PUT INTO PROFILE")
-
+        self.profile['guid'] = str(uuid.uuid1())
+        self.logger.info("Node UUID: %s" % self.profile['guid'])
+        
         # (4) hook into cacheing back-end
         self.memcache = PelotonMemcache.getInstance(
                           self.config['domain.memcacheHosts'])
 
         # (5) hook into persistence back-ends
         
-        # (6) hook into message bus
-        
-        # (7) hook in the PB adapter and any others listed
+        # (6) hook in the PB adapter and any others listed
+        self.logger.info("Adapters list should be in config, not in code!")
         self._startAdapters()
         
-        # (8) Write to the generatorInterface to pass host:port of our 
+        # (7) Write to the generatorInterface to pass host:port of our 
         # twisted RPC interface
         self.generatorInterface.initGenerator(self.config['psc.bind'])
 
-        # (9)schedule grid-joining workflow to happen on reactor start
+        # (8)schedule grid-joining workflow to happen on reactor start
         #  -- this checks the domain cookie matches ours; quit if not.
 
-        # (10) Start any kernel plugins, e.g. scheduler, shell 
+        # (9) Start any kernel plugins, e.g. scheduler, shell 
         self._startPlugins()
 
-        # (11) ready to start!
+        # (10) ready to start!
         reactor.run()
         
         return 0
@@ -199,8 +200,11 @@ key."""
         if not pconf.has_key('class'):
             return
 
-        if pconf.has_key('enabled') and \
-            pconf['enabled'].upper() == 'TRUE':
+        if (pconf.has_key('enabled') and \
+            pconf['enabled'].upper() == 'TRUE' and \
+            plugin not in self.initOptions.disable) \
+            or \
+            plugin in self.initOptions.enable:
             self.logger.info("Starting plugin: %s" % plugin)
         else:
             self.logger.info("Plugin %s disabled" % plugin)
@@ -216,7 +220,7 @@ key."""
         else:
             pluginClass = getClassFromString(pconf['class'])
             plogger = logging.getLogger(plugin)
-            plogger.setLevel(self.initOptions.loglevel)
+            plogger.setLevel(getattr(logging,self.initOptions.loglevel))
             try:
                 pluginInstance = pluginClass(self, plugin, pconf, plogger)
                 pluginInstance.initialise()

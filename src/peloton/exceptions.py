@@ -27,3 +27,6 @@ plugins may wish to provide a little more specific exceptions. """
 
 class ServiceNotFoundError(PelotonError):
     pass
+
+class MessagingError(PelotonError):
+    pass

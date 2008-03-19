@@ -55,11 +55,29 @@
 	             </listitem>
 	             <listitem>
                        <para>
-                           Client-side libraries for AMPQ. &peloton; has chosen to use the
+                           Client-side libraries for AMQP. &peloton; has chosen to use the
                            <classname>py-amqplib</classname> library obtained from <ulink url='http://barryp.org/software/py-amqplib/'/>
                             and announced on <ulink url='http://www.nabble.com/Alternative-Python-AMQP-client-library-td14139740.html'>this page</ulink>.
                        </para>
 	             </listitem>
+				 <listitem>
+<!--
+				 	<para>
+				 		Client-side libraries for AMQP. &peloton; will be writing its own Twisted AMQP
+						protocol handler, but until then the QPID libraries are being made done with. Installation
+						is not entirely straight forward. Firstly download the Python QPID code from 
+						<urlink url='http://archive.apache.org/dist/incubator/qpid/M2-incubating/Python/qpid-1.0-incubating-M2-python-src.tar.gz'>this URL</ulink>.
+			 		</para>
+-->
+					<para>
+						Unzip and copy the <filename>python/qpid</filename> directory into the Python path (potentially your <filename>site-packages</filename> 
+						directory).
+					</para>
+					<para>
+						Now, in the directory to which you copied <filename>qpid</filename> make a directory called <filename>amqp_specs</filename>
+						into which you must place the spec file downloaded from <ulink url='https://jira.amqp.org/confluence/download/attachments/720900/amqp0-8.xml'>here</ulink>.
+					</para>
+				 </listitem>						
 	             <listitem>
 	                   <para>
 	                   	   <classname>PyCrypto</classname> and <classname>ezPyCrypto</classname>. The former is available from <ulink url='http://www.amk.ca/python/code/crypto.html'/> and 
@@ -200,9 +218,18 @@
                         <entry>(&tick;)</entry>
                         <entry>AMQP provider; any other provider conformant to the spec may also be used.</entry>
                     </row>
+					<!--
                     <row>
                         <entry>PyAMQPlib</entry>
                         <entry>0.3</entry>
+                        <entry>P</entry>
+                        <entry>&tick;</entry>
+                        <entry>AMQP interface library</entry>
+                    </row>
+					-->
+                    <row>
+                        <entry>Python-QPID</entry>
+                        <entry>1.0</entry>
                         <entry>P</entry>
                         <entry>&tick;</entry>
                         <entry>AMQP interface library</entry>

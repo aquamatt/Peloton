@@ -8,6 +8,6 @@
    
  [[backpack]]
    enabled=False
-   
- [[amqp]]
+
+ [[amqp-qpid]]
    enabled=True

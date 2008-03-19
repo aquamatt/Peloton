@@ -30,12 +30,12 @@ pscFolder=/tmp/psc
     storageNode=True
     storageBackend=peloton.plugins.backpack.BackPackZODB
     storageRoot=$pscFolder
-    
-  [[amqp]]
+       
+  [[amqp-qpid]]
     name=eventbus
-    comment=AMQP message bus interface
-    class=peloton.plugins.amqp.AMQPEventBus
-    enabled=True
+    comment=AMQP message bus interface (QPID)
+    class=peloton.plugins.amqpQpid.AMQPEventBus
+    enabled=False
     # plugin conf
     username=peloton_sys
-    password=pelotonica
+    password=pelotonica    

@@ -90,6 +90,10 @@ such directories with multiple instances of this option [default: %default]""",
     parser.add_option("--logdir", 
                       help="""Directory to which log files should be written. By setting this argument
 the logging-to-file system will be enabled.""")
+    parser.add_option("--disable",
+                      help="""Comma delimited list of plugins to prevent starting even if configuration has them enabled""")
+    parser.add_option("--enable",
+                      help="""Comma delimited list of plugins to start even if configuration has them disabled""")
     
     # If we need sub-groups of options:
     #group = OptionGroup(parser, 'Dangerous Options',
@@ -107,6 +111,15 @@ the logging-to-file system will be enabled.""")
         if sd not in sys.path:
             sys.path.append(sd)
 
+    if options.enable:
+        options.enable = options.enable.split(',')
+    else:
+        options.enable=[]
+    if options.disable:
+        options.disable = options.disable.split(',')
+    else:
+        options.disable=[]
+
     # determine the appropriate log-level for the root logger based
     # on supplied arguments.
     if options.loglevel:
@@ -117,7 +130,7 @@ the logging-to-file system will be enabled.""")
     try:
         exitCode = pscplatform.start(options, args)
     except:
-        logging.getLogger().exception('Untrapped error in PSC:')
+        logging.getLogger().exception('Untrapped error in PSC: ')
         exitCode = 99
         
     return exitCode

@@ -17,14 +17,11 @@ from peloton.worker import PelotonWorker
 from peloton.utils import chop
 from peloton.utils.config import PelotonConfig
 
-def initLogging(loglevel='ERROR', logdir='', logfile='', rootLoggerName='PSC', closeHandlers=False, toConsole=False):
+def initLogging(loglevel='ERROR', logdir='', logfile='', rootLoggerName='PSC', closeHandlers=False):
     """ Configure the logger for this PSC. By default no logging to
 file unless explicitly requested by setting logdir. If only logfile is set, no disk
 logging will occur. You must explicitly set logdir to '.' to enable disk logging to
 the current working directory. 
-
-Logging to stdout/err enabled if --nodetach is specified; otherwise logging to the 
-event bus only. 
 
 If closeHandlers==True all current handlers FOR THE ROOT LOGGER ONLY will be closed. 
 This is useful after a fork to reset the logger to a virgin state prior to re-configuring.
@@ -47,11 +44,10 @@ By default the console logger is not hooked up; set toConsole=True to enable.
         while logger.handlers:
             logger.removeHandler(logger.handlers[-1])
         
-    defaultLogFormatter = logging.Formatter("[%(levelname)s] %(asctime)-4s %(name)s : %(message)s")
-    
     logger.name=rootLoggerName
     logger.setLevel(loglevel)
 
+    defaultLogFormatter = logging.Formatter("[%(levelname)s] %(asctime)-4s %(name)s : %(message)s")
     if logdir:
         # removes empty elements so allows for logdir being empty
         filePath = os.sep.join([i for i in [logdir, logfile] if i])
@@ -59,10 +55,9 @@ By default the console logger is not hooked up; set toConsole=True to enable.
         fileHandler.setFormatter(defaultLogFormatter)
         logger.addHandler(fileHandler)
 
-    if toConsole:
-        logStreamHandler = logging.StreamHandler()
-        logStreamHandler.setFormatter(defaultLogFormatter)
-        logger.addHandler(logStreamHandler)            
+    logStreamHandler = logging.StreamHandler()
+    logStreamHandler.setFormatter(defaultLogFormatter)
+    logger.addHandler(logStreamHandler)            
 
     return logger
 
@@ -139,8 +134,7 @@ when requested. This is a two step process:
                         options.logdir, 
                         'generator.log',
                         'PSC-GEN', 
-                        True, 
-                        options.nodetach)
+                        True)
     
     logger.info("Generator started; pid = %d" % os.getpid())
     pin = os.fdopen(pipeFD, 'rt')
@@ -222,8 +216,7 @@ contain all the initialised PSC code which is quite different to the worker code
                         options.logdir, 
                         'psc.log',
                         'PSC', 
-                        True, 
-                        options.nodetach)
+                        True)
 
     pc = PelotonConfig(options)
     

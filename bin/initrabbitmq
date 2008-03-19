@@ -5,10 +5,12 @@ rabbitmqctl add_user peloton_sys pelotonica
 rabbitmqctl add_user peloton_client rethought
 rabbitmqctl map_user_vhost peloton_sys peloton
 rabbitmqctl map_user_vhost peloton_client peloton
-rabbitmqctl add_realm peloton /data/event
-rabbitmqctl add_realm peloton /data/core
-rabbitmqctl set_permissions peloton_sys peloton /data/event all
-rabbitmqctl set_permissions peloton_sys peloton /data/core all
-rabbitmqctl set_permissions peloton_client peloton /data/event read
-rabbitmqctl set_permissions peloton_client peloton /data/core read
 
+# when using plugins that understand realms
+#rabbitmqctl add_realm peloton /data/peloton
+#rabbitmqctl set_permissions peloton_sys peloton /data/peloton all
+#rabbitmqctl set_permissions peloton_client peloton /data/peloton read
+
+# when using the qpid plugin
+rabbitmqctl set_permissions peloton_sys peloton /data all
+rabbitmqctl set_permissions peloton_client peloton /data read
