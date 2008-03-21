@@ -9,6 +9,16 @@ bind=0.0.0.0:9100
 pscFolder=/tmp/psc
 
 [plugins]
+  # MESSAGE BUS MUST BE INITIALISED FIRST !!
+  [[amqp-qpid]]
+    name=eventbus
+    comment=AMQP message bus interface (QPID)
+    class=peloton.plugins.amqpQpid.AMQPEventBus
+    enabled=False
+    # plugin conf
+    username=peloton_sys
+    password=pelotonica    
+
   [[shell]]
     comment=An SSH interface to Peloton
     class=peloton.plugins.shell.PelotonShell
@@ -31,11 +41,3 @@ pscFolder=/tmp/psc
     storageBackend=peloton.plugins.backpack.BackPackZODB
     storageRoot=$pscFolder
        
-  [[amqp-qpid]]
-    name=eventbus
-    comment=AMQP message bus interface (QPID)
-    class=peloton.plugins.amqpQpid.AMQPEventBus
-    enabled=False
-    # plugin conf
-    username=peloton_sys
-    password=pelotonica    

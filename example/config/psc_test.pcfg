@@ -3,11 +3,13 @@
   ram=1024
   
 [plugins]
+ [[amqp-qpid]]
+   enabled=True
+
  [[shell]]
    enabled=True
    
  [[backpack]]
    enabled=False
 
- [[amqp-qpid]]
-   enabled=True
+   
