@@ -3,30 +3,30 @@
 # Copyright (c) 2007-2008 ReThought Limited and Peloton Contributors
 # All Rights Reserved
 # See LICENSE for details
-from peloton.utils import getClassFromString
-
 # ensure threading is OK with twisted
 from twisted.python import threadable
 threadable.init()
 
-from twisted.python.reflect import getClass
-from peloton.utils import getClassFromString
-
 import ezPyCrypto
 import logging
 import os
+import signal
+import time
 import uuid
 
+from twisted.python.reflect import getClass
 from twisted.internet import reactor
+from twisted.internet.task import LoopingCall
 from twisted.spread import pb
-from types import DictType
+
+import peloton.crypto as crypto
 from peloton.base import HandlerBase
 from peloton.persist.memcache import PelotonMemcache
 from peloton.utils import getClassFromString
 from peloton.utils import chop
 from peloton.utils import locateFile
-from peloton.utils.config import PelotonConfig
-from peloton.mapping import ServiceLoader, ServiceLibrary
+from peloton.mapping import ServiceLoader
+from peloton.mapping import RoutingTable
 from peloton.profile import PelotonProfile
 from peloton.exceptions import ConfigurationError
 from peloton.exceptions import PluginError
@@ -57,7 +57,6 @@ which the kernel can request a worker to be started for a given service."""
         self.plugins = {}
         self.profile = PelotonProfile()
         self.serviceLoader = ServiceLoader(self)
-        self.serviceLibrary = ServiceLibrary(self)
         
         # callables are plugin interfaces (pb.Referenceable) that 
         # can be requested by name by clients
@@ -72,17 +71,17 @@ The bootstrap routine is as follows:
     2.  Load the profile for this PSC
     3.  Generate this PSCs session keys and our UID
     4.  Connect to memcache
-    5.  Connect to the persistence back-end
-    6.  Start all the network protocol adapters
-    7.  Inform the worker generator as to the port on which the RPC
+    5.  Start all the network protocol adapters
+    6.  Inform the worker generator as to the port on which the RPC
         adapter has started.
-    8.  Schedule grid-joining workflow to start when the reactor starts
-    9.  Start kernel plugins
+    7.  Start kernel plugins
+    8.  Schedule signal handler installation
+    9.  Initialise routing table, schedule grid-joining workflow to 
+        start when the reactor starts
     10. Start the reactor
     
 The method ends only when the reactor stops.
 
-@todo: Workout the kernel plugin API and create a sample plugin
 """        
         # (1) read in the domain and grid key - all PSCs in a domain must have 
         # access to the same key file (or identical copy, of course)
@@ -90,7 +89,7 @@ The method ends only when the reactor stops.
             self._readKeyFile(self.config['domain.keyfile'])
         self.gridCookie, self.gridKey = \
             self._readKeyFile(self.config['grid.keyfile'])
-      
+
         # (2) Load the PSC profile
         # First try to load from a profile section in the main config
         try:
@@ -121,21 +120,41 @@ The method ends only when the reactor stops.
         self.memcache = PelotonMemcache.getInstance(
                           self.config['domain.memcacheHosts'])
 
-        # (5) hook into persistence back-ends
-        
-        # (6) hook in the PB adapter and any others listed
+        # (5) hook in the PB adapter and any others listed
         self.logger.info("Adapters list should be in config, not in code!")
         self._startAdapters()
-        
-        # (7) Write to the generatorInterface to pass host:port of our 
+        self.profile['ipaddress'] = self.config['psc.bind_interface']
+        self.profile['port'] = self.config['psc.bind_port']        
+
+        # (6) Write to the generatorInterface to pass host:port of our 
         # twisted RPC interface
         self.generatorInterface.initGenerator(self.config['psc.bind'])
 
-        # (8)schedule grid-joining workflow to happen on reactor start
-        #  -- this checks the domain cookie matches ours; quit if not.
-
-        # (9) Start any kernel plugins, e.g. scheduler, shell 
+        # (7) Start any kernel plugins, e.g. message bus, shell 
         self._startPlugins()
+
+        # (8) Schedule signal handler installation
+        class ClosedownInterruptHandler(object):
+            def __init__(self, kernel):
+                self.kernel = kernel
+            def __call__(self, num, frame):
+                """ Placed as the signal handler to trap SIGINT etc and call server.stopReactor to 
+            get a neat closedown"""
+                # the delay lets the interrupt handler clear out the way.
+                # not sure of exact details, but horrible exceptions occur if not!
+                reactor.callLater(0.1, self.kernel.closedown)
+        
+        # Install signal handlers to ensure clean closedown of server.
+        cih = ClosedownInterruptHandler(self)
+        reactor.callWhenRunning(signal.signal, signal.SIGINT, cih)
+        reactor.callWhenRunning(signal.signal, signal.SIGTERM, cih)         
+
+        # (9) Initialise the routing table and schedule grid-joining 
+        #     workflow to happen on reactor start
+        #  -- this checks the domain cookie matches ours; quit if not.
+        self.routingTable = RoutingTable(self)
+        self.domainManager = DomainManager(self)
+        reactor.callWhenRunning(self.domainManager.publishProfile)
 
         # (10) ready to start!
         reactor.run()
@@ -157,15 +176,18 @@ key."""
                         break
                 while True:
                     l = o.readline()
+                    if not l:
+                        raise ConfigurationError()
                     aKey = aKey + l
                     if l.startswith("<EndPycryptoKey>"):
                         break
-                key =  ezPyCrypto.key(keyobj=aKey)
+                key =  ezPyCrypto.key()
+                key.importKey(aKey)
                 o.close()
             else:
-                raise ConfigurationError("Domain key file is unreadable, does not exist or is corrupted: %s" % keyfile)
+                raise ConfigurationError("Key file is unreadable, does not exist or is corrupted: %s" % keyfile)
         except:
-            raise ConfigurationError("Domain key file is unreadable or does not exist: %s" % keyfile)
+            raise ConfigurationError("Key file is unreadable, does not exist or is corrupted: %s" % keyfile)
 
         return(cookie, key)
 
@@ -188,6 +210,7 @@ key."""
         pluginConfs = self.config['psc.plugins']
         pluginNames = pluginConfs.keys()
         # iterate over each plugin
+        self.logger.info("@todo: add an optional startPos integer to profiles to sort for startup.")
         for plugin in pluginNames:
             self.startPlugin(plugin)
     
@@ -242,7 +265,8 @@ key."""
             raise PluginError("Invalid plugin: %s" % plugin)
             
     def _stopPlugins(self):
-        for p in self.plugins.keys():
+        ## I realise order is not preserved here... 
+        for p in self.plugins.keys()[::-1]:
             self.stopPlugin(p)
 
     def _startAdapters(self):
@@ -253,7 +277,7 @@ hooks into the reactor. It is passed the entire config stack
         for adapter in PelotonKernel.__ADAPTERS__:
             cls = getClassFromString(adapter)
             _adapter = cls(self)
-            self.adapters[adapter] = _adapter
+            self.adapters[_adapter.name] = _adapter
             _adapter.start(self.config, self.initOptions)
     
     def _stopAdapters(self):
@@ -288,4 +312,168 @@ kernel plugins may publish callable interfaces. """
         else:
             del(self.callables[name])
             self.logger.info("De-Registering interface: %s" % name)
+
+from peloton.events import MethodEventHandler
+class DomainManager(object):
+    """ Wrapper for communications over the domain_control channel
+on the event bus. This manages:
+
+    - notifying the mesh of startup/shutdown and processing such 
+      messages from other nodes
+    - monitoring the domain command channel for instructions such
+      as 'closedown', 'restart' etc.
+"""
+    def __init__(self, kernel):
+        self.kernel = kernel
+        self.eventBus = self.kernel.plugins['eventbus']
+        self._setHandlers()
+
+        # dictionary holding cookies for the command processor
+        # this is purged every so often by the reactor task
+        self.commandCookies={}
+        LoopingCall(self._purgeCommandCookies).start(120, False)
+
+    def publishProfile(self):
+        """ Call to publish our own profile over the bus """
+        self.eventBus.fireEvent(key="psc.presence", 
+                                exchange="domain_control", 
+                                myDomainCookie=self.kernel.domainCookie,
+                                profile=self.kernel.profile)
+
+    def receivePresenceNotification(self, msg, exch, key, ctag):
+        """ Receiving end of a publishProfile. Send a message back
+to this node on its private channel psc.<guid>.init"""
+        if msg['profile']['guid'] == self.kernel.profile['guid']:
+            # don't process messages from self
+            return
         
+        ### Reject anyone with an invalid cookie.
+        if msg['myDomainCookie'] != self.kernel.domainCookie:
+            self.eventBus.fireEvent(key="psc.%s.init" % msg['profile']['guid'],
+                                    exchange="domain_control",
+                                    INVALID_COOKIE = True)
+            return
+        
+        if msg['profile']['guid'] != msg['sender_guid']:
+            self.eventBus.fireEvent(key="psc.%s.init" % msg['profile']['guid'],
+                                    exchange="domain_control",
+                                    GUID_MISMATCH = True)
+            return
+        ###
+
+        self.kernel.logger.info("Received profile from node: %s" % msg['profile']['guid'])
+        self.eventBus.fireEvent(key="psc.%s.init" % msg['profile']['guid'],
+                                exchange="domain_control",
+                                profile=self.kernel.profile)
+
+    def receiveNodeProfile(self, msg, exch, key, ctag):
+        print("Profile response from node %s" % msg['sender_guid'])
+        print(msg)
+        if msg.has_key("INVALID_COOKIE"):
+            self.kernel.logger.error("Cannot join domain: Invalid cookie")
+            self.kernel.closedown()
+        elif msg.has_key("GUID_MISMATCH"):
+            self.kernel.logger.erro("Cannot join domain: profile GUID and sender GUID mis-match")
+            self.kernel.closedown()
+
+    def commandProcessor(self, msg, exch, key, ctag):
+        """ Processes domain mesh control signals such as:
+        
+    - MESH_CLOSEDOWN
+    - NOOP (a special debug-only command that does nothing)
+
+Clearly we wish only to accept these commands from valid nodes
+so the command and its arguments are encrypted as follows:
+
+    - A dict is constructed:
+    - key 'cookie' is a random key
+    - key 'time' is the time of issue
+    - remaining keys are the 'command' and 'args'
+    - the domain public key is used to encrypt the dict
+    - Upon receipt all nodes decrypt and obtain the cookie.
+    - Any command with issue time > 30 seconds ago is discarded
+    - Any command with issue time < 30 second and a cookie that
+      is found in the command cookie cache for that host is discarded
+    - If command still valid, it is executed.
+    
+The key cache is flushed periodically of all keys for commands issued
+more than 30 seconds ago.
+
+A man in the middle may capture the encrypted packet but cannot re-issue
+as the key will be deemed a repeat or too old. Without the
+domain key he cannot decrypt the command or encrypt his own.
+"""
+        sender = msg['sender_guid']
+        command = crypto.decrypt(msg['command'], self.kernel.domainKey)
+        now = time.time()
+        if command['time']+30 < now:
+            self.kernel.logger.debug("Out of date command received.")
+            return
+        
+        k = "%s%s" % (sender, command['cookie'])
+        if k in self.commandCookies.keys():
+            self.kernel.logger.debug("Repeat command received.")
+            return
+        
+        self.commandCookies[k] = now
+        
+        if command['command'] == 'MESH_CLOSEDOWN':
+            # call later to allow the remaining events
+            # to be processed otherwise there can be a messy
+            # shutdown...
+            reactor.callLater(0.01,self.kernel.closedown)
+        
+        elif command['command'] == 'NOOP':
+            self.kernel.logger.debug("NOOP Called on domain_control")
+            
+    def sendCommand(self, command, *args):
+        """ Send a command in the manner described in commandProcessor. """
+        now = time.time()
+        msg = {'command':command, 
+               'args':args,
+               'cookie':crypto.makeCookie(20),
+               'time':now }
+        ct = crypto.encrypt(msg, self.kernel.domainKey)
+        self.eventBus.fireEvent(key="psc.command",
+                                exchange="domain_control",
+                                command=ct)
+        
+        # special debug condition - tests the security mechanism
+        if command=='NOOP':
+            reactor.callLater(5, self.eventBus.fireEvent, key="psc.command",
+                                exchange="domain_control",
+                                command=ct)
+
+            reactor.callLater(31, self.eventBus.fireEvent, key="psc.command",
+                                exchange="domain_control",
+                                command=ct)
+
+    def _purgeCommandCookies(self):
+        """ Called from a reactor task loop, this simply purges the
+cookie jar of cookies > 30 seconds old. """
+        now = time.time()
+        n=0
+        for k,v in self.commandCookies.items():
+            if v+30<now:
+                del(self.commandCookies[k])
+                n+=1
+        if n:
+            self.kernel.logger.debug("Purging command cookies (%d)" % n)
+    
+    def _setHandlers(self):
+        """ Register for all the events we are interested in. """
+        # receive broadcast presence notifications here
+        self.eventBus.register("psc.presence",
+               MethodEventHandler(self.receivePresenceNotification),
+               "domain_control")
+        
+        # private channel on which this node can be contacted to
+        # initialise with other nodes' profiles etc.
+        self.eventBus.register("psc.%s.init" % self.kernel.profile['guid'],
+               MethodEventHandler(self.receiveNodeProfile),
+               "domain_control")
+
+        # the command channel
+        self.eventBus.register("psc.command",
+                MethodEventHandler(self.commandProcessor),
+                "domain_control" )

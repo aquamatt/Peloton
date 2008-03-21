@@ -100,7 +100,8 @@ the SSH terminal or similar. All methods prefixed public_ are available
 for use in such tools."""
 
     def public_shutdown(self):
-        self.__kernel__.closedown()
+#        self.__kernel__.closedown()
+        self.__kernel__.domainManager.sendCommand('MESH_CLOSEDOWN')
         
     def public_startPlugin(self, plugin):
         self.__kernel__.startPlugin(plugin)
@@ -122,4 +123,7 @@ for use in such tools."""
     
     def public_launchService(self, serviceName):
         self.__kernel__.launchService(serviceName)
+        
+    def public_noop(self):
+        self.__kernel__.domainManager.sendCommand('NOOP')
         

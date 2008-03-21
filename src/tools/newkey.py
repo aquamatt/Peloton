@@ -10,24 +10,21 @@
 """
 import os
 import sys
-import random
-import ezPyCrypto
 
 import peloton
+from peloton.crypto import makeCookie
+from peloton.crypto import newKey
 from peloton.utils.structs import FilteredOptionParser
 from peloton.utils import chop
 
 tokenlength = 50
 keylength = 512
-tokenspace = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 __VERSION__ = "0.1"
 
 def makeKeyFile(keyfile, toConsole=False):
-    cookie = "".join([tokenspace[random.randrange(0,len(tokenspace))] 
-                      for i in xrange(tokenlength)])
-    
-    key = ezPyCrypto.key(keylength)
-    contents = cookie+"\n"+key.exportKeyPrivate()
+    cookie = makeCookie(tokenlength)
+    key = newKey(keylength, True)
+    contents = cookie+"\n"+key
     if toConsole:
         print(contents)
     else:

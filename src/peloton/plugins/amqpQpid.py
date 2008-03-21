@@ -11,7 +11,6 @@ from peloton.events import AbstractEventHandler
 from peloton.exceptions import MessagingError
 from peloton.exceptions import ConfigurationError
 from twisted.internet import reactor
-from twisted.internet import task
 from twisted.internet.defer import DeferredQueue
 
 import qpid
@@ -25,19 +24,20 @@ import sys
 import os
 import time
 
-class DebugEventHandler(AbstractEventHandler):
-    def __init__(self, logger):
-        self.logger = logger
-        
-    def eventReceived(self, msg, exchange='', key='', ctag=''):
-        self.logger.info("%s: %s.%s | %s" % (ctag, exchange, key, str(msg)))
-
 class AMQPEventBus(PelotonPlugin,AbstractEventBusPlugin):
     """Uses Python-QPID to hook into the AMQP event bus, most probably
 provided by RabbitMQ but potentially any provider. 
 
 The QPID is not Twisted based and provides a blocking handler 
 for receiving messages off the bus. 
+
+This plugin needs to be superceded by one based on a Twisted AMQP 
+protocol handler for greater efficiency in this environment. As it
+stands one thread is used per routing_key being listened for and in
+the event that subscribers do not de-register, threads will be consumed
+at an un-wholesome rate.
+
+@todo - purging of threads with no real listeners behind them?
 """
     def initialise(self):
         self.vhost = self.kernel.config['grid.messagingVHost']
@@ -87,32 +87,12 @@ for receiving messages off the bus.
         for x,t in exchanges:
             self.channel.exchange_declare(exchange=x, type=t, auto_delete=True)
 
-        reactor.callLater(2, self.test)
-
     def stop(self):
         for _, _, q in self.ctagByQueue.values():
-            q.close()
-
-    def test(self):
-        self.logger.debug("Starting test")
-        self.register("test.matthew.#", DebugEventHandler(self.logger), 'events')
-        reactor.callLater(6, self.test2)
-        try:
-            self.register("test.#", DebugEventHandler(self.logger), 'events')
-            task.LoopingCall(self.tick).start(2)
-        except Exception, ex:
-            self.logger.exceptioN("Error in test")
-            sys.stdout.flush()
-
-    def test2(self):
-        sys.stdout.flush()
-        dh = DebugEventHandler(self.logger)
-        self.register("manky.skanky.#", dh, 'events')
-        reactor.callLater(4, self.deregister, dh)
-        
-    def tick(self):
-        self.fireEvent('test.matthew.time', 'events', text='tick tock')
-        self.fireEvent('manky.skanky.hello', 'events', text='Hello World')
+            try:
+                q.close()
+            except:
+                pass
 
     def register(self, key, handler, exchange='events'):
         """ Register to receive events from the specified exchange (default 'events')
@@ -172,11 +152,11 @@ processing in the main Twisted event loop. """
                 except Closed:
                     # listener has been stopped
                     break
-                except Exception:
-                    self.logger("Qlistener forced close on %s" % ctag)
+                except:
+                    self.logger.error("Qlistener forced close on %s" % ctag)
                     break
-                
                 reactor.callFromThread(mq.put, v)
+
         mt = threading.Thread(target=_qListener, args=(self.mqueue,))
         mt.setDaemon(True)
         mt.start()

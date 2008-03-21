@@ -105,28 +105,45 @@ the launch requirements of this service. """
         for psc in self.pscList:
             self.pscsByHost[psc.host] = psc
         
-class RemotePSC(object):        
-    """ Container for information relating to a PSC """
-    def __init__(self, pscRef, profile, services=[]):
-          self.ref = pscRef
-          self.profile = profile
-          self.services = services
+class PSCProxy(object):        
+    """ Base class for PSC proxies through which the routing
+table can exchange messages with PSCs. A proxy is required because
+the PSC may be the local process, a PSC in the domain or a PSC in
+another domain on the grid.
+"""
+    def __init__(self, profile, services=[]):
+        self.profile = profile
+        self.services = services
+        
+class RemotePSCProxy(PSCProxy):        
+    """ Proxy for a PSC that is running on the same domain as this 
+node."""
+    def __init__(self, profile, services=[]):
+        PSCProxy.__init__(self, profile, services)
           
-class ServiceLibrary(object):
+class LocalPSCProxy(PSCProxy):
+    """ Proxy for this 'local' PSC. """
+    def __init__(self, kernel):
+        PSCProxy.__init__(self, kernel.profile)          
+
+class RoutingTable(object):
     """ Maintain a live database of all PSCs in the domain complete with their
 profiles, the list of all services that they run and a library of all service profiles. """
     def __init__(self, kernel):
         self.kernel = kernel
-        self.localProfile = kernel.profile
-        self.services={}
         self.pscs=[]
         self.pscByHost={}
+        self.pscByGUID={}
+
+        self.selfproxy = LocalPSCProxy(kernel)
+        self.addPSC(self.selfproxy)
     
-    def addPSC(self, remotePsc):
-        self.pscs.append(remotePsc)
-        self.pscByHost[remotePsc.profile.hostname] = remotePsc
-        for service in remotePsc.services:
-            self.addService(service)
+    def addPSC(self, pscProxy):
+        self.pscs.append(pscProxy)
+        self.pscByHost[pscProxy.profile['ipaddress']] = pscProxy
+        self.pscByGUID[pscProxy.profile['guid']] = pscProxy
+#        for service in pscProxy.services:
+#            self.addService(service)
     
     def addService(self, profile):
         self.services[profile.name] = profile

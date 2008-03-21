@@ -143,7 +143,12 @@ when requested. This is a two step process:
     
     # Now enter the loop which spawns worker processes
     while True:
-        l = chop(pin.readline())
+        try:
+            l = chop(pin.readline())
+        except KeyboardInterrupt:
+            logger.debug("@todo: Generator: Needs a clean closedown method")
+            pin.close()
+            break
         if l=='STOP':
             logger.info("Generator closing down")
             pin.close()
@@ -167,7 +172,8 @@ when requested. This is a two step process:
             if pid == 0: # worker process
 #                os.close(pipeFD)
                 return PelotonWorker(host, port, options, args).start() 
-        
+    return 0
+
 class GeneratorInterface(object):
     """ Interface through which a PelotonKernel can communicate
 with the worker generator. PelotonKernel is intended not to have

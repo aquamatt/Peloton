@@ -14,6 +14,18 @@ The message format is simple: a pickled dictionary is sent over the bus
 with one mandatory key (sender_guid) and an arbitrary number
 of arbitrary keys. These are de-pickled before being passed to registered
 event handlers.
+
+This module defines three ready-made event handlers of use:
+
+  - The QueueEventHandler extends the Python Queue class. Events
+    are received and placed on the queue so that other code can
+    simply get() them off as required.
+    
+  - The MethodEventHandler reflects the call through to another method
+    with which it was initialised.
+    
+  - For debugging, the DebugEventHandler simply dumps the message to the 
+    logger with which it was initialised.
 """
 
 class AbstractEventBusPlugin(object):
@@ -41,4 +53,36 @@ class AbstractEventHandler(object):
     def eventReceived(self, msg, exchange='', routing_key='', ctag=''):
         """ Handle message 'msg'. """
         raise NotImplementedError
+    
+class DebugEventHandler(AbstractEventHandler):
+    """ Dump message to the logger with which the handler is initialised. """
+    def __init__(self, logger):
+        self.logger = logger
+        
+    def eventReceived(self, msg, exchange='', key='', ctag=''):
+        self.logger.info("%s: %s.%s | %s" % (ctag, exchange, key, str(msg)))
 
+
+class MethodEventHandler(AbstractEventHandler):
+    """Initialise with a callable that accepts the
+four arguments msg, exchange, key and ctag. This handler
+will simply pass the call through. """
+    def __init__(self, f):
+        self.f = f
+        
+    def eventReceived(self, msg, exchange='', key='', ctag=''):
+        self.f(msg, exchange, key, ctag)
+        
+from Queue import Queue        
+class QueueEventHandler(AbstractEventHandler, Queue):
+    """Queue implementation that is a Peloton event handler;
+events will be placed on the Queue for subsequent consumption.
+All the benefits of queue, all the benefits of an event handler!
+Use to handle events asynchronously or as a place from which 
+multiple threads can pick events off in turn.
+"""
+    def __init__(self, *args, **kwargs):
+        Queue.__init__(self, *args, **kwargs)
+        
+    def eventReceived(self, msg, exchange='', key='', ctag=''):
+        self.put((msg, exchange, key, ctag))

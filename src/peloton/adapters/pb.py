@@ -35,6 +35,8 @@ alternative port should its chosen target be bound by another application.
             try:
                 self.connection = reactor.listenTCP(port, svr, interface=interface)
                 configuration['psc.bind'] = "%s:%d" % (interface, port)
+                configuration['psc.bind_interface'] = interface
+                configuration['psc.bind_port'] = port
                 self.enabled = True
                 break
             except CannotListenError:

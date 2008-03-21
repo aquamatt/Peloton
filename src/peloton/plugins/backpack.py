@@ -9,24 +9,29 @@ mechanism.
 
 The back-end storage system is pluggable but will initially use
 ZODB. Each ZODB is only for the node to which it connects; no ZEO 
-is used here. Instead, a group of BackPack nodes each have their own
-store and manage their own region of the DHT namespace. There is only
-one BackPack storage node per physical host.
+is used here. 
 
-Clients, i.e. any Peloton node not providing BackPack services, make a request
-of any BackPack node for keys. They clients cache all results and, subsequently,
-if a change is made to a key an invalidation message is propagated to the 
-clients. 
+Instead, a master BackPack node has its own store and manages the 
+ZODB database. There is optionaly a slave node on a different 
+host.
 
-When a write is made the following steps occur:
+There may optionaly be a number of level 1 (L1) caches connected to 
+the master. These cache reads and pass through writes. A set of L1 
+caches can lighten the load on the master immensley.
 
-  - a hash of the key is computed
-  - the 'difference' between key hash and all BackPack node hashes is computed
-  - the node for which there was the smallest difference is selected to store
-    this key
-  - the node stores/updates the key and issues invalidation messages to all
-    interested parties.
+Clients run the same code as the L1 cache but do not announce themselves
+publicly. They read/write either to a randomly chosen L1 cache or 
+direct to the master.
 
+All writes are reflected to the slave node and this node will become
+autoritative in the event of a failure of the master.
+
+With this scheme it is hoped to have a simple yet robust system capable
+of reasonable scaling provided the system is predominantly read-heavy.
+
+Acceptable write-ratios have to be determined through benchmarking. In
+the event of issues a more sophisticated system where the namespace
+is manually or dynamicaly chunked (as in a DHT) would be required.
 """
 from peloton.plugins import PelotonPlugin
 from peloton.utils import getClassFromString
