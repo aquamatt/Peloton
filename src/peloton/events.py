@@ -27,14 +27,97 @@ This module defines three ready-made event handlers of use:
   - For debugging, the DebugEventHandler simply dumps the message to the 
     logger with which it was initialised.
 """
+from peloton.exceptions import MessagingError
+
+class AbstractEventHandler(object):
+    """ Base class for all event handlers. """
+    def eventReceived(self, msg, exchange='', key='', ctag=''):
+        """ Handle message 'msg'. """
+        raise NotImplementedError
+    
+
+class EventDispatcher(object):
+    """ The event dispatcher is a static component of the Peloton kernel
+which performs two roles:
+
+    1. It provides an INTERNEL event routing mechanism for coupling
+       components within a kernel. Such events are wholly separate
+       from the external messaging bus.
+       
+    2. It provides an interface to the EXTERNAL event bus provided
+       by the plugin which registers itself under the name 'eventbus'.
+       
+Thus one interface manages all messaging and internal messages are 
+completely isolated from the external bus.
+"""
+
+    def __init__(self, kernel):
+        self.kernel = kernel
+        self.eventKeys = {}
+        self.handlers={}
+        
+    def joinExternalBus(self):
+        """ Called once the plugins have been loaded. """
+        externalBus = self.kernel.plugins['eventbus']
+        setattr(self, 'register', externalBus.register)
+        setattr(self, 'deregister', externalBus.deregister)
+        setattr(self, 'fireEvent', externalBus.fireEvent)
+        
+    def registerInternal(self, key, handler):
+        """ Register handler for internal events keyed on 'key'. 
+Handler must be an instance of AbstractEventHandler"""
+        if not isinstance(handler, AbstractEventHandler):
+            raise MessagingError("Internal subscription to %s attempted with invalid handler: %s" % (key, str(handler)))
+        try:
+            handlers = self.eventKeys[key]
+            if handler not in handlers:
+                handlers.append(handler)
+        except KeyError:
+            self.eventKeys[key] = [handler]
+
+        try:
+            keys = self.handlers[handler]
+            if key not in keys:
+                keys.append(key)
+        except KeyError:
+            self.handlers[handler] = [key]
+        
+            
+    def deregisterInternal(self, handler):
+        """ De-register this handler for internal events. """
+        eventKeys = self.handlers[handler]
+        
+        for key in eventKeys:
+            self.eventKeys[key].remove(handler)
+            # if this was the one and only listener,
+            # remove the entry in the keys list
+            if not self.eventKeys[key]:
+                del(self.eventKeys[key])
+                
+        del(self.handlers[handler])
+    
+    def fireInternalEvent(self, key, **kargs):
+        """ Fire internal event which is a dictionary composed
+of the kwargs of this method. """
+        try:
+            handlers = self.eventKeys[key]
+            for handler in handlers:
+                handler.eventReceived(kargs, None, key)
+        except KeyError:
+            # no-one interested in this event
+            pass
 
 class AbstractEventBusPlugin(object):
     """ Define all methods that the plugins must provide
-to be a valid profider for the dispatcher. """
+to be a valid profider for the dispatcher. 
+"""
     def register(self, key, handler, exchange):
         """ Register 'handler' for events broadcast on 'exchange'
 with routing key/topic 'key'. Handler is an instance of 
-peloton.events.AbstractEventHandler."""
+peloton.events.AbstractEventHandler.
+
+An implementation of the Event Bus MUST permit a single handler
+to be registered for multiple events with multiple calls to register."""
         raise NotImplementedError
     
     def deregister(self, handler):
@@ -48,12 +131,6 @@ specified routing key. All other keyword arguments are made
 into the event message. """
         raise NotImplementedError
 
-class AbstractEventHandler(object):
-    """ Base class for all event handlers. """
-    def eventReceived(self, msg, exchange='', routing_key='', ctag=''):
-        """ Handle message 'msg'. """
-        raise NotImplementedError
-    
 class DebugEventHandler(AbstractEventHandler):
     """ Dump message to the logger with which the handler is initialised. """
     def __init__(self, logger):

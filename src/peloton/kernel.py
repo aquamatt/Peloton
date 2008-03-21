@@ -22,6 +22,7 @@ from twisted.spread import pb
 
 import peloton.crypto as crypto
 from peloton.base import HandlerBase
+from peloton.events import EventDispatcher
 from peloton.persist.memcache import PelotonMemcache
 from peloton.utils import getClassFromString
 from peloton.utils import chop
@@ -58,7 +59,7 @@ which the kernel can request a worker to be started for a given service."""
         self.plugins = {}
         self.profile = PelotonProfile()
         self.serviceLoader = ServiceLoader(self)
-        
+        self.dispatcher = EventDispatcher(self)
         # callables are plugin interfaces (pb.Referenceable) that 
         # can be requested by name by clients
         self.callables = {}
@@ -131,8 +132,10 @@ The method ends only when the reactor stops.
         # twisted RPC interface
         self.generatorInterface.initGenerator(self.config['psc.bind'])
 
-        # (7) Start any kernel plugins, e.g. message bus, shell 
+        # (7) Start any kernel plugins, e.g. message bus, shell and
+        #     then instruct the dispatcher to get the external bus
         self._startPlugins()
+        self.dispatcher.joinExternalBus()
 
         # (8) Schedule signal handler installation
         class ClosedownInterruptHandler(object):
@@ -326,7 +329,7 @@ on the event bus. This manages:
 """
     def __init__(self, kernel):
         self.kernel = kernel
-        self.eventBus = self.kernel.plugins['eventbus']
+        self.dispatcher = self.kernel.dispatcher
         self._setHandlers()
 
         # dictionary holding cookies for the command processor
@@ -336,7 +339,7 @@ on the event bus. This manages:
 
     def publishProfile(self):
         """ Call to publish our own profile over the bus """
-        self.eventBus.fireEvent(key="psc.presence", 
+        self.dispatcher.fireEvent(key="psc.presence", 
                                 exchange="domain_control", 
                                 myDomainCookie=self.kernel.domainCookie,
                                 profile=self.kernel.profile)
@@ -350,20 +353,20 @@ to this node on its private channel psc.<guid>.init"""
         
         ### Reject anyone with an invalid cookie.
         if msg['myDomainCookie'] != self.kernel.domainCookie:
-            self.eventBus.fireEvent(key="psc.%s.init" % msg['profile']['guid'],
+            self.dispatcher.fireEvent(key="psc.%s.init" % msg['profile']['guid'],
                                     exchange="domain_control",
                                     INVALID_COOKIE = True)
             return
         
         if msg['profile']['guid'] != msg['sender_guid']:
-            self.eventBus.fireEvent(key="psc.%s.init" % msg['profile']['guid'],
+            self.dispatcher.fireEvent(key="psc.%s.init" % msg['profile']['guid'],
                                     exchange="domain_control",
                                     GUID_MISMATCH = True)
             return
         ###
 
         self.kernel.logger.info("Received profile from node: %s" % msg['profile']['guid'])
-        self.eventBus.fireEvent(key="psc.%s.init" % msg['profile']['guid'],
+        self.dispatcher.fireEvent(key="psc.%s.init" % msg['profile']['guid'],
                                 exchange="domain_control",
                                 profile=self.kernel.profile)
 
@@ -389,9 +392,13 @@ so the command and its arguments are encrypted as follows:
     - A dict is constructed:
     - key 'cookie' is a random key
     - key 'time' is the time of issue
+    - key 'issuer' is the GUID of the issuer: must match envelope
     - remaining keys are the 'command' and 'args'
     - the domain public key is used to encrypt the dict
     - Upon receipt all nodes decrypt and obtain the cookie.
+    - Any command where the message envelope sender GUID does not
+      match the 'issuer' field in the encrypted command is
+      discarded
     - Any command with issue time > 30 seconds ago is discarded
     - Any command with issue time < 30 second and a cookie that
       is found in the command cookie cache for that host is discarded
@@ -401,19 +408,25 @@ The key cache is flushed periodically of all keys for commands issued
 more than 30 seconds ago.
 
 A man in the middle may capture the encrypted packet but cannot re-issue
-as the key will be deemed a repeat or too old. Without the
-domain key he cannot decrypt the command or encrypt his own.
+as the cookie will indicate a repeat or the issue time will be too far in
+the past. Without the domain key he cannot decrypt the command or encrypt 
+his own commands.
 """
-        sender = msg['sender_guid']
+        envelopeSender = msg['sender_guid']
         command = crypto.decrypt(msg['command'], self.kernel.domainKey)
+        sender = command['issuer']
+        
+        if envelopeSender != sender:
+            self.kernel.logger.warning("Potential intruder: domain command issued with mis-match sender GUID")
         now = time.time()
+        
         if command['time']+30 < now:
-            self.kernel.logger.debug("Out of date command received.")
+            self.kernel.logger.warning("Potential intruder: Out of date command received.")
             return
         
         k = "%s%s" % (sender, command['cookie'])
         if k in self.commandCookies.keys():
-            self.kernel.logger.debug("Repeat command received.")
+            self.kernel.logger.warning("Potential intruder: Repeat command received.")
             return
         
         self.commandCookies[k] = now
@@ -433,19 +446,20 @@ domain key he cannot decrypt the command or encrypt his own.
         msg = {'command':command, 
                'args':args,
                'cookie':crypto.makeCookie(20),
-               'time':now }
+               'time':now,
+               'issuer':self.kernel.profile['guid'] }
         ct = crypto.encrypt(msg, self.kernel.domainKey)
-        self.eventBus.fireEvent(key="psc.command",
+        self.dispatcher.fireEvent(key="psc.command",
                                 exchange="domain_control",
                                 command=ct)
         
         # special debug condition - tests the security mechanism
         if command=='NOOP':
-            reactor.callLater(5, self.eventBus.fireEvent, key="psc.command",
+            reactor.callLater(5, self.dispatcher.fireEvent, key="psc.command",
                                 exchange="domain_control",
                                 command=ct)
 
-            reactor.callLater(31, self.eventBus.fireEvent, key="psc.command",
+            reactor.callLater(31, self.dispatcher.fireEvent, key="psc.command",
                                 exchange="domain_control",
                                 command=ct)
 
@@ -464,17 +478,17 @@ cookie jar of cookies > 30 seconds old. """
     def _setHandlers(self):
         """ Register for all the events we are interested in. """
         # receive broadcast presence notifications here
-        self.eventBus.register("psc.presence",
+        self.dispatcher.register("psc.presence",
                MethodEventHandler(self.receivePresenceNotification),
                "domain_control")
         
         # private channel on which this node can be contacted to
         # initialise with other nodes' profiles etc.
-        self.eventBus.register("psc.%s.init" % self.kernel.profile['guid'],
+        self.dispatcher.register("psc.%s.init" % self.kernel.profile['guid'],
                MethodEventHandler(self.receiveNodeProfile),
                "domain_control")
 
         # the command channel
-        self.eventBus.register("psc.command",
+        self.dispatcher.register("psc.command",
                 MethodEventHandler(self.commandProcessor),
                 "domain_control" )

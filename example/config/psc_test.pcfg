@@ -12,4 +12,8 @@
  [[backpack]]
    enabled=False
 
+ [[bambi]]
+   comment=Bambi for testing ONLY!!
+   class=peloton.plugins.bambi.BambiPlugin
+   enabled=False
    

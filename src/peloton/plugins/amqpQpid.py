@@ -112,26 +112,35 @@ with all messages to be handled by a peloton.events.AbstractEventHandler instanc
             self._startListener(ctag, q)
         else:
             ctag, qname, _ = self.ctagByQueue[queue]
-        
-        self.registeredHandlers[handler] = (exchange, key, ctag, qname)
+
+        record = (exchange, key, ctag, qname)
+        try:
+            queues = self.registeredHandlers[handler]
+            if record not in queues:
+                queues.append(record)
+        except KeyError:
+            self.registeredHandlers[handler]=[record]
 
         try:
-            self.handlersByCtag[ctag].append(handler)
+            handlers = self.handlersByCtag[ctag]
+            if handler not in handlers:
+                handler.append(handler)
         except:
             self.handlersByCtag[ctag] = [handler]
         
         
     def deregister(self, handler):
         """ Remove this handler from all listened for queues """
-        exchange, key, ctag, qname = self.registeredHandlers[handler]
-        queue = "%s.%s" % (exchange,key)
-        self.handlersByCtag[ctag].remove(handler)
-        del(self.registeredHandlers[handler])
-        if not self.handlersByCtag[ctag]:
-            self.channel.queue_delete(queue=qname)
-            del(self.handlersByCtag[ctag])
-            _, _, q = self.ctagByQueue[queue]
-            q.close()
+        for exchange, key, ctag, qname in self.registeredHandlers[handler]:
+            queue = "%s.%s" % (exchange,key)
+            self.handlersByCtag[ctag].remove(handler)
+            del(self.registeredHandlers[handler])
+            if not self.handlersByCtag[ctag]:
+                self.channel.queue_delete(queue=qname)
+                del(self.handlersByCtag[ctag])
+                _, _, q = self.ctagByQueue[queue]
+                q.close()
+                del(self.ctagByQueue[queue])
 
     def fireEvent(self, key, exchange='events', **kwargs):
         """ Fire an event with routing key 'key' on the specified
