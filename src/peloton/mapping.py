@@ -19,6 +19,7 @@ The RoutingTable is required by all.
 import os
 import logging
 from twisted.internet import reactor
+from peloton.events import MethodEventHandler
 from peloton.exceptions import ServiceNotFoundError
 from peloton.profile import PelotonProfile
 
@@ -128,15 +129,104 @@ class LocalPSCProxy(PSCProxy):
 
 class RoutingTable(object):
     """ Maintain a live database of all PSCs in the domain complete with their
-profiles, the list of all services that they run and a library of all service profiles. """
+profiles, the list of all services that they run and a library of all service profiles. 
+
+The RoutingTable is responsible for broadcasting this PSC profile
+to the domain and handling responses. It also listens to and responds
+to broadcasts from other new PSCs. The protocol runs as follows:
+
+    1. On startup, RoutingTable.notifyConnect is called to notify
+       the domain of our presence.
+       
+    2. These broadcast PSC profiles are received in 
+       RoutingTable.receivePresenceNotification which
+       checks to see if the profile is valid by verifying
+       the domain cookie matches that which we have.
+    
+    3. Responses are sent on the private call-back channel of
+       the new node. The response will either be the profile of
+       all other PSC nodes in the domain, or error messages
+       indicating that this PSC is not welcome; if this is the
+       case the PSC exits.
+       
+Profiles received are logged into the routing table.
+"""
     def __init__(self, kernel):
         self.kernel = kernel
+        self.dispatcher = kernel.dispatcher
         self.pscs=[]
         self.pscByHost={}
         self.pscByGUID={}
 
         self.selfproxy = LocalPSCProxy(kernel)
         self.addPSC(self.selfproxy)
+        self._setHandlers()
+    
+    def notifyConnect(self):
+        """ Call to publish our own profile over the bus """
+        self.dispatcher.fireEvent(key="psc.presence", 
+                                exchange="domain_control", 
+                                action='connect',
+                                myDomainCookie=self.kernel.domainCookie,
+                                profile=self.kernel.profile)
+
+    def notifyDisconnect(self):
+        """ Call to unhook ourselves from the mesh """
+        self.dispatcher.fireEvent(key="psc.presence",
+                                  exchange="domain_control",
+                                  action='disconnect')
+
+    def receivePresenceNotification(self, msg, exch, key, ctag):
+        """ Receiving end of a publishProfile. Send a message back
+to this node on its private channel psc.<guid>.init"""
+        if msg['sender_guid'] == self.kernel.profile['guid']:
+            # don't process messages from self
+            return
+        
+        if msg['action'] == 'connect':
+            ### Reject anyone with an invalid cookie.
+            if msg['myDomainCookie'] != self.kernel.domainCookie:
+                self.dispatcher.fireEvent(key="psc.%s.init" % msg['profile']['guid'],
+                                        exchange="domain_control",
+                                        INVALID_COOKIE = True)
+                return
+    
+            if msg['profile']['guid'] != msg['sender_guid']:
+                self.dispatcher.fireEvent(key="psc.%s.init" % msg['profile']['guid'],
+                                        exchange="domain_control",
+                                        GUID_MISMATCH = True)
+                return
+    
+            self.kernel.logger.info("Received profile from node: %s" % msg['profile']['guid'])
+            self.dispatcher.fireEvent(key="psc.%s.init" % msg['profile']['guid'],
+                                    exchange="domain_control",
+                                    profile=self.kernel.profile)
+            
+        elif msg['action'] == 'disconnect':
+            self.kernel.logger.info("Received disconnect from %s" % msg['sender_guid'])
+
+    def receiveNodeProfile(self, msg, exch, key, ctag):
+        print("Profile response from node %s" % msg['sender_guid'])
+        print(msg)
+        if msg.has_key("INVALID_COOKIE"):
+            self.kernel.logger.error("Cannot join domain: Invalid cookie")
+            self.kernel.closedown()
+        elif msg.has_key("GUID_MISMATCH"):
+            self.kernel.logger.erro("Cannot join domain: profile GUID and sender GUID mis-match")
+            self.kernel.closedown()
+
+    def _setHandlers(self):
+        """ Register for events relevant to routing. """
+        # receive broadcast presence notifications here
+        self.dispatcher.register("psc.presence",
+               MethodEventHandler(self.receivePresenceNotification),
+               "domain_control")
+        
+        # private channel on which this node can be contacted to
+        # initialise with other nodes' profiles etc.
+        self.dispatcher.register("psc.%s.init" % self.kernel.profile['guid'],
+               MethodEventHandler(self.receiveNodeProfile),
+               "domain_control")
     
     def addPSC(self, pscProxy):
         self.pscs.append(pscProxy)

@@ -12,6 +12,8 @@
 """
 import sys
 import logging
+import signal
+from twisted.internet import reactor
 
 class HandlerBase(object):
     def __init__(self, options, args):
@@ -20,7 +22,8 @@ class HandlerBase(object):
         self.logger = logging.getLogger()
         # hide sys.exit
         self._trapExit()
-        self._setSignalHandlers
+        # ensure that handlers only installed when things are OK
+        reactor.callWhenRunning(self._setSignalHandlers)
         
     def _trapExit(self):
         """ Move sys.exit to sys.realexit and put a dummy
@@ -34,7 +37,10 @@ closing a node down."""
         
     def _signalClosedown(self, num, frame):
         """ Handle SIGINT/TERM """
-        self.closedown()
+        # delay helps ensure things closedown neatly... think
+        # the shutdown tramples on event handler code. Not sure.
+        # Anyhow... it helps.
+        reactor.callLater(0.1, self.closedown)
     
     def _signalReload(self, num, frame):
         """ Reaction to a SIGHUP: need to re-start so as to re-load configuration
