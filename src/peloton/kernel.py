@@ -3,6 +3,7 @@
 # Copyright (c) 2007-2008 ReThought Limited and Peloton Contributors
 # All Rights Reserved
 # See LICENSE for details
+from peloton.utils import getExternalIPAddress
 
 # ensure threading is OK with twisted
 from twisted.python import threadable
@@ -18,14 +19,15 @@ from twisted.internet import reactor
 from twisted.internet.task import LoopingCall
 from twisted.spread import pb
 
-import peloton.crypto as crypto
 from peloton.base import HandlerBase
 from peloton.events import EventDispatcher
 from peloton.events import MethodEventHandler
 from peloton.persist.memcache import PelotonMemcache
+from peloton.utils import crypto
 from peloton.utils import getClassFromString
 from peloton.utils import chop
 from peloton.utils import locateFile
+from peloton.utils import getExternalIPAddress
 from peloton.mapping import ServiceLoader
 from peloton.mapping import RoutingTable
 from peloton.profile import PelotonProfile
@@ -80,8 +82,7 @@ The bootstrap routine is as follows:
         start when the reactor starts
     9. Start the reactor
     
-The method ends only when the reactor stops.
-
+The method returns only when the reactor stops.
 """        
         # (1) read in the domain and grid key - all PSCs in a domain must have 
         # access to the same key file (or identical copy, of course)
@@ -123,7 +124,17 @@ The method ends only when the reactor stops.
         # (5) hook in the PB adapter and any others listed
         self.logger.info("Adapters list should be in config, not in code!")
         self._startAdapters()
-        self.profile['ipaddress'] = self.config['psc.bind_interface']
+        # the profile address may be different to the bind interface
+        # as this should be the address that other nodes can contact
+        # us on, ie an external address. So we check to see if the
+        # configured interface is 0.0.0.0 or 127.* in which case
+        # we use another method to determine our external interface
+        if self.config['psc.bind_interface'].startswith('0.0.0.0') or \
+            self.config['psc.bind_interface'].startswith('127.'):
+            self.profile['ipaddress'] = getExternalIPAddress()
+            self.logger.info("Auto-detected external address: %s" % self.profile['ipaddress'])
+        else:
+            self.profile['ipaddress'] = self.config['psc.bind_interface']
         self.profile['port'] = self.config['psc.bind_port']        
 
         # (6) Write to the generatorInterface to pass host:port of our 
@@ -325,7 +336,7 @@ on the event bus. This manages:
         self.commandCookies={}
         LoopingCall(self._purgeCommandCookies).start(120, False)
 
-    def commandProcessor(self, msg, exch, key, ctag):
+    def respond_commandRequest(self, msg, exch, key, ctag):
         """ Processes domain mesh control signals such as:
         
     - MESH_CLOSEDOWN
@@ -386,7 +397,7 @@ his own commands.
             self.kernel.logger.debug("NOOP Called on domain_control")
             
     def sendCommand(self, command, *args):
-        """ Send a command in the manner described in commandProcessor. """
+        """ Send a command in the manner described in respond_commandRequest. """
         now = time.time()
         msg = {'command':command, 
                'args':args,
@@ -424,5 +435,5 @@ cookie jar of cookies > 30 seconds old. """
         """ Register for all the events we are interested in. """
         # the command channel
         self.dispatcher.register("psc.command",
-                MethodEventHandler(self.commandProcessor),
+                MethodEventHandler(self.respond_commandRequest),
                 "domain_control" )

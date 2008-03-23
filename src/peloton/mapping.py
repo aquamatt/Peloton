@@ -3,7 +3,6 @@
 # Copyright (c) 2007-2008 ReThought Limited and Peloton Contributors
 # All Rights Reserved
 # See LICENSE for details
-
 """Mapping consists of the following core tasks, each represented by
 a class in this module:
 
@@ -18,8 +17,8 @@ The RoutingTable is required by all.
 
 import os
 import logging
-from twisted.internet import reactor
 from peloton.events import MethodEventHandler
+from peloton.utils import crypto
 from peloton.exceptions import ServiceNotFoundError
 from peloton.profile import PelotonProfile
 
@@ -61,7 +60,7 @@ the following steps:
             serviceProfile.loadFromFile("%s/%s" % (configDir, profile))
             
         # 2. Start the sequencer
-        ServiceLaunchSequencer(kernel, servicePath, serviceName, profile).start()
+        ServiceLaunchSequencer(self.kernel, servicePath, serviceName, profile).start()
 
 class ServiceLaunchSequencer(object):
     """ State object used to keep track of a particular request to launch 
@@ -70,41 +69,32 @@ used to manage and track the loading of a single service.
 
 Starting the service involves the following process chain:
 
-    1. Search through routing table for all PSCs, filter on those that 
-       match the psclimits for the service.
-    2. Request a suitable number of PSCs from the filtered batch
-       to start the service.
-    3. Any failures/refusals; select from 'spares' list
-    6. If run out of PSCs before satisfying launch parameters, sleep until
-       more PSCs become available.
+    1. Message all PSCs with the Service Profile on the 
+    2. PSCs check to see if they could run the service and if their
+       current load and state permit the starting of a new service.
+       If so, respond as willing on the requestors private channel.
+    3. As willing node responses are collected, message them back privately
+       to start the service. Fill slots in the launch profile (e.g. maybe
+       two machines of one sort, one of another required etc., or more simply,
+       n service handlers to be started, m per PSC).
+    4. After delay, re-launch request if not all launch request slots are
+       filled.
+       
+This class broadcasts on psc.service.loader and listens on a temporary private channel
+in psc.service.loader.<key>. Both in the domain_control exchange.
 """
     def __init__(self, kernel, servicePath, serviceName, profile):
         self.kernel = kernel
-        self. servicePath = servicePath
+        self.dispatcher = kernel.dispatcher
+        self.servicePath = servicePath
         self.serviceName = serviceName
         self.profile = profile
+        self.callBackChannel = 'psc.service.loader.%s'
+        self.dispatcher.register('psc.service.loader.%s')
         
     def start(self):
-        """ Initiate the sequence by calling upon the reactor to schedule the 
-first step. """
-        # this puts the next step onto the reactor queue thus freeing the reactor
-        # to handle other requests that may have arrived since the service launch
-        # request came in.
-        reactor.callLater(0, self.findPSCs)
-        
-    def findPSCs(self):
-        """ Search the PSC library for all PSCs that could, in principle, run
-this service. """
-        self.pscList = self.kernel.routingTable.matchPSC(self.profile['psclimits'])
-        reactor.callLater(0, self.selectPSCs)
-        
-    def selectPSCs(self):
-        """ Select from the list of valid PSCs a subset that would satisfy
-the launch requirements of this service. """
-        # split pscs by host
-        self.pscsByHost = {}
-        for psc in self.pscList:
-            self.pscsByHost[psc.host] = psc
+        """ Initiate the service startup sequence. """
+        pass        
         
 class PSCProxy(object):        
     """ Base class for PSC proxies through which the routing
@@ -134,10 +124,20 @@ information. """
 PSC. """
         raise NotImplementedError
         
-        
-class RemotePSCProxy(PSCProxy):        
+class TwistedPSCProxy(PSCProxy):        
     """ Proxy for a PSC that is running on the same domain as this 
-node."""
+node and accepts Twisted PB RPC. This is the prefered proxy to use
+if a node supports it and if it is suitably located (i.e. same 
+domain)."""
+    def __init__(self, profile):
+        PSCProxy.__init__(self, profile)
+    
+    def extractServices(self):
+        pass
+          
+class MessageBusPSCProxy(PSCProxy):
+    """ Proxy for a PSC that is able only to accept RPC calls over
+the message bus for whatever reason. """
     def __init__(self, profile):
         PSCProxy.__init__(self, profile)
           
@@ -145,6 +145,9 @@ class LocalPSCProxy(PSCProxy):
     """ Proxy for this 'local' PSC. """
     def __init__(self, kernel):
         PSCProxy.__init__(self, kernel.profile)          
+
+    def extractServices(self):
+        pass
 
 class RoutingTable(object):
     """ Maintain a live database of all PSCs in the domain complete with their
@@ -158,7 +161,7 @@ to broadcasts from other new PSCs. The protocol runs as follows:
        the domain of our presence.
        
     2. These broadcast PSC profiles are received in 
-       RoutingTable.receivePresenceNotification which
+       RoutingTable.respond_presence which
        checks to see if the profile is valid by verifying
        the domain cookie matches that which we have.
     
@@ -170,8 +173,14 @@ to broadcasts from other new PSCs. The protocol runs as follows:
        
 Profiles received are logged into the routing table.
 """
+    # mapping of proxy to specific RPC mechanisms
+    # that a PSC may accept
+    PSC_PROXIES = {'pb'  : TwistedPSCProxy,
+                   'bus' : MessageBusPSCProxy}
+
     def __init__(self, kernel):
         self.kernel = kernel
+        self.logger = kernel.logger
         self.dispatcher = kernel.dispatcher
         self.pscs=[]
         self.pscByHost={}
@@ -195,7 +204,7 @@ Profiles received are logged into the routing table.
                                   exchange="domain_control",
                                   action='disconnect')
 
-    def receivePresenceNotification(self, msg, exch, key, ctag):
+    def respond_presence(self, msg, exch, key, ctag):
         """ Receiving end of a publishProfile. Send a message back
 to this node on its private channel psc.<guid>.init"""
         if msg['sender_guid'] == self.kernel.profile['guid']:
@@ -221,13 +230,29 @@ to this node on its private channel psc.<guid>.init"""
                                     exchange="domain_control",
                                     profile=self.kernel.profile)
         
-            self.addPSC(RemotePSCProxy(msg['profile']))
+            
+            rpcAllowed = msg['profile']['rpc']
+            # prioritise PB as the RPC mechanism of choice;
+            # failing that just skip through the list until one
+            # is found that we can handle. This allows the config
+            # writer to imply preference in mechanisms whilst disallowing
+            # de-prioritisation of PB.
+            if 'pb' in rpcAllowed:
+                self.addPSC(TwistedPSCProxy(msg['profile']))                
+            else:
+                for r in rpcAllowed:
+                    if RoutingTable.PSC_PROXIES.has_key(r):
+                        clazz = RoutingTable.PSC_PROXIES.has_key(r)
+                        self.addPSC(clazz(msg['profile']))
+                        break
+                else:
+                    self.logger.error("Cannot register PSC (%s) with RPC mechanisms %s" % (msg['profile']['guid'], str(rpcAllowed)))
             
         elif msg['action'] == 'disconnect':
             self.kernel.logger.info("Received disconnect from %s" % msg['sender_guid'])
-            self.removePSC(RemotePSCProxy(msg['sender_guid']))
+            self.removePSC(msg['sender_guid'])
             
-    def receiveNodeProfile(self, msg, exch, key, ctag):
+    def respond_pscProfile(self, msg, exch, key, ctag):
         print("Profile response from node %s" % msg['sender_guid'])
         print(msg)
         if msg.has_key("INVALID_COOKIE"):
@@ -241,13 +266,13 @@ to this node on its private channel psc.<guid>.init"""
         """ Register for events relevant to routing. """
         # receive broadcast presence notifications here
         self.dispatcher.register("psc.presence",
-               MethodEventHandler(self.receivePresenceNotification),
+               MethodEventHandler(self.respond_presence),
                "domain_control")
         
         # private channel on which this node can be contacted to
         # initialise with other nodes' profiles etc.
         self.dispatcher.register("psc.%s.init" % self.kernel.profile['guid'],
-               MethodEventHandler(self.receiveNodeProfile),
+               MethodEventHandler(self.respond_pscProfile),
                "domain_control")
     
     def addPSC(self, pscProxy):

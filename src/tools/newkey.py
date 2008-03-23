@@ -12,8 +12,8 @@ import os
 import sys
 
 import peloton
-from peloton.crypto import makeCookie
-from peloton.crypto import newKey
+from peloton.utils.crypto import makeCookie
+from peloton.utils.crypto import newKey
 from peloton.utils.structs import FilteredOptionParser
 from peloton.utils import chop
 

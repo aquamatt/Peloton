@@ -1,6 +1,8 @@
 [profile]
   cpus=1
   ram=1024
+  # Accept RPC via Twisted or message bus
+  rpc=pb,bus
   
 [plugins]
  [[amqp-qpid]]
