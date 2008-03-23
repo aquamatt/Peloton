@@ -50,7 +50,13 @@ tested."""
     raise Exception("Could not find %s in any of the paths provided" % f)
 
 def getExternalIPAddress():
+    """ Bit of a cheap way of working out what the IP address
+of the external interface on this machine is; if we've got 
+configuration saying to connect to 0.0.0.0 that's fine, but we
+will still need to know what address to tell other nodes to 
+contact this node on. As a result, something like this is handy."""
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.connect(('1.2.3.4', 56))
     ip = s.getsockname()[0]    
+    s.close()
     return ip
