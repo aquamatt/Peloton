@@ -4,6 +4,7 @@
 # All Rights Reserved
 # See LICENSE for details
 import os
+import socket
 
 def chop(s, extras=[]):
     """Remove \\r, \\n and all characters in the extras list from 
@@ -47,3 +48,9 @@ tested."""
         if os.path.exists(fqp):
             return fqp
     raise Exception("Could not find %s in any of the paths provided" % f)
+
+def getExternalIPAddress():
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.connect(('1.2.3.4', 56))
+    ip = s.getsockname()[0]    
+    return ip

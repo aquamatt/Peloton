@@ -149,7 +149,7 @@ exchange using kwargs to build the event message. """
         msg = Content(pickle.dumps(kwargs))
         self.channel.basic_publish(content=msg, exchange=exchange, 
                          routing_key='%s.%s' % (self.domain, key))
-
+        
     def _startListener(self, ctag, q):
         """ Start a thread that listens for messages on a given 
 channel. On receipt of a message it is pushed onto self.mqueue for

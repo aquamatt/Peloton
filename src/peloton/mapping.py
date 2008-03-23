@@ -112,15 +112,34 @@ table can exchange messages with PSCs. A proxy is required because
 the PSC may be the local process, a PSC in the domain or a PSC in
 another domain on the grid.
 """
-    def __init__(self, profile, services=[]):
+    def __init__(self, profile):
         self.profile = profile
-        self.services = services
+        self.extractServices()
+        
+    def extractServices(self):
+        """ Run through the profile and pull out all the service
+information. """
+        raise NotImplementedError
+    
+    def addService(self, serviceProfile):
+        """ Take a service profile and register with the proxy. """
+        raise NotImplementedError
+    
+    def startServiceInPSC(self, service):
+        """ Request the PSC to start the named service """
+        raise NotImplementedError
+    
+    def call(self, service, method, *args, **kwargs):
+        """ Request the serice method be called on this 
+PSC. """
+        raise NotImplementedError
+        
         
 class RemotePSCProxy(PSCProxy):        
     """ Proxy for a PSC that is running on the same domain as this 
 node."""
-    def __init__(self, profile, services=[]):
-        PSCProxy.__init__(self, profile, services)
+    def __init__(self, profile):
+        PSCProxy.__init__(self, profile)
           
 class LocalPSCProxy(PSCProxy):
     """ Proxy for this 'local' PSC. """
@@ -201,10 +220,13 @@ to this node on its private channel psc.<guid>.init"""
             self.dispatcher.fireEvent(key="psc.%s.init" % msg['profile']['guid'],
                                     exchange="domain_control",
                                     profile=self.kernel.profile)
+        
+            self.addPSC(RemotePSCProxy(msg['profile']))
             
         elif msg['action'] == 'disconnect':
             self.kernel.logger.info("Received disconnect from %s" % msg['sender_guid'])
-
+            self.removePSC(RemotePSCProxy(msg['sender_guid']))
+            
     def receiveNodeProfile(self, msg, exch, key, ctag):
         print("Profile response from node %s" % msg['sender_guid'])
         print(msg)
@@ -229,11 +251,16 @@ to this node on its private channel psc.<guid>.init"""
                "domain_control")
     
     def addPSC(self, pscProxy):
+        """ Store the PSC provided. """
         self.pscs.append(pscProxy)
         self.pscByHost[pscProxy.profile['ipaddress']] = pscProxy
         self.pscByGUID[pscProxy.profile['guid']] = pscProxy
 #        for service in pscProxy.services:
 #            self.addService(service)
+    
+    def removePSC(self, guid):
+        """ Remove the PSC record for the PSC with specified GUID. """
+        del(self.pscByGUID[guid])
     
     def addService(self, profile):
         self.services[profile.name] = profile
