@@ -6,7 +6,7 @@
 """ Test the peloton.crypto module """
 
 from unittest import TestCase
-from peloton import crypto
+from peloton.utils import crypto
 import random
 
 class Test_PelotonProfile(TestCase):

@@ -25,6 +25,12 @@ This script is pretty shallow: it simply calls into the appropriate
 platform-specific code for starting a PSC and associated processes
 or threads after first processing out command line arguments.
 """
+# Random is used in many places in Peloton, so get it seeded
+# right away.
+import random
+random.seed()
+########################
+
 import logging
 import os
 import sys

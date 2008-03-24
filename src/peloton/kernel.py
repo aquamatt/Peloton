@@ -59,8 +59,8 @@ which the kernel can request a worker to be started for a given service."""
         self.config = config
         self.plugins = {}
         self.profile = PelotonProfile()
-        self.serviceLoader = ServiceLoader(self)
         self.dispatcher = EventDispatcher(self)
+        self.serviceLoader = ServiceLoader(self)
         # callables are plugin interfaces (pb.Referenceable) that 
         # can be requested by name by clients
         self.callables = {}
@@ -112,9 +112,10 @@ The method returns only when the reactor stops.
                                       self.initOptions.configdirs)
             
         # (3) generate session keys
-        self.sessionKey = ezPyCrypto.key(512)
+        self.sessionKey = crypto.newKey(512)
         self.publicKey = self.sessionKey.exportKey()
-        self.profile['guid'] = str(uuid.uuid1())
+        self.guid = str(uuid.uuid1())
+        self.profile['guid'] = self.guid
         self.logger.info("Node UUID: %s" % self.profile['guid'])
         
         # (4) hook into cacheing back-end
@@ -403,7 +404,7 @@ his own commands.
                'args':args,
                'cookie':crypto.makeCookie(20),
                'time':now,
-               'issuer':self.kernel.profile['guid'] }
+               'issuer':self.kernel.guid }
         ct = crypto.encrypt(msg, self.kernel.domainKey)
         self.dispatcher.fireEvent(key="psc.command",
                                 exchange="domain_control",

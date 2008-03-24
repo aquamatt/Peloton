@@ -56,7 +56,7 @@ at an un-wholesome rate.
         self.realm = self.kernel.config['grid.messagingRealm']
         
         self.domain = self.kernel.initOptions.domain
-        self.node_guid = self.kernel.profile['guid']
+        self.node_guid = self.kernel.guid
         
         # key is ctag; value is handler object
         self.handlersByCtag = {}
