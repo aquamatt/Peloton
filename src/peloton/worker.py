@@ -70,7 +70,6 @@ closes down. """
 master PSC,  starting the service and announcing ourselves ready to 
 rock. """
      
-### --> the ServiceManager is no longer appropriate forthis
         self.clientObj = PseudoMQClient(self)
         factory = pb.PBClientFactory()
         try:
