@@ -179,7 +179,8 @@ pass the message to them. """
         if self.handlersByCtag.has_key(ctag):
             # may have been deleted already.
             for handler in self.handlersByCtag[ctag]:
-                handler.eventReceived(content, exchange=exchange, key=routing_key, ctag=ctag)
+                handler.eventReceived(content, exchange=exchange, 
+                                      key=routing_key, ctag=ctag)
 
     
     

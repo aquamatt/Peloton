@@ -19,3 +19,20 @@
    class=peloton.plugins.bambi.BambiPlugin
    enabled=False
    
+ [[pseudomq-server]]
+   name=eventbus
+   comment=PseudoMQ test harness for testing ONLY
+   class=peloton.plugins.pseudomq.PseudoMQ
+   host=127.0.0.1:9111
+   enabled=False
+   isServer=True
+   
+ [[pseudomq-client]]
+   name=eventbus
+   comment=PseudoMQ test harness for testing ONLY
+   class=peloton.plugins.pseudomq.PseudoMQ
+   host=127.0.0.1:9111
+   enabled=False
+   isServer=False
+   
+   

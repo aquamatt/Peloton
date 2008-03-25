@@ -37,7 +37,6 @@ alternative port should its chosen target be bound by another application.
                 configuration['psc.bind'] = "%s:%d" % (interface, port)
                 configuration['psc.bind_interface'] = interface
                 configuration['psc.bind_port'] = port
-                self.enabled = True
                 break
             except CannotListenError:
                 if cmdOptions.anyport:
@@ -52,7 +51,7 @@ alternative port should its chosen target be bound by another application.
     def _stopped(self, x):
         """ Handler called when reactor has stopped listening to this
 protocol's port."""
-        self.enabled = False
+        pass
 
     def stop(self):
         """ Close down this adapter. """
