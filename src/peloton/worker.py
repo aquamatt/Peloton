@@ -30,6 +30,7 @@ referenceable and (3) is the peloton.kernel.WorkerInterface referenceable.
 
 The worker is now able to receive instructions from the PSC and is also
 able to register with events on the PSC as well as pass other messages back.
+
 """
 
 # ensure threading is OK with twisted
