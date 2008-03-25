@@ -6,8 +6,8 @@
 
 """ This plugin module is ONLY for testing and first-stop 
 try-before-you-buy. As an MQ provider it does little to ensure
-stability, capacity, persistence... in fact it does nothing that
-AMQP does, it is simply a call-alike module that allows shallow 
+stability, capacity, persistence... in fact it does almost nothing x
+that AMQP does, it is simply a call-alike module that allows shallow 
 testing.
 """
 from peloton.plugins import PelotonPlugin
@@ -31,7 +31,7 @@ Read again: It's for testing.
 One node must be started as a server (config isServer=True) and 
 all others must be clients (isServer=False).
 
-The system is run entirely over PB and could NEVER be used to simulate
+The system is run entirely over PB and cannot be used to simulate
 messaging between domains. This can only run a single domain.
 
 If it is a server it creates the PseudoMQServer pb.Root object and
@@ -123,7 +123,12 @@ server. """
                 pass
         else:
             if self.connected:
-                self.server.callRemote('fireEvent', key, exchange, pickle.dumps(kwargs))
+                try:
+                    self.server.callRemote('fireEvent', key, exchange, pickle.dumps(kwargs))
+                except pb.DeadReferenceError:
+                    self.connected=False
+                    self.logger.error("Message server has gone!")
+                    self.eventFiringQueue.append((key, exchange, kwargs))
             else:
                 self.eventFiringQueue.append((key, exchange, kwargs))
 

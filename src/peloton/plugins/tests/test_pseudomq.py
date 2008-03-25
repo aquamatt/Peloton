@@ -58,3 +58,8 @@ token). """
 
         self.assertFalse(ex.matchKey("a.b.#.c.*", "a.b.x.x.x.c"))
         self.assertFalse(ex.matchKey("a.b.#.c.*.e", "a.b.x.x.x.c.e"))
+        
+        # the example from spec - should work for this at the very least!
+        self.assertTrue(ex.matchKey("*.stock.#", "usd.stock"))
+        self.assertTrue(ex.matchKey("*.stock.#", "eur.stock.db"))
+        self.assertFalse(ex.matchKey("*.stock.#", "stock.nasdaq"))

@@ -134,13 +134,14 @@ with all messages to be handled by a peloton.events.AbstractEventHandler instanc
         for exchange, key, ctag, qname in self.registeredHandlers[handler]:
             queue = "%s.%s" % (exchange,key)
             self.handlersByCtag[ctag].remove(handler)
-            del(self.registeredHandlers[handler])
             if not self.handlersByCtag[ctag]:
                 self.channel.queue_delete(queue=qname)
                 del(self.handlersByCtag[ctag])
                 _, _, q = self.ctagByQueue[queue]
                 q.close()
                 del(self.ctagByQueue[queue])
+
+        del(self.registeredHandlers[handler])
 
     def fireEvent(self, key, exchange='events', **kwargs):
         """ Fire an event with routing key 'key' on the specified
@@ -175,6 +176,8 @@ processing in the main Twisted event loop. """
 pass the message to them. """
         self.mqueue.get().addCallback(self._processQueue)
         ctag, _, _, exchange, routing_key = msg.fields
+        # remove the domain name from the key
+        routing_key = '.'.join(routing_key.split('.')[1:])
         content = pickle.loads(msg.content.body)
         if self.handlersByCtag.has_key(ctag):
             # may have been deleted already.

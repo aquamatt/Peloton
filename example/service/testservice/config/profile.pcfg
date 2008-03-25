@@ -13,4 +13,5 @@ version=1.0.1
    mincpus=1
   
 [launch]
-   minpcs=2
+   minpscs=2
+   workersperpsc=2

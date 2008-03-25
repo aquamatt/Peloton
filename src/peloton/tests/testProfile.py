@@ -25,7 +25,9 @@ class Test_PelotonProfile(TestCase):
   c=320
 """
         sio = StringIO(CONFIG_DATA)
-        self.config = MyConfigObj(sio)
+#        self.config = MyConfigObj(sio)
+        self.config=MyConfigObj()
+        self.config.loadFrom
         self.configFile = StringIO(CONFIG_DATA_B)
     
     def tearDown(self):

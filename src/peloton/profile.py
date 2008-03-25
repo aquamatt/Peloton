@@ -14,6 +14,7 @@ import os
 from types import StringType
 from peloton.utils.config import MyConfigObj
 from peloton.exceptions import ConfigurationError
+from cStringIO import StringIO
 
 class PelotonProfile(MyConfigObj):
     """A profile enables a component to advertise its properties to others.
@@ -191,6 +192,14 @@ profile.
             confobj = MyConfigObj(_file)
             self.merge(confobj)
                         
+    def loadFromString(self, s):
+        """ Load from a string representation of a config file. """
+        sio = StringIO(s)
+        self.loadFromFile(sio)
+        
+    def __repr__(self):
+        return "\n".join(self.write())
+                                
 class BaseProfileComparator(object):
     """ Base class for all profile-comparing classes. In all methods,
 if optimistic is set True the test will be generous in the logic of 

@@ -45,7 +45,7 @@ class PelotonWorker(HandlerBase):
 results to its controling PSC. 
 """
 
-    def __init__(self, pscHost, pscPort, options, args):
+    def __init__(self, pscHost, pscPort, name, token, options, args):
         """ The parent PSC is found at pscHost:pscPort - the host
 will in general be the host on which this worker resides but we
 allow for other scenarios by passing the host through at this point.
@@ -58,9 +58,26 @@ from the command line.
         self.pscPort = pscPort
         self.serviceManager = ServiceManager()     
     
-    def start():
-        """ Start this worker; returns an exit code when worker closes down. """
+    def start(self):
+        """ Start this worker; returns an exit code when worker 
+closes down. """
+        reactor.callWhenRunning(self._initialise)
+        reactor.start()
         return 0
+    
+    def _initialise(self):
+        """ Start the boot-strap process of connecting to the 
+master PSC,  starting the service and announcing ourselves ready to 
+rock. """
+        self.clientObj = PseudoMQClient(self)
+        factory = pb.PBClientFactory()
+        try:
+            reactor.connectTCP(self.host, self.port, factory)
+            d = factory.getRootObject()
+            d.addCallback(self._clientConnect)
+            d.addErrback(self._clientConnectError)
+        except Exception, ex:
+            raise PluginError("Could not connect to PseudoMQ server: %s" % str(ex))
     
     def closedown(self):
         self.serviceManager.stopAllServices()
@@ -75,7 +92,7 @@ which methods are called."""
     def loadService(self, name):
         """ Loading a service happens as follows:
     - Locate service class
-    - Validate it's signature cookie ???
+    - Validate its signature cookie ???
     - Instantiate: Here the configuration files are read and 
 internals are organised. This is generally NOT overidden by the
 service writer who instead provides the startup() method to do logical
@@ -119,7 +136,7 @@ is the means by which the kernel requests services be started and stopped,
 and calls methods to be run."""
 
     def __init__(self):
-        pb.Referenceable.__init__(self)
+        pass
         
     def remote_startService(self, name):
         """ Start the named service. The service must be present in the

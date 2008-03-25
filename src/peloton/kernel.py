@@ -12,6 +12,7 @@ threadable.init()
 import ezPyCrypto
 import logging
 import os
+import socket
 import time
 import uuid
 
@@ -60,7 +61,10 @@ which the kernel can request a worker to be started for a given service."""
         self.plugins = {}
         self.profile = PelotonProfile()
         self.dispatcher = EventDispatcher(self)
-        self.serviceLoader = ServiceLoader(self)
+        
+        # used to validate new worker connections
+        self.serviceLaunchTokens = {}
+        
         # callables are plugin interfaces (pb.Referenceable) that 
         # can be requested by name by clients
         self.callables = {}
@@ -137,6 +141,7 @@ The method returns only when the reactor stops.
         else:
             self.profile['ipaddress'] = self.config['psc.bind_interface']
         self.profile['port'] = self.config['psc.bind_port']        
+        self.profile['hostname'] = socket.getfqdn()
 
         # (6) Write to the generatorInterface to pass host:port of our 
         # twisted RPC interface
@@ -150,6 +155,7 @@ The method returns only when the reactor stops.
         # (8) Initialise the routing table and schedule grid-joining 
         #     workflow to happen on reactor start
         #  -- this checks the domain cookie matches ours; quit if not.
+        self.serviceLoader = ServiceLoader(self)
         self.routingTable = RoutingTable(self)
         self.domainManager = DomainManager(self)
         reactor.callWhenRunning(self.routingTable.notifyConnect)
@@ -295,6 +301,19 @@ hooks into the reactor. It is passed the entire config stack
     def launchService(self, serviceName):
         """ Initiate the process of launching a service. """
         self.serviceLoader.launchService(serviceName)
+
+    def startService(self, serviceName, numWorkers=1):
+        """ Instruct the worker generator to start numWorkers
+workers running service named serviceName."""
+        tok = crypto.makeCookie(20)
+        self.serviceLaunchTokens[tok] = [serviceName, numWorkers]
+        self.generatorInterface.startService(numWorkers, serviceName, tok)
+
+        # this should really get fired from the service worker
+        self.dispatcher.fireEvent('psc.service.notification',
+                                  'domain_control',
+                                  serviceName=serviceName,
+                                  state='running')
 
     def getCallable(self, name):
         """ Return the callable as named"""

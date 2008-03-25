@@ -22,6 +22,8 @@ from peloton.events import AbstractEventHandler
 from peloton.utils import crypto
 from peloton.exceptions import ServiceNotFoundError
 from peloton.profile import PelotonProfile
+from peloton.profile import ServicePSCComparator
+import configobj
 
 class ServiceLoader(AbstractEventHandler):
     """ The loader is the front-end to the launch sequencer and the component
@@ -39,8 +41,11 @@ a worker (or workers) to startup via the kernel.
         self.kernel = kernel
         self.logger = kernel.logger
         self.dispatcher = kernel.dispatcher
-        
+        self.spComparator = ServicePSCComparator()
         self.dispatcher.register('psc.service.loader', self, 'domain_control')
+
+        self.callBackChannel = 'psc.service.loader.%s%s' % (kernel.guid, crypto.makeCookie(10))
+        self.dispatcher.register(self.callBackChannel, self, 'domain_control')
         
     def launchService(self, serviceName):
         """ Start the process of launching a service which will require
@@ -73,12 +78,33 @@ the following steps:
             serviceProfile.loadFromFile("%s/%s" % (configDir, profile))
             
         # 2. Start the sequencer
-        ServiceLaunchSequencer(self.kernel, servicePath, serviceName, profile).start()
+        ServiceLaunchSequencer(self.kernel, servicePath, serviceName, serviceProfile).start()
 
     def eventReceived(self, msg, exchange='', key='', ctag=''):
         """ Handle events related to the starting of services as requested
 by another node. """
-        self.logger.debug("Request to consider ability to launch service: %s" % str(msg))
+        if msg['action'] == 'requestForLaunch':
+            pp = PelotonProfile()
+            pp.loadFromString(msg['serviceProfile'])
+            msg['serviceProfile'] = pp
+            self.logger.debug("Request to consider ability to launch service: %s (%s)" % (msg['serviceProfile']['name'], msg['serviceProfile']['version']))
+            if self.spComparator.eq(msg['serviceProfile']['psclimits'], self.kernel.profile, optimistic=True):
+                self.logger.debug("Profile OK - optimistic")
+                self.dispatcher.fireEvent(msg['callback'],
+                                          'domain_control',
+                                          action='SERVICE_PSC_MATCH',
+                                          callback=self.callBackChannel)
+            else:
+                self.dispatcher.fireEvent(msg['callback'],
+                                          'domain_control',
+                                          action='SERVICE_PSC_NOMATCH')
+                
+        elif msg['action'] == 'startService':
+            pp = PelotonProfile()
+            pp.loadFromString(msg['serviceProfile'])
+            msg['serviceProfile'] = pp
+            self.logger.debug("Instructed to start service %s (%s)" % (msg['serviceProfile']['name'], msg['serviceProfile']['version']))
+            self.kernel.startService(msg['serviceName'], int(msg['serviceProfile']['launch']['workersperpsc']))
 
 class ServiceLaunchSequencer(AbstractEventHandler):
     """ State object used to keep track of a particular request to launch 
@@ -103,6 +129,7 @@ in psc.service.loader.<key>. Both in the domain_control exchange.
 """
     def __init__(self, kernel, servicePath, serviceName, profile):
         self.kernel = kernel
+        self.logger = kernel.logger
         self.dispatcher = kernel.dispatcher
         self.servicePath = servicePath
         self.serviceName = serviceName
@@ -110,6 +137,32 @@ in psc.service.loader.<key>. Both in the domain_control exchange.
         self.callBackChannel = 'psc.service.loader.%s%s' % (kernel.guid, crypto.makeCookie(10))
         self.dispatcher.register(self.callBackChannel, self, 'domain_control')
         
+        # on this channel we get notified of a PSC having launched a service.
+        self.dispatcher.register('psc.service.notification', self, 'domain_control')
+        
+        # this counter gets decremented as services are launched. Once 
+        # the counter hits zero, our job is done.
+        try:
+            try:
+                self.pscRequired = int(self.profile['launch']['minpscs'])
+            except:
+                self.logger.error("'minpscs' key in configuration for service %s has an invalid value (%s): default to 2" \
+                                  % (self.serviceName, self.profile['launch']['minpscs']))
+                self.pscRequired=2
+            self.launchPending = 0
+            # list of PSCs that have offered to run the service
+            self.pscReadyQueue = []
+        except KeyError:
+            self.pscRequired = 2
+            self.profile['launch']['minpscs'] = self.pscRequired
+            
+            
+        try:
+            self.workersPerPSC = self.profile['launch']['workserperpsc']
+        except KeyError:
+            self.workersPerPSC = 2
+            self.profile['launch']['workserperpsc'] = self.workersPerPSC
+            
     def start(self):
         """ Initiate the service startup sequence. This event will be received by all nodes
 including self. We could optimise by checking the local node first etc, but why? This makes
@@ -121,16 +174,45 @@ making ourselves special."""
                                   callback=self.callBackChannel,
                                   serviceName=self.serviceName,
                                   servicePath=self.servicePath,
-                                  serviceProfile=self.profile)
+                                  serviceProfile=repr(self.profile))
         
     def eventReceived(self, msg, exchange='', key='', ctag=''):
         """ Handle messages placed on the private callback channel for this 
 launch sequencer. Type of message is indicated by msg['action'] value. """
-        pass
+        if key == self.callBackChannel:
+            if msg['action'] == 'SERVICE_PSC_MATCH':
+                self.logger.debug("Service match from %s" % msg['sender_guid'])
+                self.pscReadyQueue.insert(0, msg)
+                
+        elif key == 'psc.service.notification':
+            # event fired when a service has been started up
+            if msg['serviceName'] == self.serviceName and msg['state'] == 'running':
+                self.logger.debug("Launch sequencer notified of service start: %s " % self.serviceName)
+                self.launchPending -= 1
+                self.pscRequired -= 1
+
+        self.checkQueue()
+
+    def checkQueue(self):
+        """ Called to process the queue of pending PSC offers to start
+a service."""
+        while (self.pscRequired - self.launchPending > 0) and self.pscReadyQueue:
+            msg = self.pscReadyQueue.pop()
+            self.launchPending += 1
+            self.dispatcher.fireEvent(msg['callback'],
+                                      'domain_control',
+                                      action='startService',
+                                      serviceName=self.serviceName,
+                                      servicePath=self.servicePath,
+                                      serviceProfile=repr(self.profile))
+        
+        if self.pscRequired == self.launchPending == 0:
+            self.done()
         
     def done(self):
         """ Close up the private callback channel; we're done. Called once the launch
 requirements of the service have been met."""
+        self.logger.info("Service %s successfuly launched. " % self.serviceName)
         self.dispatcher.deregister(self)
         
 class PSCProxy(object):        
@@ -146,14 +228,6 @@ another domain on the grid.
     def extractServices(self):
         """ Run through the profile and pull out all the service
 information. """
-        raise NotImplementedError
-    
-    def addService(self, serviceProfile):
-        """ Take a service profile and register with the proxy. """
-        raise NotImplementedError
-    
-    def startServiceInPSC(self, service):
-        """ Request the PSC to start the named service """
         raise NotImplementedError
     
     def call(self, service, method, *args, **kwargs):
@@ -233,7 +307,7 @@ Profiles received are logged into the routing table.
                                 exchange="domain_control", 
                                 action='connect',
                                 myDomainCookie=self.kernel.domainCookie,
-                                profile=self.kernel.profile)
+                                profile=repr(self.kernel.profile))
 
     def notifyDisconnect(self):
         """ Call to unhook ourselves from the mesh """
@@ -254,6 +328,10 @@ to this node on its private channel psc.<guid>.init"""
                                         exchange="domain_control",
                                         INVALID_COOKIE = True)
                 return
+
+            pp = PelotonProfile()
+            pp.loadFromString(msg['profile'])
+            msg['profile'] = pp
     
             if msg['profile']['guid'] != msg['sender_guid']:
                 self.dispatcher.fireEvent(key="psc.%s.init" % msg['profile']['guid'],
@@ -263,7 +341,7 @@ to this node on its private channel psc.<guid>.init"""
     
             self.dispatcher.fireEvent(key="psc.%s.init" % msg['profile']['guid'],
                                     exchange="domain_control",
-                                    profile=self.kernel.profile)
+                                    profile=repr(self.kernel.profile))
         
 
             try:
@@ -287,6 +365,9 @@ to this node on its private channel psc.<guid>.init"""
             self.kernel.logger.error("Cannot join domain: profile GUID and sender GUID mis-match")
             self.kernel.closedown()
             return
+        pp = PelotonProfile()
+        pp.loadFromString(msg['profile'])
+        msg['profile'] = pp
         try:
             clazz = self._getProxyForProfile(msg['profile'])
             self.addPSC(clazz(msg['profile']))

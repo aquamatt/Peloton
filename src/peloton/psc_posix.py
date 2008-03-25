@@ -157,11 +157,12 @@ when requested. This is a two step process:
             host, port = l[5:].split(':')
             port = int(port)
             logger.info("Generator initialised with master at %s:%d" % (host, port))
-        else:
+        elif l.startswith('START:'):
             if host==None and port==None:
                 logger.error("Generator asked to fork a worker but master PSC has not initialised")
                 continue
-            name, args = Pickle.loads(pin.readline())
+            name, token = l[6:].split(':')
+            logger.debug("Starting worker for %s (%s)" % (name, token))
             
             # fork a worker
             try:
@@ -171,7 +172,9 @@ when requested. This is a two step process:
             
             if pid == 0: # worker process
 #                os.close(pipeFD)
-                return PelotonWorker(host, port, options, args).start() 
+                return PelotonWorker(host, port, name, token, options, args).start() 
+        else:
+            pass
     return 0
 
 class GeneratorInterface(object):
@@ -187,8 +190,9 @@ of messaging between the two components."""
         """ bindHost is a string of the form host:port. """
         self.writePipe.write('INIT:%s\n' % bindHost)
         
-    def startService(self, serviceName, token, args):
-        self.writePipe.write('%s\n', Pickle.dumps([serviceName, token, args]))
+    def startService(self, num, serviceName, token):
+        for i in range(num):
+            self.writePipe.write('START:%s:%s\n' % (serviceName, token))
         
     def stop(self):
         self.writePipe.write('STOP\n')
