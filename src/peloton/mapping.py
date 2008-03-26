@@ -20,10 +20,10 @@ import logging
 from peloton.events import MethodEventHandler
 from peloton.events import AbstractEventHandler
 from peloton.utils import crypto
+from peloton.utils.config import locateService
 from peloton.exceptions import ServiceNotFoundError
 from peloton.profile import PelotonProfile
 from peloton.profile import ServicePSCComparator
-import configobj
 
 class ServiceLoader(AbstractEventHandler):
     """ The loader is the front-end to the launch sequencer and the component
@@ -56,27 +56,9 @@ the following steps:
  """
         self.logger.info("Mapping launch request for service %s" % serviceName)
         # 1. locate and load the profile
-        #    search through service path
-        serviceDir = serviceName.lower()
-        locations = ["%s/%s" % (i, serviceDir) 
-                     for i in self.kernel.initOptions.servicepath 
-                     if os.path.exists("%s/%s" % (i, serviceDir)) 
-                        and os.path.isdir("%s/%s" % (i, serviceDir))]
-        
-        # locations will hopefuly only be one item long; if not make 
-        # a note in the logs and take the first location
-        if len(locations) > 1:
-            self.logger.info("ServiceLoader found more than one location for service %s (using first)" % serviceName)
-        if not locations:
-            raise ServiceNotFoundError("Could not find service %s" % serviceName)
-    
-        servicePath = locations[0]
-        configDir = os.sep.join([servicePath, 'config'])
-        profiles = ["profile.pcfg", "%s_profile.pcfg" % self.kernel.config['grid.gridmode']]
-        serviceProfile = PelotonProfile()
-        for profile in profiles:
-            serviceProfile.loadFromFile("%s/%s" % (configDir, profile))
-            
+        servicePath, serviceProfile = locateService(serviceName, 
+                                                    self.kernel.initOptions.servicepath, 
+                                                    self.kernel.config['grid.gridmode'])
         # 2. Start the sequencer
         ServiceLaunchSequencer(self.kernel, servicePath, serviceName, serviceProfile).start()
 

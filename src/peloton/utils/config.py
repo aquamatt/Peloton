@@ -225,5 +225,34 @@ that whole configuration. """
                 v = v[key.pop()]
             del v[key.pop()]
             
-            
+        
+from peloton.exceptions import ServiceNotFoundError    
+from peloton.profile import PelotonProfile
+def locateService(serviceName, servicePath, gridMode):
+    """ Searches for the service named serviceName in ther service path
+and loads the profile. Returns (serviceDirectory, profile).
+
+Raises ServiceNotFoundError if the service is not found (surprise)."""
+    #    search through service path
+    logger = logging.getLogger()
+    serviceDir = serviceName.lower()
+    locations = ["%s/%s" % (i, serviceDir) 
+                 for i in servicePath 
+                 if os.path.exists("%s/%s" % (i, serviceDir)) 
+                    and os.path.isdir("%s/%s" % (i, serviceDir))]
     
+    # locations will hopefuly only be one item long; if not make 
+    # a note in the logs and take the first location
+    if len(locations) > 1:
+        logger.info("Found more than one location for service %s (using first)" % serviceName)
+    if not locations:
+        raise ServiceNotFoundError("Could not find service %s" % serviceName)
+
+    servicePath = locations[0]
+    configDir = os.sep.join([servicePath, 'config'])
+    profiles = ["profile.pcfg", "%s_profile.pcfg" % gridMode]
+    serviceProfile = PelotonProfile()
+    for profile in profiles:
+        serviceProfile.loadFromFile("%s/%s" % (configDir, profile))
+    
+    return (servicePath, serviceProfile)

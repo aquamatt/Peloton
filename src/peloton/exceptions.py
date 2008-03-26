@@ -28,5 +28,16 @@ plugins may wish to provide a little more specific exceptions. """
 class ServiceNotFoundError(PelotonError):
     pass
 
+class ServiceConfigurationError(PelotonError):
+    pass
+
+class ServiceError(PelotonError):
+    pass
+
 class MessagingError(PelotonError):
+    pass
+
+class WorkerError(PelotonError):
+    """ Generic error raised if something untoward occurs in a worker
+process. """
     pass

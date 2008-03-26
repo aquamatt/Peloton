@@ -56,7 +56,10 @@ configuration saying to connect to 0.0.0.0 that's fine, but we
 will still need to know what address to tell other nodes to 
 contact this node on. As a result, something like this is handy."""
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    s.connect(('1.2.3.4', 56))
-    ip = s.getsockname()[0]    
-    s.close()
+    try:
+        s.connect(('1.2.3.4', 56))
+        ip = s.getsockname()[0]    
+        s.close()
+    except:
+        ip = socket.gethostbyname(socket.gethostname())
     return ip
