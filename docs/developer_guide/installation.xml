@@ -50,7 +50,8 @@
 			<orderedlist>
 	             <listitem>
 	                   <para>
-	                   	    <filename>Twisted</filename> Version &gt;=2.5
+	                   	    <filename>Twisted</filename> Version &gt;=8.0.1 obtainable
+						   from <ulink url='http://www.twistedmatrix.com'/>.
 	                   </para>
 	             </listitem>
 	             <listitem>
@@ -84,6 +85,7 @@
 						   The message seems to be: install from the tarball.
 					   </para>
 	             </listitem>
+<!--				
                  <listitem>
                        <para>
                             <filename>python-memcache</filename> pure-python interface to <filename>memcached</filename>.
@@ -91,11 +93,13 @@
 							you cannot install <filename>cmemcache</filename>.
                        </para>
                  </listitem>
+-->	
 			</orderedlist>
 		</sect2>
 		<sect2>
 			 <title>Non-Python libraries</title>
 			 <orderedlist>
+<!--				 
 			     <listitem>
 			         <para>
 			         	<filename>cmemcache</filename> obtainable from <ulink url='http://gijsbert.org/cmemcache/'/>
@@ -103,6 +107,11 @@
 						for interacting with <filename>memcached</filename>. Either may be used; &peloton;
 						will try <filename>cmemcache</filename> first and fall back to <filename>Python-Memcache</filename>
 						if not available.
+					</para>
+				</listitem>
+-->				 
+			     <listitem>
+			         <para>
 					</para>
 				</listitem>
 			</orderedlist>
@@ -130,6 +139,7 @@
                             <ulink url='https://jira.amqp.org/confluence/display/AMQP/Download'/>.
                        </para>
                  </listitem>
+<!--
                  <listitem>
                        <para>
                        	    <filename>memcached</filename> - the robust and road-tested cacheing daemon.
@@ -137,6 +147,7 @@
 							<filename>cmemcache</filename>.
                        </para>
                  </listitem>
+-->	
                  <listitem>
                        <para>
                        </para>
@@ -179,12 +190,13 @@
 				<tbody>
                     <row>
                         <entry>Twisted</entry>
-                        <entry>2.5</entry>
-						<entry>P</entry>
+                        <entry>8.0.1</entry>
+						<entry>P/PB</entry>
                         <entry>&tick;</entry>
                         <entry>Python asynchronous networking library</entry>
 						<entry>MIT</entry>
                     </row>
+<!--
 			        <row>
                         <entry>memcached</entry>
                         <entry>1.1.12</entry>
@@ -200,7 +212,7 @@
                         <entry>(&tick;)</entry>
                         <entry>Fast memcache adapter</entry>
 						<entry>GPL</entry>
-                    </row>
+                    </row>	
                     <row>
                         <entry>python-memcache</entry>
                         <entry>1.40</entry>
@@ -209,6 +221,7 @@
                         <entry>Pure Python memcache adapter; a slower alternative to cmemcache</entry>
 						<entry>Python</entry>
                     </row>
+-->	
                     <row>
                         <entry>RabbitMQ</entry>
                         <entry>1.2.0</entry>

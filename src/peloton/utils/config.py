@@ -227,7 +227,7 @@ that whole configuration. """
             
         
 from peloton.exceptions import ServiceNotFoundError    
-from peloton.profile import PelotonProfile
+import peloton.profile
 def locateService(serviceName, servicePath, gridMode):
     """ Searches for the service named serviceName in ther service path
 and loads the profile. Returns (serviceDirectory, profile).
@@ -251,7 +251,7 @@ Raises ServiceNotFoundError if the service is not found (surprise)."""
     servicePath = locations[0]
     configDir = os.sep.join([servicePath, 'config'])
     profiles = ["profile.pcfg", "%s_profile.pcfg" % gridMode]
-    serviceProfile = PelotonProfile()
+    serviceProfile = peloton.profile.PelotonProfile()
     for profile in profiles:
         serviceProfile.loadFromFile("%s/%s" % (configDir, profile))
     

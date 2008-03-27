@@ -100,7 +100,6 @@ were given to start with to validate our presence. """
 if not, let the PSC know we've failed and why, then initiate closedown. """
         raise NotImplementedError
         
-    
     def _clientConnectError(self, err):
         raise WorkerError("Error connecting with PSC: %s" % str(err))
     

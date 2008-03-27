@@ -4,7 +4,13 @@
 # All Rights Reserved
 # See LICENSE for details
 
-""" Memcache adapter for Peloton livecache """
+""" Memcache adapter for Peloton livecache 
+
+DEPRECATED
+
+CACHEING SUPPORT MOVED TO KERNEL PLUGIN AND NO LONGER A 
+MEMCACHE CLIENT.
+"""
 from peloton.persist.livecache import AbstractPelotonCache
 import peloton.persist.MemcachePool as MemcachePool
 import logging

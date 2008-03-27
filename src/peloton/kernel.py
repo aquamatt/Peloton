@@ -3,7 +3,6 @@
 # Copyright (c) 2007-2008 ReThought Limited and Peloton Contributors
 # All Rights Reserved
 # See LICENSE for details
-from peloton.utils import getExternalIPAddress
 
 # ensure threading is OK with twisted
 from twisted.python import threadable
@@ -16,6 +15,7 @@ import socket
 import time
 import uuid
 
+from twisted import __version__ as twistedVersion
 from twisted.internet import reactor
 from twisted.internet.task import LoopingCall
 from twisted.spread import pb
@@ -23,7 +23,6 @@ from twisted.spread import pb
 from peloton.base import HandlerBase
 from peloton.events import EventDispatcher
 from peloton.events import MethodEventHandler
-from peloton.persist.memcache import PelotonMemcache
 from peloton.utils import crypto
 from peloton.utils import getClassFromString
 from peloton.utils import chop
@@ -77,17 +76,18 @@ The bootstrap routine is as follows:
     1.  Read the domain and grid keys
     2.  Load the profile for this PSC
     3.  Generate this PSCs session keys and our UID
-    4.  Connect to memcache
-    5.  Start all the network protocol adapters
-    6.  Inform the worker generator as to the port on which the RPC
+    4.  Start all the network protocol adapters
+    5.  Inform the worker generator as to the port on which the RPC
         adapter has started.
-    7.  Start kernel plugins
-    8.  Initialise routing table, schedule grid-joining workflow to 
+    6.  Start kernel plugins
+    7.  Initialise routing table, schedule grid-joining workflow to 
         start when the reactor starts
-    9. Start the reactor
+    8. Start the reactor
     
 The method returns only when the reactor stops.
 """        
+        self.logger.info("Using Twisted version %s" % twistedVersion)
+        
         # (1) read in the domain and grid key - all PSCs in a domain must have 
         # access to the same key file (or identical copy, of course)
         self.domainCookie, self.domainKey = \
@@ -122,11 +122,7 @@ The method returns only when the reactor stops.
         self.profile['guid'] = self.guid
         self.logger.info("Node UUID: %s" % self.profile['guid'])
         
-        # (4) hook into cacheing back-end
-        self.memcache = PelotonMemcache.getInstance(
-                          self.config['domain.memcacheHosts'])
-
-        # (5) hook in the PB adapter and any others listed
+        # (4) hook in the PB adapter and any others listed
         self.logger.info("Adapters list should be in config, not in code!")
         self._startAdapters()
         # the profile address may be different to the bind interface
@@ -143,16 +139,16 @@ The method returns only when the reactor stops.
         self.profile['port'] = self.config['psc.bind_port']        
         self.profile['hostname'] = socket.getfqdn()
 
-        # (6) Write to the generatorInterface to pass host:port of our 
+        # (5) Write to the generatorInterface to pass host:port of our 
         # twisted RPC interface
         self.generatorInterface.initGenerator(self.config['psc.bind'])
 
-        # (7) Start any kernel plugins, e.g. message bus, shell and
+        # (6) Start any kernel plugins, e.g. message bus, shell and
         #     then instruct the dispatcher to get the external bus
         self._startPlugins()
         self.dispatcher.joinExternalBus()
 
-        # (8) Initialise the routing table and schedule grid-joining 
+        # (7) Initialise the routing table and schedule grid-joining 
         #     workflow to happen on reactor start
         #  -- this checks the domain cookie matches ours; quit if not.
         self.serviceLoader = ServiceLoader(self)
@@ -160,7 +156,7 @@ The method returns only when the reactor stops.
         self.domainManager = DomainManager(self)
         reactor.callWhenRunning(self.routingTable.notifyConnect)
 
-        # (9) ready to start!
+        # (8) ready to start!
         reactor.run()
         
         return 0
