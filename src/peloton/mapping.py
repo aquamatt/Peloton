@@ -401,7 +401,10 @@ to this node on its private channel psc.<guid>.init"""
     def removePSC(self, guid):
         """ Remove the PSC record for the PSC with specified GUID. """
         try:
+            pscProxy = self.pscByGUID[guid]
             del(self.pscByGUID[guid])
+            del(self.pscByHost[pscProxy.profile['ipaddress']])
+            self.pscs.remove(pscProxy)
         except KeyError:
             self.logger.error("Received disconnect from stranger node: %s" % guid)
     

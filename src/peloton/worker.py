@@ -24,7 +24,7 @@ The PSC and Generator communicate as follows::
     |                                      Worker
     | <--- getRoot() (initialise RPC) -------|
     | ---- return Root object (1) ---------->|
-    | <--- setWorker(key, workerRemote (2)) -|
+    | <--- registerWorker(...) --------------|
     | ---- return PSC Referenceable(3) ----->|
 
 (1) is the peloton.kernel.PSCRoot; (2) is the peloton.worker.KernelInterface 
@@ -156,7 +156,8 @@ the service might require.
 
     def call(self, method, *args, **kwargs):
         """ Call and excecute the specified method with args as provided. """
-        raise NotImplementedError
+        mthd = getattr(self.__service, method)
+        return reactor.callInThread(mthd, *args, **kwargs)
         
 class KernelInterface(pb.Referenceable):
     """ This class mediates between the worker and the kernel; it
