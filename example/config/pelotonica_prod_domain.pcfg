@@ -8,4 +8,4 @@ psc_user=peloton
 psc_group=peloton
     
 worker_user=pelotonw
-worker_gropu=peloton
+worker_group=peloton

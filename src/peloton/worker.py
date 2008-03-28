@@ -4,6 +4,7 @@
 # All Rights Reserved
 # See LICENSE for details
 from peloton.exceptions import ServiceNotFoundError
+from peloton.utils import getClassFromString
 """ The PelotonWorker and related classes are defined in this module.
 
 A worker is started by a generator that is tied to a PSC. Separating 
@@ -68,6 +69,7 @@ from the command line.
     def start(self):
         """ Start this worker; returns an exit code when worker 
 closes down. """
+        self.loadService()
         reactor.callWhenRunning(self._initialise)
         reactor.run()
         return 0
@@ -80,7 +82,7 @@ rock. """
         self.kernelInterface = KernelInterface(self)
         factory = pb.PBClientFactory()
         try:
-            reactor.connectTCP(self.host, self.port, factory)
+            reactor.connectTCP(self.pscHost, self.pscPort, factory)
             d = factory.getRootObject()
             d.addCallback(self._clientConnect)
             d.addErrback(self._clientConnectError)
@@ -91,14 +93,14 @@ rock. """
         """ Root object obtained; now offer our interface and the token we
 were given to start with to validate our presence. """
         self.psc = rootObj
-        d = self.psc.callRemote("")
+        d = self.psc.callRemote("registerWorker", self.kernelInterface, self.__service.profile, self.token)
         d.addCallback(self._pscOK)
         d.addErrback(self._clientConnectError)
 
-    def _pscOK(self):
+    def _pscOK(self, rref):
         """ Now start the service. If OK, message the PSC accordingly;
 if not, let the PSC know we've failed and why, then initiate closedown. """
-        raise NotImplementedError
+        self.pscReference = rref
         
     def _clientConnectError(self, err):
         raise WorkerError("Error connecting with PSC: %s" % str(err))
@@ -107,7 +109,7 @@ if not, let the PSC know we've failed and why, then initiate closedown. """
         self.stopService()
         reactor.stop()
         
-    def loadService(self, name):
+    def loadService(self):
         """ Loading a service happens as follows:
     - Locate service class
     - Validate its signature cookie ???
@@ -123,30 +125,32 @@ Raises ServiceConfigurationError if the name is invalid.
         #### servicename.servicename.ServiceName
         #### So why not import, instantiate, call loadConfig and
         #### let that load using relative path?
+        gridmode = self.kernel.config['grid.gridmode']
         try:
-            servicePath, serviceProfile = \
+            self.servicePath, self.serviceProfile = \
                 locateService(self.name, 
                                 self.kernel.initOptions.servicepath, 
-                                self.kernel.config['grid.gridmode'])
+                                gridmode)
         except ServiceNotFoundError:
             raise
         
-        self.__service = None
+        cls = getClassFromString("%s.%s" % (self.name.lower(), self.name))
+        self.__service = cls(self.name, self.serviceProfile, gridmode)
     
     def startService(self):
-        """ Call serviceClass.startup(): this is the method which sets up
+        """ Call serviceClass.start(): this is the method which sets up
 loggers, starts connection pools and does any other initialisation 
 the service might require. 
 """
         try:
-            self.__service.startup()
+            self.__service.start()
         except Exception, ex:
             raise ServiceConfigurationError("Error starting service %s" % self.name, ex)
     
     def stopService(self):
-        """ Calls shutdown() on the managed service. """
+        """ Calls stop() on the managed service. """
         try:
-            self.__service.shutdown()
+            self.__service.stop()
         except Exception, ex:
             raise ServiceError("Error stopping service %s" % self.name, ex)
 

@@ -8,7 +8,6 @@ from twisted.internet import reactor
 from twisted.spread import pb
 from twisted.internet.error import CannotListenError
 from peloton.adapters import AbstractPelotonAdapter
-import logging
 
 class PelotonPBAdapter(AbstractPelotonAdapter, pb.Root):
     """ The primary client adapter for Peloton is the Python Twisted PB
@@ -19,7 +18,7 @@ through which real work can be done.
 """
     def __init__(self, kernel):
         AbstractPelotonAdapter.__init__(self, kernel, 'TwistedPB')
-        self.logger = logging.getLogger()
+        self.logger = self.kernel.logger
     
     def start(self, configuration, cmdOptions):
         """ In this startup the adapter seeks to bind to a port. It obtains
@@ -68,27 +67,30 @@ PelotonGridAdapter which provides methods for inter-PSC work.
 copyable type stuff.
 """
         pass
-
-    def remote_registerWorker(self, worker, token):
+    
+    def remote_registerWorker(self, worker, serviceProfile, token):
         """ A worker registers by sending a KernelInterface
 referenceable and a token. The token was passed to the worker
 generator and is used simply to verify that this is indeed a valid
-and wanted contact. """
-        pass
+and wanted contact. Ther service profile is the augmented profile
+containing all method details."""
+        self.logger.info("Starting worker, token=%s NOT VALIDATED" % token)
+        self.logger.debug(str(serviceProfile))
+        return PelotonWorkerAdapter(self, self.kernel)
     
+    def remote_login(self, clientObj):
+        """ Login to Peloton. The clientObj contains the credentials to be
+used. Returns a PelotonClientAdapter"""
+        raise NotImplementedError
+
     def remote_getInterface(self, name):
         """ Return the named interface to a plugin. """
         return self.kernel.getCallable(name)
     
-class PelotonGridAdapter(pb.Referenceable):
+class PelotonClientAdapter(pb.Referenceable):
     def remote_call(self, clientObj, service, method, *args, **kwargs):
         raise NotImplementedError
-    
-    def remote_login(self, clientObj):
-        """ Login to Peloton. The clientObj contains the credentials to be
-used."""
-        raise NotImplementedError
-    
+        
     def remote_post(self, clientObj, service, method, *args, **kwargs):
         raise NotImplementedError
     
@@ -106,4 +108,23 @@ used."""
     
 class PelotonWorkerAdapter(pb.Referenceable):
     """ Interface by which a worker may invoke actions on the kernel. """
-    pass
+    def __init__(self, pscRef, kernel):
+        self.kernel = kernel
+        self.pscRef = pscRef
+        
+    def remote_notifyClosedown(self):
+        """ Called when the worker is closing down. """
+        pass
+    
+    def remote_fireEvent(self, key, exchange, **kwargs):
+        """ Fire an event onto the bus. """
+        pass
+    
+    def remote_register(self, key, handler, exchange='events'):
+        pass
+    
+    def remote_deregister(self, key, handler, exchange='events'):
+        pass
+    
+    
+    

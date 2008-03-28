@@ -41,41 +41,15 @@ lower case) containing the class FooBar(PelotonService,...). Here FooBar retains
 it's original capitalisation and, indeed, it is a matter of convention
 that the service name should be camel case.            
 """
-    def __init__(self, name, homePath, gridmode):
+    def __init__(self, name, profile, gridmode):
         """ homePath passed in on construction because from this module
 cannot find where the concrete sub-class lives. Configurations are found relative to this
 homePath in homePath/config. """
         self.name = name
-        self.homePath = homePath
         self.gridmode = gridmode
-        self.config = PelotonProfile()
-        self.profile = PelotonProfile()
+        self.profile = profile
         
     def loadConfig(self):
-        """ Configuration process as follows:
-        
-        1. load the configuration and put into self.config. Configuration
-            files are stored relative to the homePath as described in the PelotonService
-            class documentation.
-
-        2. load the profile. 
-        
-        3. If extendProfile==True (default) add method meta-data to the profile
-"""
-        configFiles = (self.config, ["config.pcfg" % self.homePath, 
-                       "%s.pcfg" % self.gridmode])
-        profileFiles = (self.profile, ["profile.pcfg" % self.homePath, 
-                       "%s_profile.pcfg" % self.gridmode])
-
-        for conf, fileList in [configFiles, profileFiles]:
-            for cf in fileList:
-                try:
-                    conf.loadFromFile(cf, ["%s/config" % self.homePath])
-                except:
-                    # file not present. 
-                    pass
-            if not conf:
-                raise ConfigurationError("Service %s cannot be started: missing configuration or profile" % self.name)
         
         publicMethods = [m for m in dir(self) if m.startswith('public_') and callable(getattr(self, m))]
         if not self.profile.has_key('methods'):
