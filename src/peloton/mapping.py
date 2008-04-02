@@ -15,13 +15,11 @@ a class in this module:
 The RoutingTable is required by all.
 """
 
-import os
-import logging
+import random
 from peloton.events import MethodEventHandler
 from peloton.events import AbstractEventHandler
 from peloton.utils import crypto
 from peloton.utils.config import locateService
-from peloton.exceptions import ServiceNotFoundError
 from peloton.profile import PelotonProfile
 from peloton.profile import ServicePSCComparator
 
@@ -103,7 +101,7 @@ Starting the service involves the following process chain:
        to start the service. Fill slots in the launch profile (e.g. maybe
        two machines of one sort, one of another required etc., or more simply,
        n service handlers to be started, m per PSC).
-    4. After delay, re-launch request if not all launch request slots are
+    4. :todo: After delay, re-launch request if not all launch request slots are
        filled.
        
 This class broadcasts on psc.service.loader and listens on a temporary private channel
@@ -242,6 +240,64 @@ class LocalPSCProxy(PSCProxy):
     def extractServices(self):
         pass
 
+class ServiceProvider(object):
+    """ Managers providers for a service - keeps records of what
+versions are available, the extended profile and the PSC 'providers'
+running the service. """
+    
+    def __init__(self, name):
+        """ Initialise a providers store with the name of the service
+and, optionaly, an initialising profile."""
+        self.name = name
+        # versions contains tuples of 
+        # (profile, [provider_1, ..., provider_n])
+        self.versions = {}
+        self.current=(-1, [])
+            
+    def addProvider(self, provider, version=None):
+        """ Add a provider - either specify the version of the 
+service it is providing for or the provider will be considered to be
+serving the 'current' version. """
+        if version:
+            self.versions[version][1].append(provider)
+        else:
+            self.current[1].append(provider)
+
+    def addNewVersion(self, profile):
+        """ Add the profile for a new version of this service. """
+        self.versions[profile['version']] = (profile, [])
+            
+    def getProviders(self, version=None):
+        """ Return all providers of the specified version, or the
+current version if none specified."""
+        if version:
+            return self.versions[1]
+        else:
+            return self.current[1]
+        
+    def getRandomProvider(self, version=None):
+        """ Return a single provider from the pool for the specified
+version (or current by default). """
+        providers = self.getProviders(version)
+        ix = random.randrange(len(providers))
+        return providers[ix]
+    
+    def removeProvider(self, provider, version=None):
+        """ Remove the provider from all versions by default or
+the specified version."""
+        if not version:
+            for _,p in self.versions:
+                if provider in p:
+                    p.remove(provider)
+        else:
+            p = self.versions[version]
+            if provider in p: 
+                p.remove(provider)
+                
+    def setCurrent(self, version):
+        """ Re-set the 'current' version. """
+        self.current = self.versions[version]
+
 class RoutingTable(object):
     """ Maintain a live database of all PSCs in the domain complete with their
 profiles, the list of all services that they run and a library of all service profiles. 
@@ -278,6 +334,7 @@ Profiles received are logged into the routing table.
         self.pscs=[]
         self.pscByHost={}
         self.pscByGUID={}
+        self.serviceProviders={}
 
         self.selfproxy = LocalPSCProxy(kernel)
         self.addPSC(self.selfproxy)
@@ -289,7 +346,8 @@ Profiles received are logged into the routing table.
                                 exchange="domain_control", 
                                 action='connect',
                                 myDomainCookie=self.kernel.domainCookie,
-                                profile=repr(self.kernel.profile))
+                                profile=repr(self.kernel.profile),
+                                serviceList=self.kernel.routingTable.shortServiceList())
 
     def notifyDisconnect(self):
         """ Call to unhook ourselves from the mesh """
@@ -323,7 +381,8 @@ to this node on its private channel psc.<guid>.init"""
     
             self.dispatcher.fireEvent(key="psc.%s.init" % msg['profile']['guid'],
                                     exchange="domain_control",
-                                    profile=repr(self.kernel.profile))
+                                    profile=repr(self.kernel.profile),
+                                    serviceList=self.kernel.routingTable.shortServiceList())
         
 
             try:
@@ -352,7 +411,7 @@ to this node on its private channel psc.<guid>.init"""
         msg['profile'] = pp
         try:
             clazz = self._getProxyForProfile(msg['profile'])
-            self.addPSC(clazz(msg['profile']))
+            self.addPSC(clazz(msg['profile']), services=msg['serviceList'])
         except Exception, ex:
             self.logger.error("Cannot register PSC (%s) with RPC mechanisms %s" \
                               % (msg['profile']['guid'], str(msg['profile']['rpc'])))                
@@ -389,9 +448,15 @@ to this node on its private channel psc.<guid>.init"""
                MethodEventHandler(self.respond_pscProfile),
                "domain_control")
     
-    def addPSC(self, pscProxy):
+    def addPSC(self, pscProxy, serviceList):
         """ Store the PSC provided. """
         self.kernel.logger.info("Adding profile for node: %s" % pscProxy.profile['guid'])
+        
+        for service in serviceList:
+            if not service in self.serviceProviders.keys():
+                self.seriveProviders[service] = ServiceProvider(service)
+            self.serviceProviders[service].addProvider(pscProxy)
+        
         self.pscs.append(pscProxy)
         self.pscByHost[pscProxy.profile['ipaddress']] = pscProxy
         self.pscByGUID[pscProxy.profile['guid']] = pscProxy

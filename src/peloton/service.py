@@ -41,13 +41,16 @@ lower case) containing the class FooBar(PelotonService,...). Here FooBar retains
 it's original capitalisation and, indeed, it is a matter of convention
 that the service name should be camel case.            
 """
-    def __init__(self, name, profile, gridmode):
+    def __init__(self, name, profile, gridmode, versionMajor, versionMinor, versionPatch):
         """ homePath passed in on construction because from this module
 cannot find where the concrete sub-class lives. Configurations are found relative to this
 homePath in homePath/config. """
         self.name = name
         self.gridmode = gridmode
         self.profile = profile
+        self.versionMajor = versionMajor
+        self.versionMinor = versionMinor
+        self.versionPatch = versionPatch
         
     def loadConfig(self):
         

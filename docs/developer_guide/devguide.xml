@@ -28,6 +28,12 @@
 		</releaseinfo>
 		<abstract>
 			<para>
+				This document describes some of the &peloton; internals for the
+				benefit of anyone trying to understand the code for the purpose of 
+				modification or simple gratification. Whilst not exhaustive, the
+				key processes and development philosophies are outlined.
+			</para>
+			<para>
 				Core &peloton; developers are asked to adhere to certain
 				guidelines described in this document in order to ensure consistency of
 				code layout, design, nomenclature and style. Without wishing to be proscriptive
@@ -36,181 +42,212 @@
 			</para>
 		</abstract>
 	</articleinfo>
-
-	<sect1 id='basic_rules'>
+	
+	<sect1 id='core_processes'>
+		<title>Core processes</title>
+		<para>
+			A number of synchronous and asynchronous processes are involved in making
+			&peloton; work; just starting up a PSC involves a fair degree of messaging
+			and event handling. In this chapter we describe these processes.
+		</para>
+		<sect2 id='psc_startup'>
+			<title>PSC startup</title>
+			<mediaobject>
+				<imageobject>
+					<imagedata fileref='psc_startup.png' format='PNG'/>
+				</imageobject>
+			</mediaobject>			
+		</sect2>
+		<sect2>
+			<title>Service startup</title>
+			<mediaobject>
+				<imageobject>
+					<imagedata fileref='service_startup.png' format='PNG'/>
+				</imageobject>
+			</mediaobject>			
+		</sect2>
+	</sect1>
+	
+	<sect1 id='coding_practice'>
 		<title>
-			Basic rules: Style
+			Coding practice
 		</title>
-		<para>
-			The following layout rules are proscribed for this codebase:
-		</para>
-		<orderedlist>
-			<listitem>
-				<para>
-					Indentation by four (4) white space (0x20) and under 
-					<emphasis>no circumstances</emphasis> are tabs to be substituted. Offenders
-					will have their keyboards forcibly modified.
-				</para>
-			</listitem>
-			<listitem>
-				<para>
-					Classes named with camel-case, starting with an upper-case letter, e.g.
-					<code>MyClass</code> and <code>PelotonCleverServiceModule</code>.
-				</para>
-			</listitem>
-			<listitem>
-				<para>
-					Methods/functions with camel-case, starting with a lower-case letter. e.g.
-					<code>myFunction(self...)</code> or <code>doSomethign</code>.
-				</para>
-			</listitem>
-			<listitem>
-				<para>
-					Doc-strings should be provided at module, class and method/function level.
-				</para>
-			</listitem>
-			<listitem>
-				<para>
-					One module imported per import statement.
-				</para>
-			</listitem>
-		</orderedlist>
-	</sect1>
+		
+		<sect2 id='basic_rules'>
+			<title>
+				Basic rules: Style
+			</title>
+			<para>
+				The following layout rules are proscribed for this codebase:
+			</para>
+			<orderedlist>
+				<listitem>
+					<para>
+						Indentation by four (4) white space (0x20) and under 
+						<emphasis>no circumstances</emphasis> are tabs to be substituted. Offenders
+						will have their keyboards forcibly modified.
+					</para>
+				</listitem>
+				<listitem>
+					<para>
+						Classes named with camel-case, starting with an upper-case letter, e.g.
+						<code>MyClass</code> and <code>PelotonCleverServiceModule</code>.
+					</para>
+				</listitem>
+				<listitem>
+					<para>
+						Methods/functions with camel-case, starting with a lower-case letter. e.g.
+						<code>myFunction(self...)</code> or <code>doSomething</code>.
+					</para>
+				</listitem>
+				<listitem>
+					<para>
+						Doc-strings should be provided at module, class and method/function level.
+					</para>
+				</listitem>
+				<listitem>
+					<para>
+						One module imported per import statement.
+					</para>
+				</listitem>
+			</orderedlist>
+		</sect2>
 
-	<sect1>
-		<title>	
-			Python 3000 compatibility
-		</title>
-		<para>
-			In view of the fact that Python semantics are to change slightly in future versions
-			we ask that developers adhere to future syntax where this is compatible with the 
-			current targeted Python release (2.5 at the time of writing). This means importing from 
-			<code>__future__</code> in a number of cases; failing to do this may result in code
-			that fails in a perplexing manner in the future. We have an opportunity to avoid much
-			of this pain by starting as we mean to continue.
-		</para>
-		<para>
-			The following should be observed and represent a sub-set of changes that should be
-			adhered to as described more fully at 
-<ulink url='http://wiki.python.org/moin/FutureProofPython'>http://wiki.python.org/moin/FutureProofPython</ulink>:
-		</para>
-		<orderedlist>
-			<listitem>
-				<para>
-					<code>print(s)</code> rather than <code>print s</code>: <code>print</code>
-					is loosing its dual identity as a statement and function in future Python
-					releases.
-				</para>
-			</listitem>
-			<listitem>
-				<para>
-					<code>from __future__ import division</code> : see 
-                    <ulink url='http://wiki.python.org/moin/FutureProofPython'/>
-					for an explanation of the new division operator behaviour that returns a float when two operands
-					are used. Behaviour as per the current operator is obtained with a double slash, so:
-					<code>3/2 == 1.5; 3//2 == 1;</code>.
-				</para>
-			</listitem>
-			<listitem>
-				<para>
-					Only use absolute imports.
-				</para>
-			</listitem>
-			<listitem>
-				<para>
-					New style classes. Always. Exclusively.  
-				</para>
-			</listitem>
-			<listitem>
-				<para>
-					When raising exceptions instantiate the exception object with standard object
-					instantiation syntax: <code>raise MyException("Something happened")</code>
-					and NOT <code>raise MyException "Something happened, old-style"</code>.
-				</para>
-			</listitem>
-			<listitem>
-				<para>
-					Always use <code>repr(foo)</code> not the short-hand <code>`foo`</code> which
-					is to be deprecated.
-				</para>
-			</listitem>
-		</orderedlist>
-	</sect1>
-
-	<sect1>
-		<title>Utility libraries</title>
-		<para>
-			In cases where more than one standard Python library may do a given job look to this document
-			to find the library and version being used in this project. 
-		</para>
-		<orderedlist>
-			<listitem>
-				<para>
-					<code>optparse</code> is the module to be used for parsing command line
-					options by any core scripts that may refer directly to the command line 
-					arguments.
-				</para>
-			</listitem>
-			<listitem>
-			    <para>
-			    	<code>configobj</code> as found at <ulink url='http://www.voidspace.org.uk/python/configobj.html'/>
-					is used for the parsing of config files which are all INI style. You should
-					also use this; it is provided in the <filename>thirdparty</filename> directory
-					of the &peloton; distribution.
-			    </para>
-			</listitem>
-		</orderedlist>
-	</sect1>
-	<sect1>
-		<title>Documentation</title>
-		<para>
-			Documenting the API shall be done with EpyDoc (see <ulink url='http://epydoc.sourceforge.net/'/>).
-			User documentation, handbooks, manuals, tutorials and other guides to be written
-			with DocBook.
-		</para>
-		<para>
-			EpyDoc does permit a number of markups to be used including JavaDoc. The Peloton
-			project uses EpyText for ALL docstring markup; please adhere to this.
-		</para>
-	</sect1>
-	<sect1>
-        <title>Submitting code</title>
-		<para>
-		  Whether you have write access to SVN or are submitting patches you
-		  <emphasis>must</emphasis> adhere to the following rules; submissions 
-		  failing to do so will not be accepted.
-		</para>
-		<orderedlist>
-           <listitem>
-               <para>
-               	    Only submit or commit code that is tested as functional to the
-					degree stated on submission. Only if you are committing to a
-					private branch may you put 'work in progress' into SVN for 
-					safe keeping. 
-               </para>
-			   <para>
-			   	    Breaking the head through careless committal is a cardinal sin!  
-			   </para>
-           </listitem>
-           <listitem>
-               <para>
-               	    When releasing code to the head or submitting patches you must also
-					ensure that supporting documentation is provided. This is both in the
-					form of adequately documented code (that will be correctly parsed by
-					EpyDoc) and additions to the developer guide, installation guide or
-					&peloton; handbook. New features must be documented in at least one of
-					these - there are to be no 'hidden' features known only to readers of the
-					API documentation.
-               </para>
-           </listitem>
-           <listitem>
-               <para>
-               </para>
-           </listitem>
-           <listitem>
-               <para>
-               </para>
-           </listitem>
-		</orderedlist>
+		<sect2>
+			<title>	
+				Python 3000 compatibility
+			</title>
+			<para>
+				In view of the fact that Python semantics are to change slightly in future versions
+				we ask that developers adhere to future syntax where this is compatible with the 
+				current targeted Python release (2.5 at the time of writing). This means importing from 
+				<code>__future__</code> in a number of cases; failing to do this may result in code
+				that fails in a perplexing manner in the future. We have an opportunity to avoid much
+				of this pain by starting as we mean to continue.
+			</para>
+			<para>
+				The following should be observed and represent a sub-set of changes that should be
+				adhered to as described more fully at 
+	<ulink url='http://wiki.python.org/moin/FutureProofPython'>http://wiki.python.org/moin/FutureProofPython</ulink>:
+			</para>
+			<orderedlist>
+				<listitem>
+					<para>
+						<code>print(s)</code> rather than <code>print s</code>: <code>print</code>
+						is loosing its dual identity as a statement and function in future Python
+						releases.
+					</para>
+				</listitem>
+				<listitem>
+					<para>
+						<code>from __future__ import division</code> : see 
+						<ulink url='http://wiki.python.org/moin/FutureProofPython'/>
+						for an explanation of the new division operator behaviour that returns a float when two operands
+						are used. Behaviour as per the current operator is obtained with a double slash, so:
+						<code>3/2 == 1.5; 3//2 == 1;</code>.
+					</para>
+				</listitem>
+				<listitem>
+					<para>
+						Only use absolute imports.
+					</para>
+				</listitem>
+				<listitem>
+					<para>
+						New style classes. Always. Exclusively.  
+					</para>
+				</listitem>
+				<listitem>
+					<para>
+						When raising exceptions instantiate the exception object with standard object
+						instantiation syntax: <code>raise MyException("Something happened")</code>
+						and NOT <code>raise MyException "Something happened, old-style"</code>.
+					</para>
+				</listitem>
+				<listitem>
+					<para>
+						Always use <code>repr(foo)</code> not the short-hand <code>`foo`</code> which
+						is to be deprecated.
+					</para>
+				</listitem>
+			</orderedlist>
+		</sect2>
+	
+		<sect2>
+			<title>Utility libraries</title>
+			<para>
+				In cases where more than one standard Python library may do a given job look to this document
+				to find the library and version being used in this project. 
+			</para>
+			<orderedlist>
+				<listitem>
+					<para>
+						<code>optparse</code> is the module to be used for parsing command line
+						options by any core scripts that may refer directly to the command line 
+						arguments.
+					</para>
+				</listitem>
+				<listitem>
+					<para>
+						<code>configobj</code> as found at <ulink url='http://www.voidspace.org.uk/python/configobj.html'/>
+						is used for the parsing of config files which are all INI style. You should
+						also use this; it is provided in the <filename>thirdparty</filename> directory
+						of the &peloton; distribution.
+					</para>
+				</listitem>
+			</orderedlist>
+		</sect2>
+		<sect2>
+			<title>Documentation</title>
+			<para>
+				Documenting the API shall be done with EpyDoc (see <ulink url='http://epydoc.sourceforge.net/'/>).
+				User documentation, handbooks, manuals, tutorials and other guides to be written
+				with DocBook.
+			</para>
+			<para>
+				EpyDoc does permit a number of markups to be used including JavaDoc. The Peloton
+				project uses EpyText for ALL docstring markup; please adhere to this.
+			</para>
+		</sect2>
+		<sect2>
+			<title>Submitting code</title>
+			<para>
+			  Whether you have write access to SVN or are submitting patches you
+			  <emphasis>must</emphasis> adhere to the following rules; submissions 
+			  failing to do so will not be accepted.
+			</para>
+			<orderedlist>
+			   <listitem>
+				   <para>
+						   Only submit or commit code that is tested as functional to the
+						degree stated on submission. Only if you are committing to a
+						private branch may you put 'work in progress' into SVN for 
+						safe keeping. 
+				   </para>
+				   <para>
+						   Breaking the head through careless committal is a cardinal sin!  
+				   </para>
+			   </listitem>
+			   <listitem>
+				   <para>
+						   When releasing code to the head or submitting patches you must also
+						ensure that supporting documentation is provided. This is both in the
+						form of adequately documented code (that will be correctly parsed by
+						EpyDoc) and additions to the developer guide, installation guide or
+						&peloton; handbook. New features must be documented in at least one of
+						these - there are to be no 'hidden' features known only to readers of the
+						API documentation.
+				   </para>
+			   </listitem>
+			   <listitem>
+				   <para>
+				   </para>
+			   </listitem>
+			   <listitem>
+				   <para>
+				   </para>
+			   </listitem>
+			</orderedlist>
+		</sect2>
 	</sect1>
 </article>
