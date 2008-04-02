@@ -123,6 +123,10 @@ for use in such tools."""
     
     def public_launchService(self, serviceName):
         self.__kernel__.launchService(serviceName)
+    
+    def public_st(self):
+        " Start the test service "
+        self.__kernel__.launchService('TestService')
         
     def public_noop(self):
         self.__kernel__.domainManager.sendCommand('NOOP')

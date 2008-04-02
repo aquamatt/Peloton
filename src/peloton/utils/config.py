@@ -249,10 +249,15 @@ Raises ServiceNotFoundError if the service is not found (surprise)."""
         raise ServiceNotFoundError("Could not find service %s" % serviceName)
 
     servicePath = locations[0]
+    serviceProfile = loadServiceProfile(servicePath, gridMode)
+    return (servicePath, serviceProfile)
+
+def loadServiceProfile(servicePath, gridMode):
+    """Return the profile for this service"""
     configDir = os.sep.join([servicePath, 'config'])
     profiles = ["profile.pcfg", "%s_profile.pcfg" % gridMode]
     serviceProfile = peloton.profile.PelotonProfile()
     for profile in profiles:
         serviceProfile.loadFromFile("%s/%s" % (configDir, profile))
+    return serviceProfile
     
-    return (servicePath, serviceProfile)

@@ -8,6 +8,7 @@ from twisted.internet import reactor
 from twisted.spread import pb
 from twisted.internet.error import CannotListenError
 from peloton.adapters import AbstractPelotonAdapter
+from peloton.profile import PelotonProfile
 
 class PelotonPBAdapter(AbstractPelotonAdapter, pb.Root):
     """ The primary client adapter for Peloton is the Python Twisted PB
@@ -68,15 +69,17 @@ copyable type stuff.
 """
         pass
     
-    def remote_registerWorker(self, worker, serviceProfile, token):
+    def remote_registerWorker(self, worker, serviceProfile, launchTime, token):
         """ A worker registers by sending a KernelInterface
 referenceable and a token. The token was passed to the worker
 generator and is used simply to verify that this is indeed a valid
 and wanted contact. Ther service profile is the augmented profile
 containing all method details."""
         self.logger.info("Starting worker, token=%s NOT VALIDATED" % token)
-        self.logger.debug(str(serviceProfile))
-        return PelotonWorkerAdapter(self, self.kernel)
+        sp = PelotonProfile()
+        sp.loadFromString(serviceProfile)
+        self.kernel.addWorker(worker, sp['name'], sp['version'], launchTime)
+        return PelotonWorkerAdapter(self, sp['name'], self.kernel)
     
     def remote_login(self, clientObj):
         """ Login to Peloton. The clientObj contains the credentials to be
@@ -108,7 +111,8 @@ class PelotonClientAdapter(pb.Referenceable):
     
 class PelotonWorkerAdapter(pb.Referenceable):
     """ Interface by which a worker may invoke actions on the kernel. """
-    def __init__(self, pscRef, kernel):
+    def __init__(self, name, pscRef, kernel):
+        self.name = name
         self.kernel = kernel
         self.pscRef = pscRef
         
@@ -118,13 +122,17 @@ class PelotonWorkerAdapter(pb.Referenceable):
     
     def remote_fireEvent(self, key, exchange, **kwargs):
         """ Fire an event onto the bus. """
-        pass
+        self.kernel.dispatcher.fireEvent(key, exchange, **kwargs)
     
     def remote_register(self, key, handler, exchange='events'):
         pass
     
     def remote_deregister(self, key, handler, exchange='events'):
         pass
+
+    def remote_serviceStartOK(self, version, launchTime):
+        self.kernel.logger.info("Worker reports start OK for %s %s(%d)" % (self.name, version, launchTime))
     
-    
+    def remote_serviceStartFailed(self, ex):
+        self.kernel.logger.info("Worker reports start failed for %s : %s" % (self.name, ex))
     

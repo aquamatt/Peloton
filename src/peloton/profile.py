@@ -93,6 +93,8 @@ A service profile looks as follows::
         maxram=4096
         mincpus=2
         hostname=r:rc.* # regex the name of a host!
+        flags=list,of,flags,required
+        excludeFlags=list,of,bad,flags
         
     [launch]
         # parameters describing configuration of service in the domain
@@ -246,7 +248,13 @@ as key in service profile -- key in PSC profile):
     - [min|max]ram -- ram
     - [min|max]cpus -- cpus
     - platform (pattern) -- platform    
+    - flags -- flags
+    - excludeFlags -- flags
     
+Flags are matched True if all the flags in the profile  list are present in 
+the service list and none of the flags in the excludeFlags list are present in 
+the service profile.
+
 If send only the [profile] or [psclimits] section; keys must be in root of
 object provided.
 """
@@ -270,7 +278,23 @@ object provided.
             elif service_key in ['hostname', 'platform']:
                 if not self.__pattern_cf__(sp, service_key, pp, service_key):
                     return False
+            
+            elif service_key == 'flags':
+                flags = sp['flags']
+                pFlags = pp['flags']
                 
+                for f in flags:
+                    if f not in pFlags:
+                        return False
+            
+            elif service_key == 'excludeFlags':
+                flags = sp['excludeFlags']
+                pFlags = pp['flags']
+                
+                for f in flags:
+                    if f in pFlags:
+                        return False
+
         return True
     
     def __int_cf__(self, profilea, keya, profileb, keyb):

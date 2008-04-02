@@ -3,10 +3,8 @@
 # Copyright (c) 2007-2008 ReThought Limited and Peloton Contributors
 # All Rights Reserved
 # See LICENSE for details
-
-from peloton.profile import PelotonProfile
-from peloton.exceptions import ConfigurationError
-import os
+from peloton.utils.config import locateService
+import logging
 
 class PelotonService(object):
     """ Base class for all services. Public methods all have names prefixed
@@ -41,19 +39,34 @@ lower case) containing the class FooBar(PelotonService,...). Here FooBar retains
 it's original capitalisation and, indeed, it is a matter of convention
 that the service name should be camel case.            
 """
-    def __init__(self, name, profile, gridmode, versionMajor, versionMinor, versionPatch):
+    def __init__(self, name, gridmode):
         """ homePath passed in on construction because from this module
 cannot find where the concrete sub-class lives. Configurations are found relative to this
-homePath in homePath/config. """
+homePath in homePath/config. 
+
+If 'init'==True then initialise things like the logger. May wish to initialise
+with False if all we want is to load the config (as when launching a service)."""
         self.name = name
         self.gridmode = gridmode
-        self.profile = profile
-        self.versionMajor = versionMajor
-        self.versionMinor = versionMinor
-        self.versionPatch = versionPatch
+
+    def initSupportServices(self):
+        """ Start supporting services, such as the logger. Kept out of __init__
+so that we can instantiate very lightly (as required by the launch sequencer.)"""
+        self.logger = logging.getLogger(self.name)
+        defaultLogFormatter = \
+            logging.Formatter("[%(levelname)s]\t %(asctime)-4s %(name)s\t : %(message)s")
+        logStreamHandler = logging.StreamHandler()
+        logStreamHandler.setFormatter(defaultLogFormatter)
+        self.logger.addHandler(logStreamHandler)                    
         
-    def loadConfig(self):
-        
+    def loadConfig(self, servicePath):
+        """ Load service configuration file and then augment with details
+of all the methods in this service classed as 'public'. 
+
+Developers should not use the logger here: loadConfig should be useable prior
+to initSupportServices having been called."""
+        _, self.profile = locateService(self.name, servicePath, self.gridmode)
+
         publicMethods = [m for m in dir(self) if m.startswith('public_') and callable(getattr(self, m))]
         if not self.profile.has_key('methods'):
             self.profile['methods'] = {}
@@ -66,7 +79,9 @@ homePath in homePath/config. """
                 methods[shortname] = {}
             record = methods[shortname]
             record['doc'] = mthd.__doc__
-
+            
+        self.version = self.profile['version']
+        
     def start(self):
         """ Executed after configuration is loaded, prior to starting work.
 Can be used to setup database pools etc. Overide in actual services. """

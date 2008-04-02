@@ -55,6 +55,7 @@ which the kernel can request a worker to be started for a given service."""
         HandlerBase.__init__(self, options, args)
         self.generatorInterface = generatorInterface
         self.adapters = {}
+        self.workerStore = {}
         self.logger = logging.getLogger()
         self.config = config
         self.plugins = {}
@@ -114,6 +115,13 @@ The method returns only when the reactor stops.
         if self.initOptions.profile:
             self.profile.loadFromFile(self.initOptions.profile, 
                                       self.initOptions.configdirs)
+
+        # add flags from the command line to any flags that may be
+        # in the profile from disk
+        if self.profile.has_key('flags'):
+            self.profile.flags.extend(self.initOptions.flags)
+        else:
+            self.profile['flags'] = self.initOptions.flags
             
         # (3) generate session keys
         self.sessionKey = crypto.newKey(512)
@@ -193,9 +201,17 @@ key."""
 
     def closedown(self, x=0):
         """Closedown in an orderly fashion."""
-        # Closedown all worker nodes
+            
         # tidy up kernel
         if x == 0:
+            # Closedown all worker nodes
+            self.logger.info("Closing down workers")
+            for v in self.workerStore.values():
+                try:
+                    v.callRemote('stop').addErrback(lambda x: x)
+                except:
+                    pass
+
             self.logger.info("Notifying domain")
             self.routingTable.notifyDisconnect()
             # this  is a really cheap and nasty hack - 
@@ -203,7 +219,7 @@ key."""
             # the notification above would not get out before
             # the application quit. need to look to using ACK
             # in the message bus.
-            reactor.callLater(0.1, self.closedown, 1)
+            reactor.callLater(0.2, self.closedown, 1)
         elif x == 1:
             self.logger.info("Stopping adapters")
             self._stopAdapters()
@@ -298,18 +314,24 @@ hooks into the reactor. It is passed the entire config stack
         """ Initiate the process of launching a service. """
         self.serviceLoader.launchService(serviceName)
 
-    def startService(self, serviceName, numWorkers=1):
+    def startService(self, serviceName, launchTime, numWorkers=1):
         """ Instruct the worker generator to start numWorkers
 workers running service named serviceName."""
         tok = crypto.makeCookie(20)
         self.serviceLaunchTokens[tok] = [serviceName, numWorkers]
-        self.generatorInterface.startService(numWorkers, serviceName, tok)
+        self.generatorInterface.startService(numWorkers, serviceName, launchTime, self.config['grid.gridmode'], tok)
 
-        # this should really get fired from the service worker
-        self.dispatcher.fireEvent('psc.service.notification',
-                                  'domain_control',
-                                  serviceName=serviceName,
-                                  state='running')
+    def addWorker(self, ref, name, version, launchTime):
+        """ Store a reference to a worker keyed on tuple of 
+(name, version, launchTime). """
+        self.workerStore[(name, version, launchTime)] = ref
+        
+    def removeWorker(self, ref):
+        """ Remove the worker referenced from the worker store. """
+        for k,v in self.workerStore:
+            if v == ref:
+                del(self.workerStore[k])
+                break
 
     def getCallable(self, name):
         """ Return the callable as named"""

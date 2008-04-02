@@ -16,6 +16,7 @@ The RoutingTable is required by all.
 """
 
 import random
+import time
 from peloton.events import MethodEventHandler
 from peloton.events import AbstractEventHandler
 from peloton.utils import crypto
@@ -80,11 +81,8 @@ by another node. """
                                           action='SERVICE_PSC_NOMATCH')
                 
         elif msg['action'] == 'startService':
-            pp = PelotonProfile()
-            pp.loadFromString(msg['serviceProfile'])
-            msg['serviceProfile'] = pp
-            self.logger.debug("Instructed to start service %s (%s)" % (msg['serviceProfile']['name'], msg['serviceProfile']['version']))
-            self.kernel.startService(msg['serviceName'], int(msg['serviceProfile']['launch']['workersperpsc']))
+            self.logger.debug("Instructed to start service %s" % (msg['serviceName']))
+            self.kernel.startService(msg['serviceName'], msg['launchTime'], int(msg['workersPerPSC']))
 
 class ServiceLaunchSequencer(AbstractEventHandler):
     """ State object used to keep track of a particular request to launch 
@@ -114,6 +112,10 @@ in psc.service.loader.<key>. Both in the domain_control exchange.
         self.servicePath = servicePath
         self.serviceName = serviceName
         self.profile = profile
+        # launchTime is tagged to the service version in all the
+        # node's routing tables so as to be able to differentiate
+        # between different launches of the same versioned service.
+        self.launchTime = long(time.time()*1000.0)
         self.callBackChannel = 'psc.service.loader.%s%s' % (kernel.guid, crypto.makeCookie(10))
         self.dispatcher.register(self.callBackChannel, self, 'domain_control')
         
@@ -143,6 +145,8 @@ in psc.service.loader.<key>. Both in the domain_control exchange.
             self.workersPerPSC = 2
             self.profile['launch']['workserperpsc'] = self.workersPerPSC
             
+        self.workersRequired = self.pscRequired * self.workersPerPSC
+            
     def start(self):
         """ Initiate the service startup sequence. This event will be received by all nodes
 including self. We could optimise by checking the local node first etc, but why? This makes
@@ -167,26 +171,26 @@ launch sequencer. Type of message is indicated by msg['action'] value. """
         elif key == 'psc.service.notification':
             # event fired when a service has been started up
             if msg['serviceName'] == self.serviceName and msg['state'] == 'running':
-                self.logger.debug("Launch sequencer notified of service start: %s " % self.serviceName)
+                self.logger.debug("Launch sequencer notified of service start: %s - %s " % (self.serviceName, msg['token']))
                 self.launchPending -= 1
-                self.pscRequired -= 1
+                self.workersRequired -= 1
 
         self.checkQueue()
 
     def checkQueue(self):
         """ Called to process the queue of pending PSC offers to start
 a service."""
-        while (self.pscRequired - self.launchPending > 0) and self.pscReadyQueue:
+        while (self.workersRequired - self.launchPending > 0) and self.pscReadyQueue:
             msg = self.pscReadyQueue.pop()
             self.launchPending += 1
             self.dispatcher.fireEvent(msg['callback'],
                                       'domain_control',
                                       action='startService',
+                                      launchTime=self.launchTime,
                                       serviceName=self.serviceName,
-                                      servicePath=self.servicePath,
-                                      serviceProfile=repr(self.profile))
+                                      workersPerPSC=self.profile['launch']['workersperpsc'])
         
-        if self.pscRequired == self.launchPending == 0:
+        if self.workersRequired == self.launchPending == 0:
             self.done()
         
     def done(self):
@@ -347,7 +351,7 @@ Profiles received are logged into the routing table.
                                 action='connect',
                                 myDomainCookie=self.kernel.domainCookie,
                                 profile=repr(self.kernel.profile),
-                                serviceList=self.kernel.routingTable.shortServiceList())
+                                serviceList=self.kernel.routingTable.shortServiceList)
 
     def notifyDisconnect(self):
         """ Call to unhook ourselves from the mesh """
@@ -382,7 +386,7 @@ to this node on its private channel psc.<guid>.init"""
             self.dispatcher.fireEvent(key="psc.%s.init" % msg['profile']['guid'],
                                     exchange="domain_control",
                                     profile=repr(self.kernel.profile),
-                                    serviceList=self.kernel.routingTable.shortServiceList())
+                                    serviceList=self.kernel.routingTable.shortServiceList)
         
 
             try:
@@ -411,10 +415,10 @@ to this node on its private channel psc.<guid>.init"""
         msg['profile'] = pp
         try:
             clazz = self._getProxyForProfile(msg['profile'])
-            self.addPSC(clazz(msg['profile']), services=msg['serviceList'])
+            self.addPSC(clazz(msg['profile']))
         except Exception, ex:
-            self.logger.error("Cannot register PSC (%s) with RPC mechanisms %s" \
-                              % (msg['profile']['guid'], str(msg['profile']['rpc'])))                
+            self.logger.error("Cannot register PSC (%s) with RPC mechanisms %s : %s" \
+                              % (msg['profile']['guid'], str(msg['profile']['rpc']), str(ex)))                
 
     def _getProxyForProfile(self, profile):
         """ Return a proxy appropriate for the PSC described by this profile."""
@@ -448,7 +452,7 @@ to this node on its private channel psc.<guid>.init"""
                MethodEventHandler(self.respond_pscProfile),
                "domain_control")
     
-    def addPSC(self, pscProxy, serviceList):
+    def addPSC(self, pscProxy, serviceList=[]):
         """ Store the PSC provided. """
         self.kernel.logger.info("Adding profile for node: %s" % pscProxy.profile['guid'])
         
@@ -476,3 +480,7 @@ to this node on its private channel psc.<guid>.init"""
     def addService(self, profile):
         self.services[profile.name] = profile
     
+    def _getShortServiceList(self):
+        """ Return a list only of service names. """
+        return['not','yet','implemented']
+    shortServiceList = property(_getShortServiceList)

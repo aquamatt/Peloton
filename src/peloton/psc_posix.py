@@ -47,7 +47,7 @@ By default the console logger is not hooked up; set toConsole=True to enable.
     logger.name=rootLoggerName
     logger.setLevel(loglevel)
 
-    defaultLogFormatter = logging.Formatter("[%(levelname)s] %(asctime)-4s %(name)s : %(message)s")
+    defaultLogFormatter = logging.Formatter("[%(levelname)s]\t %(asctime)-4s %(name)s\t : %(message)s")
     if logdir:
         # removes empty elements so allows for logdir being empty
         filePath = os.sep.join([i for i in [logdir, logfile] if i])
@@ -161,7 +161,8 @@ when requested. This is a two step process:
             if host==None and port==None:
                 logger.error("Generator asked to fork a worker but master PSC has not initialised")
                 continue
-            name, token = l[6:].split(':')
+            name, launchTime, gridMode, token = l[6:].split(':')
+            launchTime=long(launchTime)
             logger.debug("Starting worker for %s (%s)" % (name, token))
             
             # fork a worker
@@ -172,7 +173,7 @@ when requested. This is a two step process:
             
             if pid == 0: # worker process
 #                os.close(pipeFD)
-                return PelotonWorker(host, port, name, token, options, args).start() 
+                return PelotonWorker(host, port, gridMode, name, token, launchTime, options, args).start() 
         else:
             pass
     return 0
@@ -190,9 +191,9 @@ of messaging between the two components."""
         """ bindHost is a string of the form host:port. """
         self.writePipe.write('INIT:%s\n' % bindHost)
         
-    def startService(self, num, serviceName, token):
-        for i in range(num):
-            self.writePipe.write('START:%s:%s\n' % (serviceName, token))
+    def startService(self, num, serviceName, launchTime, gridMode, token):
+        for _ in range(num):
+            self.writePipe.write('START:%s:%d:%s:%s\n' % (serviceName, launchTime, gridMode, token))
         
     def stop(self):
         self.writePipe.write('STOP\n')

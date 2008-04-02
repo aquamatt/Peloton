@@ -15,6 +15,15 @@ in this exception being raised."""
         Exception.__init__(self, msg)
         self.rootException = rootException
         
+    def __str__(self):
+        """ Use base str but if there is a rootException add that message
+to it. """
+        if self.rootException:
+            return "%s : Root exception: %s" % \
+                (Exception.__str__(self), str(self.rootException))
+        else:
+            return Exception.__str__(self)
+        
 class ConfigurationError(PelotonError):
     """To be raised when an error occurs reading a configuration file, 
 a profile file or similar; also any other configuration-related errors."""

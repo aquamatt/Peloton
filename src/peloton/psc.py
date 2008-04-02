@@ -101,6 +101,9 @@ the logging-to-file system will be enabled.""")
     parser.add_option("--enable",
                       help="""Comma delimited list of plugins to start even if configuration has them disabled""")
     
+    parser.add_option("--flags",
+                      help="""Comma delimited list of flags to add to this PSC.""")
+    
     # If we need sub-groups of options:
     #group = OptionGroup(parser, 'Dangerous Options',
     #                    "Caution: use these options at your own risk. It is believed that some of them bite.")
@@ -125,6 +128,11 @@ the logging-to-file system will be enabled.""")
         options.disable = options.disable.split(',')
     else:
         options.disable=[]
+
+    if options.flags:
+        options.flags = options.flags.split(',')
+    else:
+        options.flags=[]
 
     # determine the appropriate log-level for the root logger based
     # on supplied arguments.

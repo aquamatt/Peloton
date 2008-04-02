@@ -4,4 +4,6 @@
 # All Rights Reserved
 # See LICENSE for details
 [psclimits]
-  hostname=f:kylie*
+#  hostname=f:kylie*
+  flags=BAMBI, # comma important to ensure list is made
+#  excludeFlags=IGNORE, # comma important to ensure list is made
