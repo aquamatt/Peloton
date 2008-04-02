@@ -56,12 +56,6 @@ class AuthorizedKeysChecker(conchc.SSHPublicKeyDatabase):
 
 
 class _BaseManhole(service.MultiService):
-    """This provides remote access to a python interpreter (a read/exec/print
-    loop) embedded in the buildmaster via an internal SSH server. This allows
-    detailed inspection of the buildmaster state. It is of most use to
-    buildbot developers. Connect to this by running an ssh client.
-    """
-
     def __init__(self, port, checker, using_ssh=True, namespace={}):
         """
         @type port: string or int

@@ -28,6 +28,15 @@ pscFolder=/tmp/psc
     username=admin
     password=admin
     
+  [[cockpit]]
+    comment=An SSH control interface, high level
+    class=peloton.plugins.cockpit.Cockpit
+    enabled=False
+    # plugin conf
+    port=9111
+    username=admin
+    password=admin
+    
   [[backpack]]
     name=keystore # overide name to standard
                   # so that whatever the implementation,
