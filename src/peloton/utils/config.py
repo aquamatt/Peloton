@@ -11,7 +11,7 @@ from configobj import ConfigObj, Section
 from fnmatch import fnmatchcase as fnmatch
 from types import DictType
 import os
-import logging
+import peloton.utils.logging as logging
 from peloton.exceptions import ConfigurationError
 
 class PelotonConfigObj(ConfigObj):

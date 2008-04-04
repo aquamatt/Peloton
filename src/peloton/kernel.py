@@ -7,7 +7,7 @@
 from peloton.utils import bigThreadPool
 
 import ezPyCrypto
-import logging
+import peloton.utils.logging as logging
 import os
 import socket
 import time
@@ -269,7 +269,6 @@ key."""
         else:
             pluginClass = getClassFromString(pconf['class'])
             plogger = logging.getLogger(plugin)
-            plogger.setLevel(getattr(logging,self.initOptions.loglevel))
             try:
                 pluginInstance = pluginClass(self, plugin, pconf, plogger)
                 pluginInstance.initialise()

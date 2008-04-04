@@ -43,6 +43,7 @@ from peloton.exceptions import WorkerError
 from peloton.exceptions import ServiceConfigurationError
 from peloton.exceptions import ServiceError
 from peloton.utils import getClassFromString
+import peloton.utils.logging as logging
 
 class PelotonWorker(HandlerBase):
     """ A Peloton Worker manages services, executes methods and returns
@@ -57,6 +58,9 @@ options and args are the options and args passed into the application
 from the command line.
 """
         HandlerBase.__init__(self, options, args)
+        loglevel = getattr(logging, options.loglevel)
+        logging.closeHandlers()
+        logging.initLogging(rootLoggerName='WORKER: %s' % name, logLevel=loglevel)
         self.gridMode = gridMode
         self.pscHost = pscHost
         self.pscPort = pscPort
@@ -158,12 +162,12 @@ the service might require.
     def call(self, method, *args, **kwargs):
         """ Call and excecute the specified method with args as provided. """
         mthd = getattr(self.__service, "public_%s"%method)
-#        from twisted.internet.defer import Deferred
-#        d = Deferred()
-#        v = mthd(*args, **kwargs)
-#        d.callback(v)
-#        return d
-        return deferToThread(mthd, *args, **kwargs)
+        d = deferToThread(mthd, *args, **kwargs)
+        d.addErrback(self.__error)
+        return d
+    
+    def __error(self, err):
+        logging.getLogger().debug("ERROR IN WORKER THREAD: %s" % str(err))
         
 class KernelInterface(pb.Referenceable):
     """ This class mediates between the worker and the kernel; it
@@ -183,12 +187,5 @@ is the means by which the kernel makes method requests etc."""
     def remote_call(self, method, *args, **kwargs):
         """ Return the result of calling method(*args, **kwargs)
 on this service. """
-        from twisted.internet.defer import Deferred
-        d = Deferred()
-        d.addCallback(self.__test)
-        self.worker.call(method, *args, **kwargs).addCallback(d.callback)
-        return d
+        return self.worker.call(method, *args, **kwargs)
     
-    def __test(self,x):
-        print("::::: %s " % str(x))
-        return x

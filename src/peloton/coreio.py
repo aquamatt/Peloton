@@ -7,7 +7,7 @@
 adapter provides services that are other than published interfaces
 to methods in these classes."""
 
-import logging
+import peloton.utils.logging as logging
 from peloton.exceptions import PelotonError
 
 class PelotonInterface(object):

@@ -7,7 +7,7 @@ from peloton.service import PelotonService
 class TestService(PelotonService):
     def public_sumint(self, x, y):
         """ Return the sum of integers x and y. """
-#        self.logger.info("Handling sum of %d and %d" % (x,y))
-        print("Handling sum of %d and %d" % (x,y))
+        self.logger.info("Handling sum of %d and %d" % (x,y))
+#        print("Handling sum of %d and %d" % (x,y))
         return int(x) + int(y)
         

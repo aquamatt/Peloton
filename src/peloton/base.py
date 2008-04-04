@@ -11,7 +11,7 @@
        be done in any extension of HandlerBase.
 """
 import sys
-import logging
+import peloton.utils.logging as logging
 import signal
 from twisted.internet import reactor
 

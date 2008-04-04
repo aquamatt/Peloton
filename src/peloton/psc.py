@@ -31,7 +31,7 @@ import random
 random.seed()
 ########################
 
-import logging
+import peloton.utils.logging as logging
 import os
 import sys
 from optparse import OptionGroup
@@ -139,7 +139,7 @@ the logging-to-file system will be enabled.""")
     if options.loglevel:
         options.loglevel = options.loglevel.upper()
     else:
-        options.loglevel = "DEBUG"
+        options.loglevel = "ERROR"
 
     try:
         exitCode = pscplatform.start(options, args)

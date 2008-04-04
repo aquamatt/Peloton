@@ -4,7 +4,7 @@
 # All Rights Reserved
 # See LICENSE for details
 from peloton.utils.config import locateService
-import logging
+import peloton.utils.logging as logging
 
 class PelotonService(object):
     """ Base class for all services. Public methods all have names prefixed
@@ -53,11 +53,6 @@ with False if all we want is to load the config (as when launching a service).""
         """ Start supporting services, such as the logger. Kept out of __init__
 so that we can instantiate very lightly (as required by the launch sequencer.)"""
         self.logger = logging.getLogger(self.name)
-        defaultLogFormatter = \
-            logging.Formatter("[%(levelname)s]\t %(asctime)-4s %(name)s\t : %(message)s")
-        logStreamHandler = logging.StreamHandler()
-        logStreamHandler.setFormatter(defaultLogFormatter)
-        self.logger.addHandler(logStreamHandler)                    
         
     def loadConfig(self, servicePath):
         """ Load service configuration file and then augment with details

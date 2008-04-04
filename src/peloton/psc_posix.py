@@ -5,8 +5,7 @@
 # See LICENSE for details
 """ Start a PSC on POSIX compliant platforms """
  
-import logging
-import logging.handlers
+import peloton.utils.logging as logging
 import os
 import sys
 import cPickle as Pickle
@@ -17,7 +16,7 @@ from peloton.worker import PelotonWorker
 from peloton.utils import chop
 from peloton.utils.config import PelotonConfig
 
-def initLogging(loglevel='ERROR', logdir='', logfile='', rootLoggerName='PSC', closeHandlers=False):
+def initLogging(loglevel=logging.ERROR, logdir='', logfile='', rootLoggerName='PSC', closeHandlers=False):
     """ Configure the logger for this PSC. By default no logging to
 file unless explicitly requested by setting logdir. If only logfile is set, no disk
 logging will occur. You must explicitly set logdir to '.' to enable disk logging to
@@ -33,33 +32,11 @@ rootLoggerName.
 
 The default log level is 'ERROR'; again you are advised to set explicitly the loglevel
 argument.
-
-By default the console logger is not hooked up; set toConsole=True to enable.
 """    
-
-    logger = logging.getLogger()
-    
     if closeHandlers:
-        # Remove all log handlers from logger before re-setting
-        while logger.handlers:
-            logger.removeHandler(logger.handlers[-1])
-        
-    logger.name=rootLoggerName
-    logger.setLevel(loglevel)
-
-    defaultLogFormatter = logging.Formatter("[%(levelname)s]\t %(asctime)-4s %(name)s\t : %(message)s")
-    if logdir:
-        # removes empty elements so allows for logdir being empty
-        filePath = os.sep.join([i for i in [logdir, logfile] if i])
-        fileHandler = logging.handlers.TimedRotatingFileHandler(filePath, 'MIDNIGHT',1,7)
-        fileHandler.setFormatter(defaultLogFormatter)
-        logger.addHandler(fileHandler)
-
-    logStreamHandler = logging.StreamHandler()
-    logStreamHandler.setFormatter(defaultLogFormatter)
-    logger.addHandler(logStreamHandler)            
-
-    return logger
+        logging.closeHandlers()
+    logging.initLogging(rootLoggerName=rootLoggerName, logLevel=loglevel, logdir=logdir, logfile=logfile)
+    return logging.getLogger()
 
 def makeDaemon():
     """ Detach from the console, redirect stdin/out/err to/from

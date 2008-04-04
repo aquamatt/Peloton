@@ -48,17 +48,10 @@ class LocalPSCProxy(PSCProxy):
         while True:
             p = self.kernel.workerStore[service].getRandomProvider()
             try:
-                d = p.callRemote('call',method, *args, **kwargs)
-                d.addCallback(self.__test)
-                return d
+                return p.callRemote('call',method, *args, **kwargs)
             except pb.DeadReferenceError:
                 self.kernel.workerStore[service].removeProvider(p)
-                
-    def __test(self, x):
-#        self.kernel.logger.debug("Result: %s" % str(x))
-        print("Result: %s" % str(x))
-        return x
-           
+                           
 # mapping of proxy to specific RPC mechanisms
 # that a PSC may accept
 PSC_PROXIES = {'pb'  : TwistedPSCProxy,
