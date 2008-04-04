@@ -57,7 +57,6 @@ which the kernel can request a worker to be started for a given service."""
         self.adapters = {}
         self.serviceLibrary = ServiceLibrary()
         self.workerStore = {}
-        self.logger = logging.getLogger()
         self.config = config
         self.plugins = {}
         self.profile = PelotonProfile()
@@ -220,7 +219,7 @@ key."""
             # the notification above would not get out before
             # the application quit. need to look to using ACK
             # in the message bus.
-            reactor.callLater(0.2, self.closedown, 1)
+            reactor.callLater(1, self.closedown, 1)
         elif x == 1:
             self.logger.info("Stopping adapters")
             self._stopAdapters()
@@ -321,7 +320,7 @@ workers running service named serviceName."""
         profile = self.serviceLibrary.getProfile(serviceName, version, launchTime)
         numWorkers = int( profile.getpath('launch.workersperpsc') )
         self.serviceLaunchTokens[tok] = [serviceName, version, launchTime, numWorkers, 0]
-        self.generatorInterface.startService(numWorkers, serviceName, launchTime, self.config['grid.gridmode'], tok)
+        self.generatorInterface.startService(numWorkers, tok)
 
     def addWorker(self, ref, token):
         """ Store a reference to a worker keyed on tuple of 
@@ -334,7 +333,8 @@ Returns the name of the service referenced by this token"""
         if not self.workerStore.has_key(serviceName):
             self.workerStore[serviceName] = ServiceProvider(serviceName)
         self.workerStore[serviceName].addProvider(ref, version, launchTime)
-        
+        return serviceName
+    
     def removeWorker(self, ref):
         """ Remove the worker referenced from the worker store. """
         for k,v in self.workerStore:

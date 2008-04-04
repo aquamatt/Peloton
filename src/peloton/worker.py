@@ -44,38 +44,25 @@ from peloton.exceptions import ServiceConfigurationError
 from peloton.exceptions import ServiceError
 from peloton.utils import getClassFromString
 import peloton.utils.logging as logging
+import sys
 
 class PelotonWorker(HandlerBase):
     """ A Peloton Worker manages services, executes methods and returns
 results to its controling PSC. 
 """
-    def __init__(self, pscHost, pscPort, gridMode, name, token, launchTime, options, args):
+    def __init__(self, pscHost, pscPort, token):
         """ The parent PSC is found at pscHost:pscPort - the host
 will in general be the host on which this worker resides but we
 allow for other scenarios by passing the host through at this point.
-
-options and args are the options and args passed into the application
-from the command line.
 """
-        HandlerBase.__init__(self, options, args)
-        loglevel = getattr(logging, options.loglevel)
-        logging.closeHandlers()
-        logging.initLogging(rootLoggerName='WORKER: %s' % name, 
-                            logLevel=loglevel,
-                            logdir=options.logdir,
-                            logfile="worker_%s.log" % name,
-                            logToConsole=options.nodetach)
-        self.gridMode = gridMode
+        HandlerBase.__init__(self, None, None)
         self.pscHost = pscHost
         self.pscPort = pscPort
-        self.name = name
         self.token = token
-        self.launchTime = launchTime
     
     def start(self):
         """ Start this worker; returns an exit code when worker 
 closes down. """
-        self.loadService()
         reactor.callWhenRunning(self._initialise)
         reactor.run()
         return 0
@@ -103,9 +90,23 @@ were given to start with to validate our presence. """
         d.addCallback(self._pscOK)
         d.addErrback(self._clientConnectError)
 
-    def _pscOK(self, rref):
+    def _pscOK(self, details):
         """ Now start the service. If OK, message the PSC accordingly;
 if not, let the PSC know we've failed and why, then initiate closedown. """
+        rref, self.name, loglevel, logdir, self.servicepath, self.gridMode = details
+        logging.closeHandlers()
+        logging.initLogging(rootLoggerName='WORKER: %s' % self.name, 
+                            logLevel=getattr(logging, loglevel),
+                            logdir=logdir,
+                            logfile="worker_%s.log" % self.name,
+                            logToConsole=False)
+
+        # add any sevice directories to sys.path if not already there
+        for sd in self.servicepath:
+            if sd not in sys.path:
+                sys.path.append(sd)
+
+        self.loadService()
         self.pscReference = rref
         try:
             self.startService()
@@ -115,12 +116,13 @@ if not, let the PSC know we've failed and why, then initiate closedown. """
                                   serviceName=self.name,
                                   state='running',
                                   token=self.token)
-            self.pscReference.callRemote('serviceStartOK', self.__service.version, self.launchTime)
+            self.pscReference.callRemote('serviceStartOK', self.__service.version)
         except Exception, ex:
             self.pscReference.callRemote('serviceStartFailed', str(ex))
         
     def _clientConnectError(self, err):
-        raise WorkerError("Error connecting with PSC: %s" % err.getErrorMessage())
+        print("Error connecting with PSC: %s" % err.getErrorMessage())
+        reactor.stop()
     
     def closedown(self):
         self.stopService()
@@ -142,7 +144,7 @@ Raises ServiceConfigurationError if the name is invalid.
             cls = getClassFromString(pqcn)
             self.__service = cls(self.name, self.gridMode)
             self.__service.initSupportServices()
-            self.__service.loadConfig(self.initOptions.servicepath)
+            self.__service.loadConfig(self.servicepath)
         except Exception, ex:
             raise ServiceConfigurationError("Could not find class for service %s" % self.name, ex)
     

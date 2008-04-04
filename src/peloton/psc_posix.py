@@ -3,18 +3,12 @@
 # Copyright (c) 2007-2008 ReThought Limited and Peloton Contributors
 # All Rights Reserved
 # See LICENSE for details
-from peloton.utils import logging
-""" Start a PSC on POSIX compliant platforms """
- 
+""" Start a PSC on POSIX compliant platforms """ 
 import peloton.utils.logging as logging
 import os
-import sys
-import cPickle as Pickle
-from types import StringType, ListType
+import subprocess
 
 from peloton.kernel import PelotonKernel
-from peloton.worker import PelotonWorker
-from peloton.utils import chop
 from peloton.utils.config import PelotonConfig
 
 def makeDaemon():
@@ -73,89 +67,31 @@ def makeDaemon():
     os.dup2(fd, 1)            # standard output (1)
     os.dup2(fd, 2)            # standard error (2)
 
-def runGenerator(pipeFD, options, args):
-    """ Main loop of the worker generator process.
-Listens to the pipe from the PSC and spawns worker processes
-when requested. This is a two step process:
-
-    1.  Open the pipe for reading and read one line which is formatted as
-        "INIT:host:port".Split out the host and the port
-    
-    2.  Enter loop reading pickled lists off the pipe. Each list contains two
-        items, the name of a service to start and optional arguments. Fork and
-        start a PelotonWorker in the child. Parent loops round and reads next
-        command off the pipe.
-    """
-    logging.closeHandlers()
-    logging.initLogging(rootLoggerName='PSC-GEN', 
-                        logLevel=getattr(logging, options.loglevel),
-                        logdir=options.logdir, 
-                        logfile='psc-generator.log', 
-                        logToConsole=options.nodetach)
-    logger = logging.getLogger()
-    
-    logger.info("Generator started; pid = %d" % os.getpid())
-    pin = os.fdopen(pipeFD, 'rt')
-
-    host, port = (None, None)    
-    
-    # Now enter the loop which spawns worker processes
-    while True:
-        try:
-            l = chop(pin.readline())
-        except KeyboardInterrupt:
-            logger.debug("@todo: Generator: Needs a clean closedown method")
-            pin.close()
-            break
-        if l=='STOP':
-            logger.info("Generator closing down")
-            pin.close()
-            return 0
-        elif l.startswith('INIT:'):
-            host, port = l[5:].split(':')
-            port = int(port)
-            logger.info("Generator initialised with master at %s:%d" % (host, port))
-        elif l.startswith('START:'):
-            if host==None and port==None:
-                logger.error("Generator asked to fork a worker but master PSC has not initialised")
-                continue
-            name, launchTime, gridMode, token = l[6:].split(':')
-            launchTime=long(launchTime)
-            logger.debug("Starting worker for %s (%s)" % (name, token))
-            
-            # fork a worker
-            try:
-                pid = os.fork()
-            except OSError, e:
-                raise Exception, "%s [%d]" % (e.strerror, e.errno)
-            
-            if pid == 0: # worker process
-#                os.close(pipeFD)
-                return PelotonWorker(host, port, gridMode, name, token, launchTime, options, args).start() 
-        else:
-            pass
-    return 0
-
 class GeneratorInterface(object):
     """ Interface through which a PelotonKernel can communicate
 with the worker generator. PelotonKernel is intended not to have
 dependencies on the topology of the PSC/Worker group so is passed
 an object, such as this, which wraps up the implementation details
 of messaging between the two components."""
-    def __init__(self, writePipe):
-        self.writePipe = os.fdopen(writePipe, 'wt', 0)
-        
+    def __init__(self):
+        # get path to pwp - it'll be in the same directory
+        # as this file
+        fspec = __file__.split('/')[:-1]
+        fspec.append('pwp.py')
+        self.pwp = os.sep.join(fspec)
+        if not os.path.isfile(self.pwp):
+            raise Exception("Cannot find worker process launcher %s!" % self.pwp)
+    
     def initGenerator(self, bindHost):
         """ bindHost is a string of the form host:port. """
-        self.writePipe.write('INIT:%s\n' % bindHost)
+        self.host, self.port = bindHost.split(':')
         
-    def startService(self, num, serviceName, launchTime, gridMode, token):
+    def startService(self, num,  token):
         for _ in range(num):
-            self.writePipe.write('START:%s:%d:%s:%s\n' % (serviceName, launchTime, gridMode, token))
+            subprocess.Popen(['python', self.pwp, self.host, self.port, token])
         
     def stop(self):
-        self.writePipe.write('STOP\n')
-        self.writePipe.close()
+        pass
 
 def start(options, args):
     """ Start a PSC. By default the first step is to double fork to detach
@@ -182,29 +118,19 @@ contain all the initialised PSC code which is quite different to the worker code
         makeDaemon()
 
     pc = PelotonConfig(options)
-    pr, pw = os.pipe()
 
-    # Fork off a worker generator
+    logging.closeHandlers()
+    logging.initLogging(rootLoggerName='PSC', 
+                        logLevel=getattr(logging, options.loglevel),
+                        logdir=options.logdir, 
+                        logfile='psc.log', 
+                        logToConsole=options.nodetach)
+    genInt = GeneratorInterface()
+    logging.getLogger().info("Kernel starting; pid = %d" % os.getpid())
     try:
-        pid = os.fork()
-    except OSError, e:
-        raise Exception, "%s [%d]" % (e.strerror, e.errno)
-
-    if pid == 0: # am the worker generator
-        ex = runGenerator(pr, options, args)
-    else:
-        logging.closeHandlers()
-        logging.initLogging(rootLoggerName='PSC', 
-                            logLevel=getattr(logging, options.loglevel),
-                            logdir=options.logdir, 
-                            logfile='psc.log', 
-                            logToConsole=options.nodetach)
-        genInt = GeneratorInterface(pw)
-        logging.getLogger().info("Kernel starting; pid = %d" % os.getpid())
-        try:
-            ex = PelotonKernel(genInt, options, args, pc).start()
-        except:
-            genInt.stop()
-            raise
+        ex = PelotonKernel(genInt, options, args, pc).start()
+    except:
+        genInt.stop()
+        raise
     
     return ex

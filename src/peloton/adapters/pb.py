@@ -75,10 +75,14 @@ copyable type stuff.
 referenceable and a token. The token was passed to the worker
 generator and is used simply to verify that this is indeed a valid
 and wanted contact."""
-        self.logger.info("Starting worker, token=%s NOT VALIDATED" % token)
-        
+        self.logger.info("Starting worker, token=%s NOT VALIDATED" % token)        
         serviceName = self.kernel.addWorker(worker, token)
-        return PelotonWorkerAdapter(self, serviceName, self.kernel)
+        return (PelotonWorkerAdapter(self, serviceName, self.kernel),
+                serviceName,
+                self.kernel.initOptions.loglevel,
+                self.kernel.initOptions.logdir,
+                self.kernel.initOptions.servicepath,
+                self.kernel.config['grid.gridmode'])
     
     def remote_login(self, clientObj):
         """ Login to Peloton. The clientObj contains the credentials to be
@@ -96,7 +100,6 @@ class PelotonClientAdapter(pb.Referenceable):
         self.clientObj = clientObj
         
     def remote_call(self, service, method, *args, **kwargs):
-        self.logger.debug("Call is made with NO AUTH VALIDATION")
         return self.requestInterface.public_call(self.clientObj, service, method, *args, **kwargs)
         
     def remote_post(self, service, method, *args, **kwargs):
@@ -135,8 +138,8 @@ class PelotonWorkerAdapter(pb.Referenceable):
     def remote_deregister(self, key, handler, exchange='events'):
         pass
 
-    def remote_serviceStartOK(self, version, launchTime):
-        self.kernel.logger.info("Worker reports start OK for %s %s(%d)" % (self.name, version, launchTime))
+    def remote_serviceStartOK(self, version):
+        self.kernel.logger.info("Worker reports start OK for %s %s" % (self.name, version))
     
     def remote_serviceStartFailed(self, ex):
         self.kernel.logger.info("Worker reports start failed for %s : %s" % (self.name, ex))

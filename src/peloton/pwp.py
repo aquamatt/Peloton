@@ -12,8 +12,23 @@ disadvantages:
   - It's not compatible with non-POSIX systems, notably a certain
     well known platform.
     
-  - The forking was leaving the worker processes in a 'strange' state
-    that seemed to be causing problems with Twisted that were never
-    resolved.
+  - The forking seemed to leave the worker processes in a 'strange' 
+    state that may have caused problems with Twisted that were 
+    never resolved.
 """
+import sys
+from peloton.worker import PelotonWorker
+def main():
+    """ Steps to start:
+    1. Obtain host, port, token from args
+    2. Call in and get service name, logdir (if any), launchTime etc
+    3. Startup
+"""
+    host, port, token = sys.argv[1:4]
+    port=int(port)
 
+    worker = PelotonWorker(host, port, token)
+    return worker.start()
+    
+if __name__ == '__main__':
+    sys.exit(main())
