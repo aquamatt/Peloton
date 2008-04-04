@@ -60,7 +60,11 @@ from the command line.
         HandlerBase.__init__(self, options, args)
         loglevel = getattr(logging, options.loglevel)
         logging.closeHandlers()
-        logging.initLogging(rootLoggerName='WORKER: %s' % name, logLevel=loglevel)
+        logging.initLogging(rootLoggerName='WORKER: %s' % name, 
+                            logLevel=loglevel,
+                            logdir=options.logdir,
+                            logfile="worker_%s.log" % name,
+                            logToConsole=options.nodetach)
         self.gridMode = gridMode
         self.pscHost = pscHost
         self.pscPort = pscPort

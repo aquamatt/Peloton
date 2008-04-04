@@ -102,7 +102,6 @@ than would be ideal.
     __CONFIG_OVERRIDES__ = {'bindhost':'psc.bind'}
 
     def __init__(self, cmdLineOpts):
-        self.logger = logging.getLogger()
         self.configdirs = [d for d in cmdLineOpts.configdirs
                            if os.path.exists(d) and os.path.isdir(d)]
         if not self.configdirs:

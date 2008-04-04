@@ -3,6 +3,7 @@
 # Copyright (c) 2007-2008 ReThought Limited and Peloton Contributors
 # All Rights Reserved
 # See LICENSE for details
+from peloton.utils import logging
 """ Start a PSC on POSIX compliant platforms """
  
 import peloton.utils.logging as logging
@@ -15,28 +16,6 @@ from peloton.kernel import PelotonKernel
 from peloton.worker import PelotonWorker
 from peloton.utils import chop
 from peloton.utils.config import PelotonConfig
-
-def initLogging(loglevel=logging.ERROR, logdir='', logfile='', rootLoggerName='PSC', closeHandlers=False):
-    """ Configure the logger for this PSC. By default no logging to
-file unless explicitly requested by setting logdir. If only logfile is set, no disk
-logging will occur. You must explicitly set logdir to '.' to enable disk logging to
-the current working directory. 
-
-If closeHandlers==True all current handlers FOR THE ROOT LOGGER ONLY will be closed. 
-This is useful after a fork to reset the logger to a virgin state prior to re-configuring.
-It assumes that no other loggers are initialised other than the root; thus if this feature
-is to be used forking must occur before new loggers are initialised. 
-
-By default the root logger is named 'PSC' but this may be overidden by assigning to
-rootLoggerName.
-
-The default log level is 'ERROR'; again you are advised to set explicitly the loglevel
-argument.
-"""    
-    if closeHandlers:
-        logging.closeHandlers()
-    logging.initLogging(rootLoggerName=rootLoggerName, logLevel=loglevel, logdir=logdir, logfile=logfile)
-    return logging.getLogger()
 
 def makeDaemon():
     """ Detach from the console, redirect stdin/out/err to/from
@@ -107,11 +86,13 @@ when requested. This is a two step process:
         start a PelotonWorker in the child. Parent loops round and reads next
         command off the pipe.
     """
-    logger = initLogging(getattr(logging, options.loglevel),
-                        options.logdir, 
-                        'generator.log',
-                        'PSC-GEN', 
-                        True)
+    logging.closeHandlers()
+    logging.initLogging(rootLoggerName='PSC-GEN', 
+                        logLevel=getattr(logging, options.loglevel),
+                        logdir=options.logdir, 
+                        logfile='psc-generator.log', 
+                        logToConsole=options.nodetach)
+    logger = logging.getLogger()
     
     logger.info("Generator started; pid = %d" % os.getpid())
     pin = os.fdopen(pipeFD, 'rt')
@@ -200,14 +181,7 @@ contain all the initialised PSC code which is quite different to the worker code
     if not options.nodetach:
         makeDaemon()
 
-    logger = initLogging(getattr(logging, options.loglevel),
-                        options.logdir, 
-                        'psc.log',
-                        'PSC', 
-                        True)
-
     pc = PelotonConfig(options)
-    
     pr, pw = os.pipe()
 
     # Fork off a worker generator
@@ -219,8 +193,14 @@ contain all the initialised PSC code which is quite different to the worker code
     if pid == 0: # am the worker generator
         ex = runGenerator(pr, options, args)
     else:
+        logging.closeHandlers()
+        logging.initLogging(rootLoggerName='PSC', 
+                            logLevel=getattr(logging, options.loglevel),
+                            logdir=options.logdir, 
+                            logfile='psc.log', 
+                            logToConsole=options.nodetach)
         genInt = GeneratorInterface(pw)
-        logger.info("Kernel starting; pid = %d" % os.getpid())
+        logging.getLogger().info("Kernel starting; pid = %d" % os.getpid())
         try:
             ex = PelotonKernel(genInt, options, args, pc).start()
         except:
