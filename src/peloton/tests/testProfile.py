@@ -8,7 +8,7 @@
 from unittest import TestCase
 from peloton.profile import PelotonProfile
 from peloton.profile import ServicePSCComparator
-from peloton.utils.config import MyConfigObj
+from peloton.utils.config import PelotonConfigObj
 from cStringIO import StringIO
 
 class Test_PelotonProfile(TestCase):
@@ -24,9 +24,18 @@ class Test_PelotonProfile(TestCase):
   b=tentacles
   c=320
 """
+
+        CONFIG_DATA_C="""mandy=more
+[extra]
+  zippy=10
+"""
+        
         sio = StringIO(CONFIG_DATA)
-        self.config = MyConfigObj(sio)
+        self.config = PelotonConfigObj(sio)
         self.configFile = StringIO(CONFIG_DATA_B)
+    
+        sio = StringIO(CONFIG_DATA_C)
+        self.configb = PelotonConfigObj(sio)
     
     def tearDown(self):
         pass
@@ -36,7 +45,7 @@ class Test_PelotonProfile(TestCase):
         pp = PelotonProfile(initDict)
         self.assertEquals(pp['b'], initDict['b'])
         
-        pp = PelotonProfile(test=1, world='gaia')
+        pp = PelotonProfile(dict(test=1, world='gaia'))
         self.assertEquals(pp['test'], 1)
         self.assertEquals(pp['world'], 'gaia')
         
@@ -85,26 +94,26 @@ empty.
     def test_servicePSCcomparison(self):
         """ Assure ourselves that profiles compare as we expect..
 """
-        hostProfile = PelotonProfile(ram=2048, hostname='kylie', cpus=1)
-        goodSvcProfiles = [PelotonProfile(mincpus=1),
+        hostProfile = PelotonProfile(dict(ram=2048, hostname='kylie', cpus=1))
+        goodSvcProfiles = [PelotonProfile(dict(mincpus=1)),
                            PelotonProfile(),
-                           PelotonProfile(hostname='kylie'),
-                           PelotonProfile(hostname='s:kylie'),
-                           PelotonProfile(hostname='r:k.l.*$'),
-                           PelotonProfile(hostname='f:k?l*'),
-                           PelotonProfile(minram=2048),
-                           PelotonProfile(maxram=2048),
-                           PelotonProfile(minram=2048, maxram=2048),
-                           PelotonProfile(minram=1024, maxram=4096)]
+                           PelotonProfile(dict(hostname='kylie')),
+                           PelotonProfile(dict(hostname='s:kylie')),
+                           PelotonProfile(dict(hostname='r:k.l.*$')),
+                           PelotonProfile(dict(hostname='f:k?l*')),
+                           PelotonProfile(dict(minram=2048)),
+                           PelotonProfile(dict(maxram=2048)),
+                           PelotonProfile(dict(minram=2048, maxram=2048)),
+                           PelotonProfile(dict(minram=1024, maxram=4096))]
                            
-        badSvcProfiles = [PelotonProfile(mincpus=2),
-                           PelotonProfile(hostname='billie'),
-                           PelotonProfile(hostname='s:billie'),
-                           PelotonProfile(hostname='r:bi.l.*$'),
-                           PelotonProfile(hostname='f:bi?l*'),
-                           PelotonProfile(minram=4096),
-                           PelotonProfile(maxram=1024),
-                           PelotonProfile(minram=1024, maxram=2000)]
+        badSvcProfiles = [PelotonProfile(dict(mincpus=2)),
+                           PelotonProfile(dict(hostname='billie')),
+                           PelotonProfile(dict(hostname='s:billie')),
+                           PelotonProfile(dict(hostname='r:bi.l.*$')),
+                           PelotonProfile(dict(hostname='f:bi?l*')),
+                           PelotonProfile(dict(minram=4096)),
+                           PelotonProfile(dict(maxram=1024)),
+                           PelotonProfile(dict(minram=1024, maxram=2000))]
         
         sc = ServicePSCComparator()
         self.assertRaises(NotImplementedError, sc.gt, goodSvcProfiles[0], hostProfile)
@@ -114,3 +123,47 @@ empty.
         for p in badSvcProfiles:
             self.assertFalse(sc.eq(p, hostProfile))
     
+    def test_getAndSetPath(self):
+        self.config.setpath('profile.test.newsection', self.configb)
+        self.assertEquals(self.config['profile']['test']['newsection']['mandy'], 'more')
+        self.assertEquals(self.config['profile']['test']['newsection']['extra']['zippy'], '10')        
+        self.assertEquals(self.config.getpath('profile.test.newsection.mandy'), 'more')
+        self.assertEquals(self.config.getpath('profile.test.newsection.extra.zippy'), '10')        
+
+        self.config.setpath('news', self.configb)
+        self.assertEquals(self.config.getpath('news.mandy'), 'more')
+        self.config.setpath('myname', 'jonny')
+        self.assertEquals(self.config['myname'], 'jonny')
+        
+    def test_setMultiPath(self):
+        """ Setpath creates entries on the way if any do not exist (bit
+like mkdir -p). Test this. """
+        self.config.setpath('myname.first.initial','X')
+        self.config.setpath('myname.first.name','Xavier')
+        self.assertEquals(self.config.getpath('myname.first.initial'), 'X')
+        self.assertEquals(self.config.getpath('myname.first.name'), 'Xavier')
+        self.assertRaises(KeyError,
+                          self.config.setpath,'myname.first.education.primary','blah', 
+                          False)
+        self.config.setpath('myname.first.education.primary','blah')
+        self.assertEquals(self.config.getpath('myname.first.education.primary'), 'blah')
+    
+    def test_booleanBehaviour(self):
+        """ Check that empty config evaluates to False in a test and
+to True when not empty. """
+        pp = PelotonConfigObj()
+        if pp:
+            v = True
+        else:
+            v = False
+        
+        self.assertFalse(v)
+        
+        if self.config:
+            v = True
+        else:
+            v = False
+        self.assertTrue(v)
+        
+        
+        

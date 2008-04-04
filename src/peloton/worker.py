@@ -33,11 +33,10 @@ able to register with events on the PSC as well as pass other messages back.
 
 """
 
-# ensure threading is OK with twisted
-from twisted.python import threadable
-threadable.init()
+from peloton.utils import bigThreadPool
 
 from twisted.internet import reactor
+from twisted.internet.threads import deferToThread
 from twisted.spread import pb
 from peloton.base import HandlerBase
 from peloton.exceptions import WorkerError
@@ -92,7 +91,7 @@ rock. """
         """ Root object obtained; now offer our interface and the token we
 were given to start with to validate our presence. """
         self.psc = rootObj
-        d = self.psc.callRemote("registerWorker", self.kernelInterface, repr(self.__service.profile), self.launchTime, self.token)
+        d = self.psc.callRemote("registerWorker", self.kernelInterface, self.token)
         d.addCallback(self._pscOK)
         d.addErrback(self._clientConnectError)
 
@@ -158,8 +157,13 @@ the service might require.
 
     def call(self, method, *args, **kwargs):
         """ Call and excecute the specified method with args as provided. """
-        mthd = getattr(self.__service, method)
-        return reactor.callInThread(mthd, *args, **kwargs)
+        mthd = getattr(self.__service, "public_%s"%method)
+#        from twisted.internet.defer import Deferred
+#        d = Deferred()
+#        v = mthd(*args, **kwargs)
+#        d.callback(v)
+#        return d
+        return deferToThread(mthd, *args, **kwargs)
         
 class KernelInterface(pb.Referenceable):
     """ This class mediates between the worker and the kernel; it
@@ -179,4 +183,12 @@ is the means by which the kernel makes method requests etc."""
     def remote_call(self, method, *args, **kwargs):
         """ Return the result of calling method(*args, **kwargs)
 on this service. """
-        return self.worker.call(method, *args, **kwargs)
+        from twisted.internet.defer import Deferred
+        d = Deferred()
+        d.addCallback(self.__test)
+        self.worker.call(method, *args, **kwargs).addCallback(d.callback)
+        return d
+    
+    def __test(self,x):
+        print("::::: %s " % str(x))
+        return x

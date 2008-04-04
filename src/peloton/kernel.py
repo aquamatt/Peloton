@@ -4,9 +4,7 @@
 # All Rights Reserved
 # See LICENSE for details
 
-# ensure threading is OK with twisted
-from twisted.python import threadable
-threadable.init()
+from peloton.utils import bigThreadPool
 
 import ezPyCrypto
 import logging
@@ -30,6 +28,8 @@ from peloton.utils import locateFile
 from peloton.utils import getExternalIPAddress
 from peloton.mapping import ServiceLoader
 from peloton.mapping import RoutingTable
+from peloton.mapping import ServiceLibrary
+from peloton.mapping import ServiceProvider
 from peloton.profile import PelotonProfile
 from peloton.exceptions import ConfigurationError
 from peloton.exceptions import PluginError
@@ -55,6 +55,7 @@ which the kernel can request a worker to be started for a given service."""
         HandlerBase.__init__(self, options, args)
         self.generatorInterface = generatorInterface
         self.adapters = {}
+        self.serviceLibrary = ServiceLibrary()
         self.workerStore = {}
         self.logger = logging.getLogger()
         self.config = config
@@ -314,17 +315,26 @@ hooks into the reactor. It is passed the entire config stack
         """ Initiate the process of launching a service. """
         self.serviceLoader.launchService(serviceName)
 
-    def startService(self, serviceName, launchTime, numWorkers=1):
+    def startService(self, serviceName, version, launchTime):
         """ Instruct the worker generator to start numWorkers
 workers running service named serviceName."""
         tok = crypto.makeCookie(20)
-        self.serviceLaunchTokens[tok] = [serviceName, numWorkers]
+        profile = self.serviceLibrary.getProfile(serviceName, version, launchTime)
+        numWorkers = int( profile.getpath('launch.workersperpsc') )
+        self.serviceLaunchTokens[tok] = [serviceName, version, launchTime, numWorkers, 0]
         self.generatorInterface.startService(numWorkers, serviceName, launchTime, self.config['grid.gridmode'], tok)
 
-    def addWorker(self, ref, name, version, launchTime):
+    def addWorker(self, ref, token):
         """ Store a reference to a worker keyed on tuple of 
-(name, version, launchTime). """
-        self.workerStore[(name, version, launchTime)] = ref
+(name, version, launchTime). 
+
+Returns the name of the service referenced by this token"""
+        launchRecord = self.serviceLaunchTokens[token]
+        launchRecord[-1]+=1
+        serviceName, version, launchTime = launchRecord[:3]
+        if not self.workerStore.has_key(serviceName):
+            self.workerStore[serviceName] = ServiceProvider(serviceName)
+        self.workerStore[serviceName].addProvider(ref, version, launchTime)
         
     def removeWorker(self, ref):
         """ Remove the worker referenced from the worker store. """
@@ -363,7 +373,7 @@ on the event bus. This manages:
 
     - monitoring the domain command channel for instructions such
       as 'closedown', 'restart' etc.
-"""
+""" 
     def __init__(self, kernel):
         self.kernel = kernel
         self.dispatcher = self.kernel.dispatcher

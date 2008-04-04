@@ -12,11 +12,11 @@ import re
 from fnmatch import fnmatchcase
 import os
 from types import StringType
-from peloton.utils.config import MyConfigObj
+from peloton.utils.config import PelotonConfigObj
 from peloton.exceptions import ConfigurationError
 from cStringIO import StringIO
 
-class PelotonProfile(MyConfigObj):
+class PelotonProfile(PelotonConfigObj):
     """A profile enables a component to advertise its properties to others.
 So a PSC will have a profile indicating, perhaps, what kind of host it is
 running on, how much memory is available to it and the maximum number of
@@ -155,11 +155,6 @@ as follows:
     
 @todo: cast values for known keys as defined above
 """
-    def __init__(self, initDict={}, **kargs):
-        MyConfigObj.__init__(self)
-        self.merge(initDict)
-        self.merge(kargs)
-
     def loadFromConfig(self, conf):
         """ Supply a config object with a [profile] section from which
 to pull key/value pairs. """
@@ -185,23 +180,21 @@ profile.
             
             for f in filesToSearch:
                 if os.path.exists(f) and os.path.isfile(f):
-                    confobj = MyConfigObj(f)
+                    confobj = PelotonConfigObj(f)
                     self.merge(confobj)
                     break
             else:
                 raise ConfigurationError("Could not find or open profile %s" % _file)
         else:
-            confobj = MyConfigObj(_file)
+            confobj = PelotonConfigObj(_file)
             self.merge(confobj)
-                        
-    def loadFromString(self, s):
-        """ Load from a string representation of a config file. """
-        sio = StringIO(s)
-        self.loadFromFile(sio)
-        
+
     def __repr__(self):
-        return "\n".join(self.write())
-                                
+#        r = PelotonConfigObj.__repr__(self)
+#        r = r.replace('ConfigObj', 'PelotonProfile')
+#        return r
+        return "PelotonProfile(%s)" % str(self)
+                                                        
 class BaseProfileComparator(object):
     """ Base class for all profile-comparing classes. In all methods,
 if optimistic is set True the test will be generous in the logic of 

@@ -244,3 +244,6 @@ class Test_PelotonConfig(TestCase):
         self.assertEquals(pc['domain.name'], 'Front office')
         self.assertEquals(pc['psc.bind'], '0.0.0.0:9100')
         
+
+        
+        

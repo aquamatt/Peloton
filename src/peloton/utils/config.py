@@ -7,27 +7,81 @@
 for Peloton configuration files. 
 """
 
-from configobj import ConfigObj
+from configobj import ConfigObj, Section
 from fnmatch import fnmatchcase as fnmatch
 from types import DictType
 import os
 import logging
 from peloton.exceptions import ConfigurationError
 
-class MyConfigObj(ConfigObj):
+class PelotonConfigObj(ConfigObj):
     """ Minor extension of ConfigObj that sets the interpolation method
 to Template by default (i.e. substitutions using the ${key} format). Also
 takes keyword argument 'extraKeys' which may be assigned a dictionary of
-values that are copied into the root of the configuration tree. """
-    def __init__(self, *args, **kargs):
+values that are copied into the root of the configuration tree. 
+
+Also provides getpath and setpath to facilitate obtaining values from 
+deep in the tree."""
+
+    def __init__(self, infile=None, options=None, *args, **kargs):
         """ As per ConfigObj but also uses keyword argument 'extraKeys'
 which may be assigned a dictionary of values to be copied into the root of the 
 configuration tree. """
-        ConfigObj.__init__(self, *args, **kargs)
-        self.interpolation = 'Template'
         if kargs.has_key('extraKeys') and type(kargs['extraKeys'])==DictType:
-            for k,v in kargs['extraKeys']:
-                self.__setitem__(k, v)
+            extraKeys = kargs['extraKeys']
+            del(kargs['extraKeys'])
+        else:
+            extraKeys = {}
+        ConfigObj.__init__(self, infile=infile, options=options, *args, **kargs)
+        self.interpolation = 'Template'
+        for k,v in extraKeys.items():
+            self.__setitem__(k, v)
+            
+    def getpath(self, key):
+        """ Return the value of key where key is the path to the item
+specified as a dot separated string. Thus
+
+  v['a']['test']['name'] == v.getpath('a.test.name')
+"""
+        ps = self
+
+        for p in key.split('.'):
+            ps = ps[p]
+
+        return ps
+    
+    def setpath(self, key, value, makeTree=True):
+        """ Set key=value where key is a dotted path as interpreted
+by getpath(). Will make entries in the path along the way if 
+makeTree=True (default)
+
+thus::
+     v['a']['b']['c'] = 'Jon doe' 
+is equivalent to::
+    v.setpath('a.b.c', 'Jon doe')
+"""
+        splitKey = key.split('.')
+        ps = self
+
+        if len(splitKey) > 1:
+            key = splitKey[-1]
+            splitKey=splitKey[:-1]
+            
+            while splitKey:
+                k = splitKey.pop(0)
+                try:
+                    ps = ps[k]
+                except KeyError:
+                    if makeTree:
+                        ps[k] = {}
+                        ps=ps[k]
+                    else:
+                        raise
+
+        ps[key] = value 
+    
+    def __repr__(self):
+        return "PelotonConfigObj(%s)" % str(self)
     
 class PelotonConfig(object):
     """ Load and manage access to the Peloton configuration system.
@@ -141,7 +195,7 @@ to be introduced. Re-jig naming conventions I think.
         for cf in configFiles:
             fn = cf.split(os.sep)[-1]
             if fn == "%s.pcfg" % self.gridName:
-                self.__parsers['grid'] = MyConfigObj(cf)
+                self.__parsers['grid'] = PelotonConfigObj(cf)
                 break
         else:
             raise ConfigurationError("Could no find grid config file: %s.pcfg" % self.gridName)
@@ -154,17 +208,17 @@ to be introduced. Re-jig naming conventions I think.
                          if (p.split(os.sep)[-1]=="%s_domain.pcfg" % self.domainName)
                              or p.split(os.sep)[-1]=="%s_%s_domain.pcfg" % (self.domainName, self.__parsers['grid']['gridmode'])]
         
-        self.__parsers['domain'] = MyConfigObj(domainConfigs[0])
+        self.__parsers['domain'] = PelotonConfigObj(domainConfigs[0])
         for conf in domainConfigs[1:]:
-            self.__parsers['domain'].merge(MyConfigObj(conf))
+            self.__parsers['domain'].merge(PelotonConfigObj(conf))
 
         # Now load all PSC config files
         pscConfigs = [p for p in configFiles 
                          if (p.split(os.sep)[-1]=="psc.pcfg")
                              or p.split(os.sep)[-1]=="psc_%s.pcfg" % (self.__parsers['grid']['gridmode'])]
-        self.__parsers['psc'] = MyConfigObj(pscConfigs[0])
+        self.__parsers['psc'] = PelotonConfigObj(pscConfigs[0])
         for conf in pscConfigs[1:]:
-            self.__parsers['psc'].merge(MyConfigObj(conf))
+            self.__parsers['psc'].merge(PelotonConfigObj(conf))
 
         # apply overrides
         for k,override in PelotonConfig.__CONFIG_OVERRIDES__.items():

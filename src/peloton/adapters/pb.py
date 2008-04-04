@@ -9,6 +9,7 @@ from twisted.spread import pb
 from twisted.internet.error import CannotListenError
 from peloton.adapters import AbstractPelotonAdapter
 from peloton.profile import PelotonProfile
+from peloton.coreio import PelotonRequestInterface
 
 class PelotonPBAdapter(AbstractPelotonAdapter, pb.Root):
     """ The primary client adapter for Peloton is the Python Twisted PB
@@ -69,44 +70,48 @@ copyable type stuff.
 """
         pass
     
-    def remote_registerWorker(self, worker, serviceProfile, launchTime, token):
+    def remote_registerWorker(self, worker, token):
         """ A worker registers by sending a KernelInterface
 referenceable and a token. The token was passed to the worker
 generator and is used simply to verify that this is indeed a valid
-and wanted contact. Ther service profile is the augmented profile
-containing all method details."""
+and wanted contact."""
         self.logger.info("Starting worker, token=%s NOT VALIDATED" % token)
-        sp = PelotonProfile()
-        sp.loadFromString(serviceProfile)
-        self.kernel.addWorker(worker, sp['name'], sp['version'], launchTime)
-        return PelotonWorkerAdapter(self, sp['name'], self.kernel)
+        
+        serviceName = self.kernel.addWorker(worker, token)
+        return PelotonWorkerAdapter(self, serviceName, self.kernel)
     
     def remote_login(self, clientObj):
         """ Login to Peloton. The clientObj contains the credentials to be
 used. Returns a PelotonClientAdapter"""
-        raise NotImplementedError
+        return PelotonClientAdapter(self.kernel, clientObj)
 
     def remote_getInterface(self, name):
         """ Return the named interface to a plugin. """
         return self.kernel.getCallable(name)
     
 class PelotonClientAdapter(pb.Referenceable):
-    def remote_call(self, clientObj, service, method, *args, **kwargs):
-        raise NotImplementedError
+    def __init__(self, kernel, clientObj):
+        self.requestInterface = PelotonRequestInterface(kernel)
+        self.logger = kernel.logger
+        self.clientObj = clientObj
         
-    def remote_post(self, clientObj, service, method, *args, **kwargs):
+    def remote_call(self, service, method, *args, **kwargs):
+        self.logger.debug("Call is made with NO AUTH VALIDATION")
+        return self.requestInterface.public_call(self.clientObj, service, method, *args, **kwargs)
+        
+    def remote_post(self, service, method, *args, **kwargs):
         raise NotImplementedError
     
-    def remote_postLater(self, sessionId, delay_seconds, service, method, *args, **kwargs):
+    def remote_postLater(self, delay_seconds, service, method, *args, **kwargs):
         raise NotImplementedError
 
-    def remote_postAt(self, sessionId, dateTime, service, method, *args, **kwargs):
+    def remote_postAt(self, dateTime, service, method, *args, **kwargs):
         raise NotImplementedError
     
-    def remote_fireEvent(self, sessionId, eventChannel, eventName, payload):
+    def remote_fireEvent(self, eventChannel, eventName, payload):
         raise NotImplementedError
     
-    def remote_subscribeToEvent(self, sessionId, eventChannel, eventName=None):
+    def remote_subscribeToEvent(self, eventChannel, eventName=None):
         raise NotImplementedError
     
 class PelotonWorkerAdapter(pb.Referenceable):

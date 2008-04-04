@@ -20,9 +20,13 @@ import time
 from peloton.events import MethodEventHandler
 from peloton.events import AbstractEventHandler
 from peloton.utils import crypto
-from peloton.utils.config import locateService
-from peloton.profile import PelotonProfile
+from peloton.utils.config import PelotonConfigObj
+from peloton.profile import PelotonProfile # needed for eval
 from peloton.profile import ServicePSCComparator
+from peloton.utils import getClassFromString
+from peloton.exceptions import PelotonError
+from peloton.pscproxies import LocalPSCProxy
+from peloton.pscproxies import PSC_PROXIES
 
 class ServiceLoader(AbstractEventHandler):
     """ The loader is the front-end to the launch sequencer and the component
@@ -55,19 +59,25 @@ the following steps:
  """
         self.logger.info("Mapping launch request for service %s" % serviceName)
         # 1. locate and load the profile
-        servicePath, serviceProfile = locateService(serviceName, 
-                                                    self.kernel.initOptions.servicepath, 
-                                                    self.kernel.config['grid.gridmode'])
+        pqcn = "%s.%s.%s" % (serviceName.lower(), serviceName.lower(), serviceName)
+        cls = getClassFromString(pqcn)
+        self.__service = cls(serviceName, self.kernel.config['grid.gridmode'])
+        self.__service.loadConfig(self.kernel.initOptions.servicepath)
+
         # 2. Start the sequencer
-        ServiceLaunchSequencer(self.kernel, servicePath, serviceName, serviceProfile).start()
+        ServiceLaunchSequencer(self.kernel, serviceName, self.__service.profile).start()
 
     def eventReceived(self, msg, exchange='', key='', ctag=''):
         """ Handle events related to the starting of services as requested
 by another node. """
         if msg['action'] == 'requestForLaunch':
-            pp = PelotonProfile()
-            pp.loadFromString(msg['serviceProfile'])
-            msg['serviceProfile'] = pp
+            msg['serviceProfile'] = eval(msg['serviceProfile'])
+            # store service profile in the library
+            self.kernel.serviceLibrary.setProfile(msg['serviceName'],
+                                                  msg['serviceProfile']['version'],
+                                                  msg['launchTime'],
+                                                  msg['serviceProfile'])
+            
             self.logger.debug("Request to consider ability to launch service: %s (%s)" % (msg['serviceProfile']['name'], msg['serviceProfile']['version']))
             if self.spComparator.eq(msg['serviceProfile']['psclimits'], self.kernel.profile, optimistic=True):
                 self.logger.debug("Profile OK - optimistic")
@@ -75,6 +85,7 @@ by another node. """
                                           'domain_control',
                                           action='SERVICE_PSC_MATCH',
                                           callback=self.callBackChannel)
+                
             else:
                 self.dispatcher.fireEvent(msg['callback'],
                                           'domain_control',
@@ -82,7 +93,7 @@ by another node. """
                 
         elif msg['action'] == 'startService':
             self.logger.debug("Instructed to start service %s" % (msg['serviceName']))
-            self.kernel.startService(msg['serviceName'], msg['launchTime'], int(msg['workersPerPSC']))
+            self.kernel.startService(msg['serviceName'], msg['version'], msg['launchTime'])
 
 class ServiceLaunchSequencer(AbstractEventHandler):
     """ State object used to keep track of a particular request to launch 
@@ -105,11 +116,10 @@ Starting the service involves the following process chain:
 This class broadcasts on psc.service.loader and listens on a temporary private channel
 in psc.service.loader.<key>. Both in the domain_control exchange.
 """
-    def __init__(self, kernel, servicePath, serviceName, profile):
+    def __init__(self, kernel, serviceName, profile):
         self.kernel = kernel
         self.logger = kernel.logger
         self.dispatcher = kernel.dispatcher
-        self.servicePath = servicePath
         self.serviceName = serviceName
         self.profile = profile
         # launchTime is tagged to the service version in all the
@@ -146,7 +156,7 @@ in psc.service.loader.<key>. Both in the domain_control exchange.
             self.profile['launch']['workserperpsc'] = self.workersPerPSC
             
         self.workersRequired = self.pscRequired * self.workersPerPSC
-            
+                
     def start(self):
         """ Initiate the service startup sequence. This event will be received by all nodes
 including self. We could optimise by checking the local node first etc, but why? This makes
@@ -157,7 +167,7 @@ making ourselves special."""
                                   action='requestForLaunch',
                                   callback=self.callBackChannel,
                                   serviceName=self.serviceName,
-                                  servicePath=self.servicePath,
+                                  launchTime = self.launchTime,
                                   serviceProfile=repr(self.profile))
         
     def eventReceived(self, msg, exchange='', key='', ctag=''):
@@ -174,6 +184,7 @@ launch sequencer. Type of message is indicated by msg['action'] value. """
                 self.logger.debug("Launch sequencer notified of service start: %s - %s " % (self.serviceName, msg['token']))
                 self.launchPending -= 1
                 self.workersRequired -= 1
+                self.kernel.routingTable.addHandlerForService(msg['serviceName'], guid=msg['sender_guid'])
 
         self.checkQueue()
 
@@ -188,7 +199,7 @@ a service."""
                                       action='startService',
                                       launchTime=self.launchTime,
                                       serviceName=self.serviceName,
-                                      workersPerPSC=self.profile['launch']['workersperpsc'])
+                                      version=self.profile['version'])
         
         if self.workersRequired == self.launchPending == 0:
             self.done()
@@ -199,50 +210,34 @@ requirements of the service have been met."""
         self.logger.info("Service %s successfuly launched. " % self.serviceName)
         self.dispatcher.deregister(self)
         
-class PSCProxy(object):        
-    """ Base class for PSC proxies through which the routing
-table can exchange messages with PSCs. A proxy is required because
-the PSC may be the local process, a PSC in the domain or a PSC in
-another domain on the grid.
-"""
-    def __init__(self, profile):
-        self.profile = profile
-        self.extractServices()
-        
-    def extractServices(self):
-        """ Run through the profile and pull out all the service
-information. """
-        raise NotImplementedError
-    
-    def call(self, service, method, *args, **kwargs):
-        """ Request the serice method be called on this 
-PSC. """
-        raise NotImplementedError
-        
-class TwistedPSCProxy(PSCProxy):        
-    """ Proxy for a PSC that is running on the same domain as this 
-node and accepts Twisted PB RPC. This is the prefered proxy to use
-if a node supports it and if it is suitably located (i.e. same 
-domain)."""
-    def __init__(self, profile):
-        PSCProxy.__init__(self, profile)
-    
-    def extractServices(self):
-        pass
-          
-class MessageBusPSCProxy(PSCProxy):
-    """ Proxy for a PSC that is able only to accept RPC calls over
-the message bus for whatever reason. """
-    def __init__(self, profile):
-        PSCProxy.__init__(self, profile)
-          
-class LocalPSCProxy(PSCProxy):
-    """ Proxy for this 'local' PSC. """
-    def __init__(self, kernel):
-        PSCProxy.__init__(self, kernel.profile)          
 
-    def extractServices(self):
-        pass
+class ServiceLibrary(PelotonConfigObj):
+    """ Extension of PelotonProfile to be a service library with
+handy utility methods. """
+
+    def setProfile(self, name, version, launchTime, profile):
+        """ Sets the profile into the tree. Version will have dots which
+need converting to underscore otherwise the tree will have branches
+for each of major, minor and patch number. This would be OK but I think
+it will be more convenient to have version stored at one level in its
+entirety."""
+        version = version.replace('.','_')
+        self.setpath("%s.%s.%s" % (name, version, str(launchTime)), profile)
+
+    def getProfile(self, name, version, launchTime=None):
+        """ Return the specified profile; if launchTime is not specified
+return the last one entered. """
+        version = version.replace('.','_')
+        if launchTime:
+            return self.getpath("%s.%s.%s" % (name, version, str(launchTime)))
+        else:
+            times = self.getpath("%s.%s"%(name, version))
+            lts = times.keys()
+            lts.sort()
+            return times[lts[-1]]
+
+    def __repr__(self):
+        return("ServiceLibrary(%s)" % str(self) )
 
 class ServiceProvider(object):
     """ Managers providers for a service - keeps records of what
@@ -253,54 +248,47 @@ running the service. """
         """ Initialise a providers store with the name of the service
 and, optionaly, an initialising profile."""
         self.name = name
-        # versions contains tuples of 
-        # (profile, [provider_1, ..., provider_n])
         self.versions = {}
-        self.current=(-1, [])
             
-    def addProvider(self, provider, version=None):
-        """ Add a provider - either specify the version of the 
-service it is providing for or the provider will be considered to be
-serving the 'current' version. """
-        if version:
-            self.versions[version][1].append(provider)
-        else:
-            self.current[1].append(provider)
+    def addProvider(self, provider, version, launchTime):
+        """ Add a provider"""
+        if not self.versions.has_key(version):
+            self.versions[version]={}
+        vrec = self.versions[version]
+        if not vrec.has_key(launchTime):
+            self.versions[version][launchTime] = []
+        vrec[launchTime].append(provider)
 
-    def addNewVersion(self, profile):
-        """ Add the profile for a new version of this service. """
-        self.versions[profile['version']] = (profile, [])
-            
-    def getProviders(self, version=None):
-        """ Return all providers of the specified version, or the
-current version if none specified."""
-        if version:
-            return self.versions[1]
-        else:
-            return self.current[1]
+    def getProviders(self):
+        """ Return all providers of the latest version."""
+        versions = self.versions.keys()
+        versions.sort()
+        vrecs = self.versions[versions[-1]]
+        lts = vrecs.keys()
+        lts.sort()
+       
+        return vrecs[lts[-1]]
         
-    def getRandomProvider(self, version=None):
-        """ Return a single provider from the pool for the specified
-version (or current by default). """
-        providers = self.getProviders(version)
-        ix = random.randrange(len(providers))
+    def getRandomProvider(self):
+        """ Return a single provider from the pool for the latest
+version """
+        providers = self.getProviders()
+        np = len(providers)
+        if np == 0:
+            raise PelotonError("No providers for service!")
+        ix = random.randrange(np)
         return providers[ix]
     
-    def removeProvider(self, provider, version=None):
-        """ Remove the provider from all versions by default or
-the specified version."""
-        if not version:
-            for _,p in self.versions:
+    def removeProvider(self, provider):
+        """ Remove the provider from this mapping. """
+        for lts in self.versions.values():
+            for k, p in lts.items():
                 if provider in p:
                     p.remove(provider)
-        else:
-            p = self.versions[version]
-            if provider in p: 
-                p.remove(provider)
                 
     def setCurrent(self, version):
         """ Re-set the 'current' version. """
-        self.current = self.versions[version]
+        pass
 
 class RoutingTable(object):
     """ Maintain a live database of all PSCs in the domain complete with their
@@ -326,10 +314,6 @@ to broadcasts from other new PSCs. The protocol runs as follows:
        
 Profiles received are logged into the routing table.
 """
-    # mapping of proxy to specific RPC mechanisms
-    # that a PSC may accept
-    PSC_PROXIES = {'pb'  : TwistedPSCProxy,
-                   'bus' : MessageBusPSCProxy}
 
     def __init__(self, kernel):
         self.kernel = kernel
@@ -337,11 +321,10 @@ Profiles received are logged into the routing table.
         self.dispatcher = kernel.dispatcher
         self.pscs=[]
         self.pscByHost={}
+        self.pscByService={}
         self.pscByGUID={}
-        self.serviceProviders={}
 
-        self.selfproxy = LocalPSCProxy(kernel)
-        self.addPSC(self.selfproxy)
+        self.addPSC(kernel.profile)
         self._setHandlers()
     
     def notifyConnect(self):
@@ -369,59 +352,66 @@ to this node on its private channel psc.<guid>.init"""
             ### Reject anyone with an invalid cookie.
             if msg['myDomainCookie'] != self.kernel.domainCookie:
                 self.dispatcher.fireEvent(key="psc.%s.init" % msg['profile']['guid'],
+                                        action='FAIL',
                                         exchange="domain_control",
                                         INVALID_COOKIE = True)
                 return
 
-            pp = PelotonProfile()
-            pp.loadFromString(msg['profile'])
-            msg['profile'] = pp
+            profile = eval(msg['profile'])
     
-            if msg['profile']['guid'] != msg['sender_guid']:
-                self.dispatcher.fireEvent(key="psc.%s.init" % msg['profile']['guid'],
+            if profile['guid'] != msg['sender_guid']:
+                self.dispatcher.fireEvent(key="psc.%s.init" % profile['guid'],
+                                        action='FAIL',
                                         exchange="domain_control",
                                         GUID_MISMATCH = True)
                 return
     
-            self.dispatcher.fireEvent(key="psc.%s.init" % msg['profile']['guid'],
+            self.dispatcher.fireEvent(key="psc.%s.init" % profile['guid'],
                                     exchange="domain_control",
+                                    action='pscReturn',
                                     profile=repr(self.kernel.profile),
                                     serviceList=self.kernel.routingTable.shortServiceList)
-        
 
-            try:
-                clazz = self._getProxyForProfile(msg['profile'])
-                self.addPSC(clazz(msg['profile']))
-            except:
-                self.logger.error("Cannot register PSC (%s) with RPC mechanisms %s" \
-                                  % (msg['profile']['guid'], str(msg['profile']['rpc'])))                
+            self.addPSC(profile, msg['serviceList'])
             
         elif msg['action'] == 'disconnect':
             self.kernel.logger.info("Received disconnect from %s" % msg['sender_guid'])
             self.removePSC(msg['sender_guid'])
             
-    def respond_pscProfile(self, msg, exch, key, ctag):
-        self.logger.debug("Profile response from node %s" % msg['sender_guid'])
-        if msg.has_key("INVALID_COOKIE"):
-            self.kernel.logger.error("Cannot join domain: Invalid cookie")
-            self.kernel.closedown()
-            return
-        elif msg.has_key("GUID_MISMATCH"):
-            self.kernel.logger.error("Cannot join domain: profile GUID and sender GUID mis-match")
-            self.kernel.closedown()
-            return
-        pp = PelotonProfile()
-        pp.loadFromString(msg['profile'])
-        msg['profile'] = pp
-        try:
-            clazz = self._getProxyForProfile(msg['profile'])
-            self.addPSC(clazz(msg['profile']))
-        except Exception, ex:
-            self.logger.error("Cannot register PSC (%s) with RPC mechanisms %s : %s" \
-                              % (msg['profile']['guid'], str(msg['profile']['rpc']), str(ex)))                
+    def respond_initChannel(self, msg, exch, key, ctag):
+        self.logger.debug("Init chan cmd %s from node %s" % (msg['action'], msg['sender_guid']))
+        if msg['action'] == 'FAIL':
+            if msg.has_key("INVALID_COOKIE"):
+                self.kernel.logger.error("Cannot join domain: Invalid cookie")
+                self.kernel.closedown()
+                return
+            elif msg.has_key("GUID_MISMATCH"):
+                self.kernel.logger.error("Cannot join domain: profile GUID and sender GUID mis-match")
+                self.kernel.closedown()
+                return
+            
+        elif msg['action'] == 'pscReturn':
+            profile = eval(msg['profile'])
+            self.addPSC(profile, msg['serviceList'])
+        
+        elif msg['action'] == 'requestServiceLibrary':
+            sender = msg['sender_guid']
+            self.dispatcher.fireEvent('psc.%s.init' % sender,
+                                      'domain_control',
+                                      action='serviceLibrary',
+                                      serviceLibrary=repr(self.kernel.serviceLibrary))
+            
+        elif msg['action'] == 'serviceLibrary':
+            self.kernel.serviceLibrary.merge(eval(msg['serviceLibrary']))
+            self.logger.debug("Service library from %s: %s" % (msg['sender_guid'], str(self.kernel.serviceLibrary)))
 
     def _getProxyForProfile(self, profile):
         """ Return a proxy appropriate for the PSC described by this profile."""
+
+        # first check it's not the local PSC
+        if profile['guid'] == self.kernel.guid:
+            return LocalPSCProxy
+        
         rpcAllowed = profile['rpc']
         # prioritise PB as the RPC mechanism of choice;
         # failing that just skip through the list until one
@@ -429,11 +419,11 @@ to this node on its private channel psc.<guid>.init"""
         # writer to imply preference in mechanisms whilst disallowing
         # de-prioritisation of PB.
         if 'pb' in rpcAllowed:
-            return TwistedPSCProxy
+            return PSC_PROXIES['pb']
         else:
             for r in rpcAllowed:
-                if RoutingTable.PSC_PROXIES.has_key(r):
-                    return RoutingTable.PSC_PROXIES.has_key(r)
+                if PSC_PROXIES.has_key(r):
+                    return PSC_PROXIES.has_key(r)
                     break
             else:
                 raise Exception("No suitable proxy for profile.")
@@ -449,38 +439,65 @@ to this node on its private channel psc.<guid>.init"""
         # private channel on which this node can be contacted to
         # initialise with other nodes' profiles etc.
         self.dispatcher.register("psc.%s.init" % self.kernel.guid,
-               MethodEventHandler(self.respond_pscProfile),
+               MethodEventHandler(self.respond_initChannel),
                "domain_control")
     
-    def addPSC(self, pscProxy, serviceList=[]):
+    def addPSC(self, profile, serviceList=[]):
         """ Store the PSC provided. """
-        self.kernel.logger.info("Adding profile for node: %s" % pscProxy.profile['guid'])
-        
-        for service in serviceList:
-            if not service in self.serviceProviders.keys():
-                self.seriveProviders[service] = ServiceProvider(service)
-            self.serviceProviders[service].addProvider(pscProxy)
-        
+        try:
+            clazz = self._getProxyForProfile(profile)
+            pscProxy = clazz(self.kernel, profile)
+        except Exception, ex:
+            self.logger.error("Cannot register PSC (%s) with RPC mechanisms %s : %s" \
+                              % (profile['guid'], str(profile['rpc']), str(ex)))                
+            raise
+
+        self.kernel.logger.info("Adding profile for node: %s" % profile['guid'])
+
+        # if we have an empty serviceLibrary and there is a service list
+        # here, and the __LIBRARY_INITIALISING__ flag isn't set, 
+        # ask the node to initialise our service library.
+        if not self.kernel.serviceLibrary and serviceList:
+            self.dispatcher.fireEvent('psc.%s.init' % profile['guid'],
+                                         'domain_control',
+                                         action='requestServiceLibrary')
+            
         self.pscs.append(pscProxy)
         self.pscByHost[pscProxy.profile['ipaddress']] = pscProxy
         self.pscByGUID[pscProxy.profile['guid']] = pscProxy
-#        for service in pscProxy.services:
-#            self.addService(service)
-    
-    def removePSC(self, guid):
-        """ Remove the PSC record for the PSC with specified GUID. """
+
+        for svc in serviceList:
+            self.addHandlerForService(svc, proxy=pscProxy)
+     
+    def getPscProxyForService(self, service):
+        """ Return a PSC Proxy for the named service at random from the
+list of available proxies. """
         try:
-            pscProxy = self.pscByGUID[guid]
-            del(self.pscByGUID[guid])
-            del(self.pscByHost[pscProxy.profile['ipaddress']])
-            self.pscs.remove(pscProxy)
+            proxies = self.pscByService[service]
+            np = len(proxies)
+            if np == 0:
+                del(self.pscByService[service])
+                raise KeyError
+            ix = random.randrange(np)
+            return proxies[ix]
         except KeyError:
-            self.logger.error("Received disconnect from stranger node: %s" % guid)
-    
-    def addService(self, profile):
-        self.services[profile.name] = profile
-    
+            raise PelotonError("No Proxy for service %s" % service)
+
+    def removePscProxyForService(self, service, proxy):
+        """ Remove proxy from the list of proxies available for this service."""
+        self.pscByService[service].remove(proxy)
+
+    def addHandlerForService(self, serviceName, guid=None, proxy=None):
+        """ Add the handler for the PSC referenced by guid as a handler
+for the named service. """
+        if not proxy and guid:
+            proxy = self.pscByGUID[guid]
+
+        if not self.pscByService.has_key(serviceName):
+            self.pscByService[serviceName] = []
+        self.pscByService[serviceName].append(proxy)
+        
     def _getShortServiceList(self):
         """ Return a list only of service names. """
-        return['not','yet','implemented']
+        return self.kernel.workerStore.keys()
     shortServiceList = property(_getShortServiceList)

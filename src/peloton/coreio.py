@@ -8,6 +8,7 @@ adapter provides services that are other than published interfaces
 to methods in these classes."""
 
 import logging
+from peloton.exceptions import PelotonError
 
 class PelotonInterface(object):
     """ Subclasses of the PelotonInterface will all need access to
@@ -28,7 +29,18 @@ public_<name> by convention."""
     def public_call(self, sessionId, service, method, *args, **kwargs):
         """ Call a Peloton method in the specified service and return 
 a deferred for the result. """
-        raise NotImplementedError
+        while True:
+            p = None
+            try:
+                p = self.__kernel__.routingTable.getPscProxyForService(service)
+                d = p.call(service, method, *args, **kwargs)
+                return d
+            except PelotonError, err:
+                self.logger.error(str(err))
+                if p:
+                    self.__kernel__.routingTable.removePscProxyForService(service, p)
+                else:
+                    raise
     
     def public_post(self, sessionId, service, method, *args, **kwargs):
         """ Post a method call onto the stack. The return value is the
