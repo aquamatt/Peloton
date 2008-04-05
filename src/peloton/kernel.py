@@ -10,6 +10,7 @@ import ezPyCrypto
 import peloton.utils.logging as logging
 import os
 import socket
+import subprocess
 import time
 import uuid
 
@@ -49,11 +50,9 @@ coreIO interfaces.
     #            "peloton.adapters.web.PelotonHTTPAdapter",
                 ]
 
-    def __init__(self, generatorInterface, options, args, config):
-        """ Prepare the kernel. The generatorInterface is a callable via
-which the kernel can request a worker to be started for a given service."""
+    def __init__(self, options, args, config):
+        """ Prepare the kernel."""
         HandlerBase.__init__(self, options, args)
-        self.generatorInterface = generatorInterface
         self.adapters = {}
         self.serviceLibrary = ServiceLibrary()
         self.workerStore = {}
@@ -68,6 +67,14 @@ which the kernel can request a worker to be started for a given service."""
         # callables are plugin interfaces (pb.Referenceable) that 
         # can be requested by name by clients
         self.callables = {}
+
+        # get path to pwp - it'll be in the same directory
+        # as this file. pwp.py starts Peloton workers.
+        fspec = __file__.split('/')[:-1]
+        fspec.append('pwp.py')
+        self.pwp = os.sep.join(fspec)
+        if not os.path.isfile(self.pwp):
+            raise Exception("Cannot find worker process launcher %s!" % self.pwp)
         
     def start(self):
         """ Start the Twisted event loop. This method returns only when
@@ -78,12 +85,10 @@ The bootstrap routine is as follows:
     2.  Load the profile for this PSC
     3.  Generate this PSCs session keys and our UID
     4.  Start all the network protocol adapters
-    5.  Inform the worker generator as to the port on which the RPC
-        adapter has started.
-    6.  Start kernel plugins
-    7.  Initialise routing table, schedule grid-joining workflow to 
+    5.  Start kernel plugins
+    6.  Initialise routing table, schedule grid-joining workflow to 
         start when the reactor starts
-    8. Start the reactor
+    7. Start the reactor
     
 The method returns only when the reactor stops.
 """        
@@ -147,16 +152,12 @@ The method returns only when the reactor stops.
         self.profile['port'] = self.config['psc.bind_port']        
         self.profile['hostname'] = socket.getfqdn()
 
-        # (5) Write to the generatorInterface to pass host:port of our 
-        # twisted RPC interface
-        self.generatorInterface.initGenerator(self.config['psc.bind'])
-
-        # (6) Start any kernel plugins, e.g. message bus, shell and
+        # (5) Start any kernel plugins, e.g. message bus, shell and
         #     then instruct the dispatcher to get the external bus
         self._startPlugins()
         self.dispatcher.joinExternalBus()
 
-        # (7) Initialise the routing table and schedule grid-joining 
+        # (6) Initialise the routing table and schedule grid-joining 
         #     workflow to happen on reactor start
         #  -- this checks the domain cookie matches ours; quit if not.
         self.serviceLoader = ServiceLoader(self)
@@ -164,7 +165,7 @@ The method returns only when the reactor stops.
         self.domainManager = DomainManager(self)
         reactor.callWhenRunning(self.routingTable.notifyConnect)
 
-        # (8) ready to start!
+        # (7) ready to start!
         reactor.run()
         
         return 0
@@ -225,9 +226,6 @@ key."""
             self._stopAdapters()
             self.logger.info("Stopping plugins")
             self._stopPlugins()
-            self.logger.info("Stopping generator")
-            self.generatorInterface.stop()
-        
             # stop the reactor
             reactor.stop()
 
@@ -314,13 +312,20 @@ hooks into the reactor. It is passed the entire config stack
         self.serviceLoader.launchService(serviceName)
 
     def startService(self, serviceName, version, launchTime):
-        """ Instruct the worker generator to start numWorkers
-workers running service named serviceName."""
+        """ Instruct start of numWorkers worker processes 
+running service named serviceName."""
         tok = crypto.makeCookie(20)
         profile = self.serviceLibrary.getProfile(serviceName, version, launchTime)
         numWorkers = int( profile.getpath('launch.workersperpsc') )
         self.serviceLaunchTokens[tok] = [serviceName, version, launchTime, numWorkers, 0]
-        self.generatorInterface.startService(numWorkers, tok)
+        self._startWorkerProcess(numWorkers, tok)
+
+    def _startWorkerProcess(self, numWorkers, token):
+        for _ in range(numWorkers):
+            subprocess.Popen(['python', self.pwp, 
+                              self.profile['ipaddress'], 
+                              str(self.profile['port']), 
+                              token])
 
     def addWorker(self, ref, token):
         """ Store a reference to a worker keyed on tuple of 
@@ -337,6 +342,7 @@ Returns the name of the service referenced by this token"""
     
     def removeWorker(self, ref):
         """ Remove the worker referenced from the worker store. """
+        self.logger.debug("Worker being removed but NOT stopped, kernel.py removeWorker")
         for k,v in self.workerStore:
             if v == ref:
                 del(self.workerStore[k])

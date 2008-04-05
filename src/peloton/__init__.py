@@ -36,11 +36,4 @@ is one of ['temp', 'config'] """
     else:
         raise RuntimeError("Sorry: your platform (%s) is not yet supported by Peloton" % os.name)
 
-def getPlatformPSC():
-    """ Return the appropriate PSC implementation for this platform """
-    if os.name in ['posix', 'mac']:
-        import peloton.psc_posix as pscplatform
-        return pscplatform
-    else:
-        raise RuntimeError("Sorry: your platform (%s) is not yet supported by Peloton" % os.name)
-    
+

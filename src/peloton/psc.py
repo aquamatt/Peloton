@@ -21,9 +21,9 @@ A PSC will communicate with other PSCs via Twisted RPC, via RPC
 over message bus or by other protocols to be defined in future.
 The acceptable protocols are listed in the PSC signature.
 
-This script is pretty shallow: it simply calls into the appropriate 
-platform-specific code for starting a PSC and associated processes
-or threads after first processing out command line arguments.
+This script is pretty shallow: it simply starts the kernel using some
+platform-specific code where required after first processing out command 
+line arguments.
 """
 # Random is used in many places in Peloton, so get it seeded
 # right away.
@@ -31,17 +31,42 @@ import random
 random.seed()
 ########################
 
+import peloton
 import peloton.utils.logging as logging
 import os
 import sys
-from optparse import OptionGroup
+
 from peloton.utils.structs import FilteredOptionParser
-import peloton
+from peloton.psc_platform import makeDaemon
+
+from peloton.kernel import PelotonKernel
+from peloton.utils.config import PelotonConfig
+
+def start(options, args):
+    """ Start a PSC. By default the first step is to daemonise, either by 
+a double fork (on a POSIX system) or by re-spawning the process (on Windows)
+to detach from the console; this can be over-ridden by specifying --nodetach 
+on the command line.
+
+The kernel is then started. This creates worker processes as required via the
+subprocess module.
+"""
+    if not options.nodetach:
+        makeDaemon()
+
+    pc = PelotonConfig(options)
+
+    logging.initLogging(rootLoggerName='PSC', 
+                        logLevel=getattr(logging, options.loglevel),
+                        logdir=options.logdir, 
+                        logfile='psc.log', 
+                        logToConsole=options.nodetach)
+    logging.getLogger().info("Kernel starting; pid = %d" % os.getpid())
+    ex = PelotonKernel(options, args, pc).start()
+    return ex
 
 def main():
     # Let's read the command line
-    pscplatform = peloton.getPlatformPSC()
-        
     usage = "usage: %prog [options]" # add 'arg1 arg2' etc as required
     parser = FilteredOptionParser(usage=usage, version="Peloton version %s" % peloton.RELEASE_VERSION)
 #    parser.set_defaults(nodetach=False)
@@ -104,11 +129,6 @@ the logging-to-file system will be enabled.""")
     parser.add_option("--flags",
                       help="""Comma delimited list of flags to add to this PSC.""")
     
-    # If we need sub-groups of options:
-    #group = OptionGroup(parser, 'Dangerous Options',
-    #                    "Caution: use these options at your own risk. It is believed that some of them bite.")
-    #group.add_option('-g', action='store_true', help='Group option.')
-    #parser.add_option_group(group)
     
     options, args = parser.parse_args()
     # Handling errors and pumping back through the system
@@ -142,7 +162,7 @@ the logging-to-file system will be enabled.""")
         options.loglevel = "ERROR"
 
     try:
-        exitCode = pscplatform.start(options, args)
+        exitCode = start(options, args)
     except:
         logging.getLogger().exception('Untrapped error in PSC: ')
         exitCode = 99

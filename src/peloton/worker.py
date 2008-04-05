@@ -5,7 +5,7 @@
 # See LICENSE for details
 """ The PelotonWorker and related classes are defined in this module.
 
-A worker is started by a generator that is tied to a PSC. Separating 
+A worker is started by a PSC. Separating 
 workers from PSC by process ensures that user code running in a service
 is unable to derail a PSC or cause such issues that may interfere with 
 other services. In this way a service may even make use of the event loop
@@ -17,7 +17,7 @@ The PSC and Generator communicate as follows::
    PSC                                   Generator
     | --- setHostParams(host, port) -------->|
     | --- startWorker(key) ----------------->|
-                                     <fork a worker>
+                                  <start worker process>
     |                                        |
     |                                      Worker
     | <--- getRoot() (initialise RPC) -------|
