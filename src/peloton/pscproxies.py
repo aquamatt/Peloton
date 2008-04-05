@@ -47,9 +47,11 @@ class LocalPSCProxy(PSCProxy):
 """
         while True:
             p = self.kernel.workerStore[service].getRandomProvider()
+#            p = self.kernel.workerStore[service].getNextProvider()
             try:
                 return p.callRemote('call',method, *args, **kwargs)
             except pb.DeadReferenceError:
+                self.kernel.logger.error("Dead reference for %s provider" % service)
                 self.kernel.workerStore[service].removeProvider(p)
                            
 # mapping of proxy to specific RPC mechanisms

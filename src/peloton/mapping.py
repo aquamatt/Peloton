@@ -21,6 +21,7 @@ from peloton.events import MethodEventHandler
 from peloton.events import AbstractEventHandler
 from peloton.utils import crypto
 from peloton.utils.config import PelotonConfigObj
+from peloton.utils.structs import RoundRobinList
 from peloton.profile import PelotonProfile # needed for eval
 from peloton.profile import ServicePSCComparator
 from peloton.utils import getClassFromString
@@ -245,8 +246,7 @@ versions are available, the extended profile and the PSC 'providers'
 running the service. """
     
     def __init__(self, name):
-        """ Initialise a providers store with the name of the service
-and, optionaly, an initialising profile."""
+        """ Initialise a providers store with the name of the service."""
         self.name = name
         self.versions = {}
             
@@ -256,7 +256,7 @@ and, optionaly, an initialising profile."""
             self.versions[version]={}
         vrec = self.versions[version]
         if not vrec.has_key(launchTime):
-            self.versions[version][launchTime] = []
+            self.versions[version][launchTime] = RoundRobinList()
         vrec[launchTime].append(provider)
 
     def getProviders(self):
@@ -270,7 +270,7 @@ and, optionaly, an initialising profile."""
         return vrecs[lts[-1]]
         
     def getRandomProvider(self):
-        """ Return a single provider from the pool for the latest
+        """ Return a single provider at random from the pool for the latest
 version """
         providers = self.getProviders()
         np = len(providers)
@@ -279,6 +279,15 @@ version """
         ix = random.randrange(np)
         return providers[ix]
     
+    def getNextProvider(self):
+        """ Return a single provider from the pool for the latest
+version (picks in round-robin fashion from pool)."""
+        providers = self.getProviders()
+        v = providers.rrnext()
+        if v==None:
+            raise PelotonError("No providers for service!")
+        return v
+
     def removeProvider(self, provider):
         """ Remove the provider from this mapping. """
         for lts in self.versions.values():

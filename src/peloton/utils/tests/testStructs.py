@@ -7,6 +7,8 @@
 from unittest import TestCase
 from peloton.utils.structs import ReadOnlyDict
 from peloton.utils.structs import FilteredOptionParser
+from peloton.utils.structs import RoundRobinList
+from types import ListType
 
 class Test_ReadOnlyDict(TestCase):
     def test_readOnlyDict(self):
@@ -73,3 +75,45 @@ class Test_FilteredOptionParser(TestCase):
         self.assertEquals(o.prefix, '/var//usr/local/test')
         self.assertEquals(o.configdir, '/var//usr/local/test')
         self.assertEquals(o.outputdir, '/usr/local')
+        
+
+class Test_RoundRobinList(TestCase):
+    def setUp(self):
+        self.thelist = RoundRobinList(['a','b','c','d'])
+        
+    def tearDown(self):
+        pass
+    
+    def test_iter(self):
+        self.assertEquals(self.thelist.rrnext(), 'a')
+        self.assertEquals(self.thelist.rrnext(), 'b')
+        self.assertEquals(self.thelist.rrnext(), 'c')
+        self.assertEquals(self.thelist.rrnext(), 'd')
+        self.assertEquals(self.thelist.rrnext(), 'a')
+        self.assertEquals(self.thelist.rrnext(), 'b')
+        self.assertEquals(self.thelist.rrnext(), 'c')
+        self.thelist.append('e')
+        self.assertEquals(self.thelist.rrnext(), 'd')
+        self.assertEquals(self.thelist.rrnext(), 'e')
+        self.assertEquals(self.thelist.rrnext(), 'a')
+        self.thelist.pop()
+        self.thelist.remove('d')
+        self.assertEquals(self.thelist.rrnext(), 'b')
+        self.assertEquals(self.thelist.rrnext(), 'c')
+        self.assertEquals(self.thelist.rrnext(), 'a')
+
+    def test_slicing(self):
+        newList = self.thelist[:3]
+        self.assertTrue(isinstance(newList, RoundRobinList))
+        self.assertEquals(newList.rrnext(), 'a')
+        self.assertEquals(newList.rrnext(), 'b')
+        self.assertEquals(newList.rrnext(), 'c')
+        self.assertEquals(newList.rrnext(), 'a')
+
+        newList = self.thelist[1:3]
+        self.assertTrue(isinstance(newList, RoundRobinList))
+        self.assertEquals(newList.rrnext(), 'b')
+        self.assertEquals(newList.rrnext(), 'c')
+        self.assertEquals(newList.rrnext(), 'b')
+                
+        

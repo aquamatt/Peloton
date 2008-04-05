@@ -106,3 +106,30 @@ class FilteredOptionParser(OptionParser):
         fo = FilteredOptions(opts, self.substitutions)
         fa = fo.filterList(argList)
         return (fo,fa)
+
+class RoundRobinList(list):
+    """ A list that has handy utility methods for iterating over in a round
+robin manner. This handles changing list length and constantly provides
+values, looping to the start once it hits the end. """
+    def rrnext(self):        
+        if not self.__dict__.has_key('__ix'):
+            self.__dict__['__ix']=0
+        __ix = self.__dict__['__ix']
+        _len = self.__len__()
+        # check things in advance: changes may have occured since 
+        # last call
+        if _len == 0:
+            return None
+        if _len <= __ix:
+            __ix=0
+            self.__dict__['__ix']=0
+            
+        v = self[__ix]
+        self.__dict__['__ix'] = (__ix+1) % _len
+        return v
+    
+    def __getslice__(self, i, j):
+        """ Ensure a RoundRobinList is returned from a slice.
+Returned object has index re-set to zero."""
+        slc = list.__getslice__(self, i, j)
+        return RoundRobinList(slc)
