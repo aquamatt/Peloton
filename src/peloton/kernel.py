@@ -6,17 +6,20 @@
 
 from peloton.utils import bigThreadPool
 
-import ezPyCrypto
-import peloton.utils.logging as logging
 import os
+import random
 import socket
 import subprocess
 import time
 import uuid
 
+import ezPyCrypto
+import peloton.utils.logging as logging
+
 from twisted import __version__ as twistedVersion
 from twisted.internet import reactor
 from twisted.internet.task import LoopingCall
+from twisted.internet.threads import deferToThread
 from twisted.spread import pb
 
 from peloton.base import HandlerBase
@@ -27,13 +30,15 @@ from peloton.utils import getClassFromString
 from peloton.utils import chop
 from peloton.utils import locateFile
 from peloton.utils import getExternalIPAddress
+from peloton.utils.structs import RoundRobinList
 from peloton.mapping import ServiceLoader
 from peloton.mapping import RoutingTable
 from peloton.mapping import ServiceLibrary
-from peloton.mapping import ServiceProvider
 from peloton.profile import PelotonProfile
+from peloton.exceptions import PelotonError
 from peloton.exceptions import ConfigurationError
 from peloton.exceptions import PluginError
+from peloton.exceptions import WorkerError
 
 class PelotonKernel(HandlerBase):
     """ The kernel is the core that starts key services of the 
@@ -209,7 +214,7 @@ key."""
             self.logger.info("Closing down workers")
             for v in self.workerStore.values():
                 try:
-                    v.callRemote('stop').addErrback(lambda x: x)
+                    v.closeAll()
                 except:
                     pass
 
@@ -318,26 +323,39 @@ running service named serviceName."""
         profile = self.serviceLibrary.getProfile(serviceName, version, launchTime)
         numWorkers = int( profile.getpath('launch.workersperpsc') )
         self.serviceLaunchTokens[tok] = [serviceName, version, launchTime, numWorkers, 0]
-        self._startWorkerProcess(numWorkers, tok)
+        d = deferToThread(self._startWorkerProcess, numWorkers, tok)
+        d.addCallback(self._workerStarted, serviceName)
 
     def _startWorkerProcess(self, numWorkers, token):
+        """ Run in a thread by startService to spawn the 
+worker processes and initialise them. """
         for _ in range(numWorkers):
-            subprocess.Popen(['python', self.pwp, 
+            pipe= subprocess.Popen(['python', self.pwp, 
                               self.profile['ipaddress'], 
-                              str(self.profile['port']), 
-                              token])
+                              str(self.profile['port'])],
+                              stdin=subprocess.PIPE).stdin
+            pipe.write("%s\n" % token)
+
+    def _workerStarted(self, _, service):
+        self.logger.info("Workers spawned for %s" % service)
 
     def addWorker(self, ref, token):
         """ Store a reference to a worker keyed on tuple of 
 (name, version, launchTime). 
 
 Returns the name of the service referenced by this token"""
-        launchRecord = self.serviceLaunchTokens[token]
+        try:
+            launchRecord = self.serviceLaunchTokens[token]
+        except KeyError:
+            raise WorkerError("Invalid start request.")
+
         launchRecord[-1]+=1
         serviceName, version, launchTime = launchRecord[:3]
         if not self.workerStore.has_key(serviceName):
             self.workerStore[serviceName] = ServiceProvider(serviceName)
         self.workerStore[serviceName].addProvider(ref, version, launchTime)
+        if launchRecord[-1] == launchRecord[-2]:
+            del self.serviceLaunchTokens[token]
         return serviceName
     
     def removeWorker(self, ref):
@@ -490,3 +508,97 @@ cookie jar of cookies > 30 seconds old. """
         self.dispatcher.register("psc.command",
                 MethodEventHandler(self.respond_commandRequest),
                 "domain_control" )
+        
+class ServiceProvider(object):
+    """ Manages providers for a service - keeps records of what
+versions are available and the PSC 'providers' running the service. """
+    
+    def __init__(self, name):
+        """ Initialise a providers store with the name of the service."""
+        self.name = name
+        self.versions = {}
+            
+    def addProvider(self, provider, version, launchTime, closeOldProviders=True):
+        """ Add a provider. By default and unless closeOldProviders is set False,
+if there are providers for an older launchTime they will be closed down once
+a new launchTime provider for that version is added."""
+        if not self.versions.has_key(version):
+            self.versions[version]={}
+        vrec = self.versions[version]
+        if not vrec.has_key(launchTime):
+            self.versions[version][launchTime] = RoundRobinList()
+        vrec[launchTime].append(provider)
+        
+        # close down all providers with older launchTime stamps
+        if closeOldProviders:
+            oldLaunchTimes = [i for i in vrec.keys() if i!=launchTime]
+            for olt in oldLaunchTimes:
+                for provider in vrec[olt]:
+                    try:
+                        provider.callRemote('stop').addBoth(self._removeClosed, version, olt, provider)
+                    except pb.DeadReferenceError:
+                        pass
+                
+    def _removeClosed(self, _, version, launchTime, ref):
+        try:
+            if ref in self.versions[version][launchTime]:
+                self.versions[version][launchTime].remove(ref)
+                if not self.versions[version][launchTime]:
+                    del( self.versions[version][launchTime] )
+        except KeyError:
+            # launchTime no longer there
+            pass
+
+    def getProviders(self):
+        """ Return all providers of the latest version."""
+        versions = self.versions.keys()
+        versions.sort()
+        vrecs = self.versions[versions[-1]]
+        lts = vrecs.keys()
+        lts.sort()
+       
+        return vrecs[lts[-1]]
+        
+    def getRandomProvider(self):
+        """ Return a single provider at random from the pool for the latest
+version """
+        providers = self.getProviders()
+        np = len(providers)
+        if np == 0:
+            raise PelotonError("No providers for service!")
+        ix = random.randrange(np)
+        return providers[ix]
+    
+    def getNextProvider(self):
+        """ Return a single provider from the pool for the latest
+version (picks in round-robin fashion from pool)."""
+        providers = self.getProviders()
+        v = providers.rrnext()
+        if v==None:
+            raise PelotonError("No providers for service!")
+        return v
+
+    def removeProvider(self, provider):
+        """ Remove the provider from this mapping, calling stop() on it
+as we go. """
+        for lts in self.versions.values():
+            for k, p in lts.items():
+                if provider in p:
+                    p.remove(provider)
+        provider.callRemote('stop')
+                
+    def setCurrent(self, version):
+        """ Re-set the 'current' version. """
+        pass
+
+    def closeAll(self):
+        """ Close down ALL providers. """
+        for version in self.versions.values():
+            # version is dict keyed on launchTime
+            for providerList in version.values():
+                # providerList is list of providers
+                for p in providerList:
+                    p.callRemote('stop').addErrback(lambda _: None)
+                    
+    
+        

@@ -101,7 +101,7 @@ class PelotonClientAdapter(pb.Referenceable):
         
     def remote_call(self, service, method, *args, **kwargs):
         return self.requestInterface.public_call(self.clientObj, service, method, *args, **kwargs)
-        
+   
     def remote_post(self, service, method, *args, **kwargs):
         raise NotImplementedError
     

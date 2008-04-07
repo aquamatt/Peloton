@@ -61,10 +61,9 @@ the following steps:
         self.logger.info("Mapping launch request for service %s" % serviceName)
         # 1. locate and load the profile
         pqcn = "%s.%s.%s" % (serviceName.lower(), serviceName.lower(), serviceName)
-        cls = getClassFromString(pqcn)
+        cls = getClassFromString(pqcn, reload=True)
         self.__service = cls(serviceName, self.kernel.config['grid.gridmode'])
         self.__service.loadConfig(self.kernel.initOptions.servicepath)
-
         # 2. Start the sequencer
         ServiceLaunchSequencer(self.kernel, serviceName, self.__service.profile).start()
 
@@ -239,65 +238,6 @@ return the last one entered. """
 
     def __repr__(self):
         return("ServiceLibrary(%s)" % str(self) )
-
-class ServiceProvider(object):
-    """ Managers providers for a service - keeps records of what
-versions are available, the extended profile and the PSC 'providers'
-running the service. """
-    
-    def __init__(self, name):
-        """ Initialise a providers store with the name of the service."""
-        self.name = name
-        self.versions = {}
-            
-    def addProvider(self, provider, version, launchTime):
-        """ Add a provider"""
-        if not self.versions.has_key(version):
-            self.versions[version]={}
-        vrec = self.versions[version]
-        if not vrec.has_key(launchTime):
-            self.versions[version][launchTime] = RoundRobinList()
-        vrec[launchTime].append(provider)
-
-    def getProviders(self):
-        """ Return all providers of the latest version."""
-        versions = self.versions.keys()
-        versions.sort()
-        vrecs = self.versions[versions[-1]]
-        lts = vrecs.keys()
-        lts.sort()
-       
-        return vrecs[lts[-1]]
-        
-    def getRandomProvider(self):
-        """ Return a single provider at random from the pool for the latest
-version """
-        providers = self.getProviders()
-        np = len(providers)
-        if np == 0:
-            raise PelotonError("No providers for service!")
-        ix = random.randrange(np)
-        return providers[ix]
-    
-    def getNextProvider(self):
-        """ Return a single provider from the pool for the latest
-version (picks in round-robin fashion from pool)."""
-        providers = self.getProviders()
-        v = providers.rrnext()
-        if v==None:
-            raise PelotonError("No providers for service!")
-        return v
-
-    def removeProvider(self, provider):
-        """ Remove the provider from this mapping. """
-        for lts in self.versions.values():
-            for k, p in lts.items():
-                if provider in p:
-                    p.remove(provider)
-                
-    def setCurrent(self, version):
-        """ Re-set the 'current' version. """
-        pass
 
 class RoutingTable(object):
     """ Maintain a live database of all PSCs in the domain complete with their

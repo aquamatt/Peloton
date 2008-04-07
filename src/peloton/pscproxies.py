@@ -4,7 +4,6 @@
 # All Rights Reserved
 # See LICENSE for details
 
-from twisted.internet.defer import Deferred
 from twisted.spread import pb
 from peloton.exceptions import PelotonError
 
@@ -45,15 +44,20 @@ class LocalPSCProxy(PSCProxy):
     - if error, reset and try again.
     - if no error, put result onto return deferred.
 """
-        while True:
+        try:
             p = self.kernel.workerStore[service].getRandomProvider()
-#            p = self.kernel.workerStore[service].getNextProvider()
-            try:
-                return p.callRemote('call',method, *args, **kwargs)
-            except pb.DeadReferenceError:
-                self.kernel.logger.error("Dead reference for %s provider" % service)
-                self.kernel.workerStore[service].removeProvider(p)
+#                p = self.kernel.workerStore[service].getNextProvider()
+        except PelotonError, ex:
+            self.kernel.logger.error("No workers for service %s" % service)
+            raise
+ 
+        try:
+            return p.callRemote('call',method, *args, **kwargs)
+        except pb.DeadReferenceError:
+            self.kernel.logger.error("Dead reference for %s provider" % service)
+            self.kernel.workerStore[service].removeProvider(p)
                            
+   
 # mapping of proxy to specific RPC mechanisms
 # that a PSC may accept
 PSC_PROXIES = {'pb'  : TwistedPSCProxy,

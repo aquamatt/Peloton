@@ -18,15 +18,18 @@ disadvantages:
 """
 import sys
 from peloton.worker import PelotonWorker
+from peloton.utils import chop
+
 def main():
     """ Steps to start:
-    1. Obtain host, port, token from args
-    2. Call in and get service name, logdir (if any), launchTime etc
-    3. Startup
+    1. Obtain host, port from args
+    2. Obtain token from stdin
+    3. Call in and get service name, logdir (if any), launchTime etc
+    4. Startup
 """
-    host, port, token = sys.argv[1:4]
+    host, port = sys.argv[1:3]
     port=int(port)
-
+    token = chop(sys.stdin.readline())
     worker = PelotonWorker(host, port, token)
     return worker.start()
     

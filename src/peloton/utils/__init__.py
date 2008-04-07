@@ -5,6 +5,7 @@
 # See LICENSE for details
 import os
 import socket
+import sys
 
 def chop(s, extras=[]):
     """Remove \\r, \\n and all characters in the extras list from 
@@ -17,12 +18,23 @@ the end of string s and return """
         
     return s
 
-def getClassFromString(clazz):
+def getClassFromString(clazz, reload=False):
     """ Performn an import given an absolute class reference as a string; returns
-the class object."""
+the class object. If 'reload' is set True sys.modules will be cleaned prior
+to import  thus hopefuly effecting a reload."""
     packageTree = clazz.split('.')
     cls = packageTree[-1]
     packageTree = packageTree[:-1]
+    
+    if reload:
+        currentKey = ''
+        loadedModules = sys.modules.keys()
+        for pkg in packageTree:
+            currentKey = ".".join([i for i in [currentKey, pkg] if i])
+            if currentKey in loadedModules:
+                del(sys.modules[currentKey])
+                print("Purging %s " % currentKey)
+    
     try:
         mdle = __import__(".".join(packageTree),{},{},".".join(packageTree[:-1]))
         handler = getattr(mdle, cls)

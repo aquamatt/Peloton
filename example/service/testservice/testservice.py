@@ -3,6 +3,7 @@
 # All Rights Reserved
 # See LICENSE for details
 from peloton.service import PelotonService
+import time
 
 class TestService(PelotonService):
     def public_sumint(self, x, y):
@@ -11,3 +12,11 @@ class TestService(PelotonService):
 #        print("Handling sum of %d and %d" % (x,y))
         return int(x) + int(y)
         
+    def public_slowCall(self, x):
+        """ Sleep for x seconds. """
+        x=int(x)
+        time.sleep(x)
+        return "Done a slow call"
+    
+    def public_echo(self, x):
+        return x

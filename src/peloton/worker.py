@@ -174,6 +174,7 @@ the service might require.
     
     def __error(self, err):
         logging.getLogger().debug("ERROR IN WORKER THREAD: %s" % str(err))
+        return err
         
 class KernelInterface(pb.Referenceable):
     """ This class mediates between the worker and the kernel; it
