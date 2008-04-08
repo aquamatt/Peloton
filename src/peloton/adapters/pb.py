@@ -10,6 +10,7 @@ from twisted.internet.error import CannotListenError
 from peloton.adapters import AbstractPelotonAdapter
 from peloton.profile import PelotonProfile
 from peloton.coreio import PelotonRequestInterface
+from peloton.coreio import PelotonInternodeInterface
 
 class PelotonPBAdapter(AbstractPelotonAdapter, pb.Root):
     """ The primary client adapter for Peloton is the Python Twisted PB
@@ -59,7 +60,7 @@ protocol's port."""
         d = self.connection.stopListening()
         d.addCallback(self._stopped)
                 
-    def remote_registerPSC(self, remotePSC, token):
+    def remote_registerPSC(self, token):
         """ A remote PSC will call registerPSC with a token encrypted
 with the domain key. Provided this decrypts we know the remote PSC is
 permitted to join in this domain. the remotePSC is a remote instance of
@@ -68,7 +69,9 @@ PelotonGridAdapter which provides methods for inter-PSC work.
 @todo: it may be that the token can be included in the remotePSC using
 copyable type stuff.
 """
-        pass
+        self.logger.info("RegisterPSC %s: ref returned with NO VALIDATION" % token)
+        ref = PelotonInternodeAdapter(self.kernel, token)
+        return ref
     
     def remote_registerWorker(self, worker, token):
         """ A worker registers by sending a KernelInterface
@@ -93,6 +96,16 @@ used. Returns a PelotonClientAdapter"""
         """ Return the named interface to a plugin. """
         return self.kernel.getCallable(name)
     
+class PelotonInternodeAdapter(pb.Referenceable):
+    def __init__(self, kernel, peerGUID):
+        self.requestInterface = PelotonInternodeInterface(kernel)
+        self.logger = kernel.logger
+        self.peerGUID = peerGUID
+        
+    def remote_relayCall(self, service, method, *args, **kwargs):
+        return self.requestInterface.public_relayCall(self.peerGUID, service, method, *args, **kwargs)
+   
+
 class PelotonClientAdapter(pb.Referenceable):
     def __init__(self, kernel, clientObj):
         self.requestInterface = PelotonRequestInterface(kernel)

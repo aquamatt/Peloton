@@ -37,7 +37,6 @@ class DaemonThreadPool_2(twisted.python.threadpool.ThreadPool):
         """
         assert minthreads >= 0, 'minimum is negative'
         assert minthreads <= maxthreads, 'minimum is greater than maximum'
-        logging.getLogger().debug("Instantiating pool 2!")
         self.q = Queue.Queue(0)
         self.min = max(MIN_THREADS, minthreads)
         self.max = max(MAX_THREADS, maxthreads)
@@ -78,7 +77,6 @@ class DaemonThreadPool_8(twisted.python.threadpool.ThreadPool):
         """
         assert minthreads >= 0, 'minimum is negative'
         assert minthreads <= maxthreads, 'minimum is greater than maximum'
-        logging.getLogger().debug("Instantiating pool 8!")
         self.q = Queue.Queue(0)
         self.min = max(MIN_THREADS, minthreads)
         self.max = max(MAX_THREADS, maxthreads)

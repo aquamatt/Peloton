@@ -411,6 +411,8 @@ to this node on its private channel psc.<guid>.init"""
                                          'domain_control',
                                          action='requestServiceLibrary')
             
+        if isinstance(pscProxy, LocalPSCProxy):
+            self.localProxy = pscProxy
         self.pscs.append(pscProxy)
         self.pscByHost[pscProxy.profile['ipaddress']] = pscProxy
         self.pscByGUID[pscProxy.profile['guid']] = pscProxy

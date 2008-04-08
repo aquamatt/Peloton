@@ -44,7 +44,6 @@ a deferred for the result. """
             try:
                 p = self.__kernel__.routingTable.getPscProxyForService(service)
                 rd = p.call(service, method, *args, **kwargs)
-                rd.addCallback(self._result)
                 rd.addCallback(d.callback)
                 rd.addErrback(self.__callError, d, sessionId, service, method, *args, **kwargs)
                 break
@@ -54,10 +53,6 @@ a deferred for the result. """
                     self.__kernel__.routingTable.removePscProxyForService(service, p)
                 else:
                     raise
-
-    def _result(self, v):
-        self.logger.debug("Result returned: %s" % str(v))
-        return v
 
     def __callError(self, err, d, sessionId, service, method, *args, **kwargs):
         if isinstance(err, Failure) and \
@@ -79,7 +74,7 @@ a deferred for the result. """
                     errClass = err.parents[-1]
                 except:
                     errClass = 'Unknown'
-                d.errback(Exception("%s:%s" % (errClass, err.value)))
+                d.errback(Exception(repr([err.value, errClass, err.parents])))
             return err
     
     def public_post(self, sessionId, service, method, *args, **kwargs):
@@ -130,21 +125,11 @@ calls and exchanging status and profile information.
 For clarity, although for no other technical reason, methods intended for use 
 via adapters are named public_<name> by convention."""
 
-    def public_relayCall(self, callerSessionId, callerProtocol, service, method, *args, **kwargs):
-        """ Called by a remote node to relay a method request to this node. """
-        raise NotImplementedError
-    
-    def public_getProfile(self):
-        """ Return this nodes profile data. """
-        raise NotImplementedError
-    
-    def public_getServiceListing(self):
-        """ Return catalogue of services available on this node. """
-        raise NotImplementedError
-    
-    def public_getPublicKey(self):
-        """ Return this node's public key """
-        raise NotImplementedError
+    def public_relayCall(self, sessionId, service, method, *args, **kwargs):
+        """ Called by a remote node to relay a method request to this node. 
+The method is now executed on this node."""
+        p = self.__kernel__.routingTable.localProxy
+        return p.call(service, method, *args, **kwargs)
     
 class PelotonManagementInterface(PelotonInterface):
     """ Methods for use by management tools, such as a console, 
