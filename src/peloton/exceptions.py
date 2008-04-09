@@ -56,3 +56,12 @@ class PelotonConnectionError(PelotonError):
 
 class NoProvidersError(PelotonError):
     pass
+
+class NoWorkersError(PelotonError):
+    pass
+
+class DeadPeerError(PelotonError):
+    pass
+
+class DeadProxyError(PelotonError):
+    pass

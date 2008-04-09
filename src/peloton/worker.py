@@ -168,14 +168,8 @@ the service might require.
     def call(self, method, *args, **kwargs):
         """ Call and excecute the specified method with args as provided. """
         mthd = getattr(self.__service, "public_%s"%method)
-        d = deferToThread(mthd, *args, **kwargs)
-        d.addErrback(self.__error)
-        return d
-    
-    def __error(self, err):
-        logging.getLogger().debug("ERROR IN WORKER THREAD: %s" % str(err))
-        return err
-        
+        return deferToThread(mthd, *args, **kwargs)
+            
 class KernelInterface(pb.Referenceable):
     """ This class mediates between the worker and the kernel; it
 is the means by which the kernel makes method requests etc."""

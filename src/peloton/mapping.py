@@ -25,7 +25,7 @@ from peloton.utils.structs import RoundRobinList
 from peloton.profile import PelotonProfile # needed for eval
 from peloton.profile import ServicePSCComparator
 from peloton.utils import getClassFromString
-from peloton.exceptions import PelotonError
+from peloton.exceptions import NoProvidersError
 from peloton.pscproxies import LocalPSCProxy
 from peloton.pscproxies import PSC_PROXIES
 
@@ -451,7 +451,7 @@ list of available proxies. """
             ix = random.randrange(np)
             return proxies[ix]
         except KeyError:
-            raise PelotonError("No Proxy for service %s" % service)
+            raise NoProvidersError("No Proxy for service %s" % service)
 
     def removeHandlerForService(self, service, proxy):
         """ Remove proxy from the list of proxies available for this service."""

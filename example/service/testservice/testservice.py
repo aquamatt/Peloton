@@ -19,4 +19,5 @@ class TestService(PelotonService):
         return "Done a slow call"
     
     def public_echo(self, x):
+#        raise NotImplementedError("OOOh - not ready")
         return x

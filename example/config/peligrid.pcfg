@@ -26,4 +26,4 @@ messagingVHost=peloton
 messagingRealm=/data
 
 # AMQP server node
-messagingHost=localhost:5672
+messagingHost=192.168.2.3:5672

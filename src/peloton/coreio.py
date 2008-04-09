@@ -3,18 +3,14 @@
 # Copyright (c) 2007-2008 ReThought Limited and Peloton Contributors
 # All Rights Reserved
 # See LICENSE for details
-from twisted.internet.error import ConnectionDone
 """ Core classes referenced by adapters to perform Peloton tasks. No
 adapter provides services that are other than published interfaces
 to methods in these classes."""
 
 import peloton.utils.logging as logging
-from peloton.exceptions import PelotonConnectionError
-from peloton.exceptions import PelotonError
+from peloton.exceptions import NoProvidersError
+from peloton.exceptions import DeadProxyError
 from twisted.internet.threads import defer
-from twisted.internet.error import ConnectionDone
-from twisted.internet.error import ConnectionRefusedError
-from twisted.python.failure import Failure
 from twisted.spread import pb
 
 from types import StringType
@@ -39,60 +35,35 @@ public_<name> by convention."""
         """ Call a Peloton method in the specified service and return 
 a deferred for the result. """
         d =  defer.Deferred()
-        self._publicCall(d, sessionId, service, method, *args, **kwargs)
+        self._publicCall(d, sessionId, service, method, args, kwargs)
         return d
     
-    def _publicCall(self, d, sessionId, service, method, *args, **kwargs):
+    def _publicCall(self, d, sessionId, service, method, args, kwargs):
         while True:
-            p = None
             try:
                 p = self.__kernel__.routingTable.getPscProxyForService(service)
                 rd = p.call(service, method, *args, **kwargs)
                 rd.addCallback(d.callback)
-                rd.addErrback(self.__callError, p, d, sessionId, service, method, *args, **kwargs)
+                rd.addErrback(self.__callError, p, d, sessionId, service, method, args, kwargs)
                 break
-            except PelotonError, err:
-                self.logger.error(str(err))
-                if p:
-                    self.__kernel__.routingTable.removeHandlerForService(service, p)
-                else:
-                    d.errback(err)
-                    break
 
-    def __callError(self, err, proxy, d, sessionId, service, method, *args, **kwargs):
-        if isinstance(err, Failure) and \
-            (isinstance(err.value, pb.PBConnectionLost) or \
-            isinstance(err.value, ConnectionDone)):
-            # try for another handler - perhaps the old one was re-started?
-            self.logger.error("Lost a PSC: re-issuing request")
-            self._publicCall(d, sessionId, service, method, *args, **kwargs)
-        elif isinstance(err, Failure) and \
-             isinstance(err.value, PelotonConnectionError):
-            # likely that a remote PSC has vanished - clean out and re-issue request
-            self.__kernel__.routingTable.removePSC(proxy.profile['guid'])
-            self._publicCall(d, sessionId, service, method, *args, **kwargs)
-        elif isinstance(err, Failure) and \
-            type(err.value) == StringType and \
-            err.value.startswith('[') and \
-            eval(err.value)[1] == "peloton.exceptions.NoProvidersError":
-
-            self._publicCall(d, sessionId, service, method, *args, **kwargs)
-        
+            except NoProvidersError, npe:
+                self.logger.error("No providers: %s" % str(npe))
+                d.errback(npe)
+                break
+            
+            except DeadProxyError, dpe:
+                self.__kernel__.routingTable.removeHandlerForService(service, p)
+                
+    def __callError(self, err, proxy, d, sessionId, service, method, args, kwargs):
+        if err.parents[-1] == 'peloton.exceptions.NoWorkersError':
+            # so we got back from our PSC that it had no workers left. This is
+            # despite trying to start some more. We respond by removing from 
+            # the service handlers and trying another.
+            self.__kernel__.routingTable.removeHandlerForService(service, proxy)
+            self._publicCall(d, sessionId, service, method, args, kwargs)
         else:
-            self.logger.error("Error making request of PSC: %s" % err.getErrorMessage())
-            if isinstance(err.value, Exception):
-                d.errback(err.value)
-            else:
-                # came from worker so we've just got the bare details.
-                # errback must now take a Failure or Exception as a value;
-                # passing in err seems not to work - it doesn't get to client,
-                # for reasons unknown to me. So I rebuild the exception.
-                try:
-                    errClass = err.parents[-1]
-                except:
-                    errClass = 'Unknown'
-                d.errback(Exception(repr([err.value, errClass, err.parents])))
-            return err
+            d.errback(err)
     
     def public_post(self, sessionId, service, method, *args, **kwargs):
         """ Post a method call onto the stack. The return value is the

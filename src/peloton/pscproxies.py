@@ -4,14 +4,15 @@
 # All Rights Reserved
 # See LICENSE for details
 
-from twisted.python.failure import Failure
 from twisted.spread import pb
 from twisted.internet import reactor
 from twisted.internet.error import ConnectionRefusedError
-from twisted.internet.threads import defer
+from twisted.internet.error import ConnectionDone
+from twisted.internet.defer import Deferred
 from peloton.exceptions import PelotonConnectionError
 from peloton.exceptions import PelotonError
-from peloton.exceptions import NoProvidersError
+from peloton.exceptions import DeadProxyError
+from peloton.exceptions import NoWorkersError
 
 from types import StringType
 
@@ -35,6 +36,73 @@ PSC. """
         """ May be implemented if some action on stop is required. """
         pass
         
+class LocalPSCProxy(PSCProxy):
+    """ Proxy for this 'local' PSC. """
+    def call(self, service, method, *args, **kwargs):
+        """ Use the following process to call the method:
+    - obtain a worker reference
+    - call the method in there
+    - park the deferred; return a new deferred to the caller of this method
+    - if error, reset and try again.
+    - if no error, put result onto return deferred.
+    
+The coreio call method will receive a deferred OR a NoProvidersError
+will be raised.
+"""
+        rd = Deferred()
+        rd._peloton_loopcount = 0 # used in _call
+        self._call(rd, service, method, args, kwargs)
+        return rd
+    
+    def _call(self, rd, service, method, args, kwargs):
+        while True:
+            try:
+    #            p = self.kernel.workerStore[service].getRandomProvider()
+                p = self.kernel.workerStore[service].getNextProvider()
+                d = p.callRemote('call',method, *args, **kwargs)
+                d.addCallback(rd.callback)
+                d.addErrback(self.__callError, rd, p, service, method, args, kwargs)
+                break
+            except pb.DeadReferenceError:
+                self.logger.error("Dead reference for %s provider" % service)
+                self.kernel.workerStore[service].notifyDeadProvider(p)
+                
+            except NoWorkersError:
+                # Clearly we expect to be able to provide this service
+                # otherwise we'd not be here so it is quite likely that
+                # for some reason all the workers got zapped and more are
+                # in the process of starting. We'll try periodicaly to see 
+                # if this is true but after 3 seconds timeout and give up 
+                # for good.
+                if rd._peloton_loopcount >= 300:
+                    rd.errback(NoWorkersError("No workers for service %s" % service))
+                else:
+                    rd._peloton_loopcount+=1
+                    reactor.callLater(0.01, self._call, rd, service, method, args, kwargs)
+                break
+   
+    def __callError(self, err, rd, p, service, method, args, kwargs):
+        """ A twisted error occured when making the remote call. This is going
+to be one of:
+
+    - An application error raised in the service - this must pass through. It
+      will be characterised by err.value being a string
+    - A connection was broken whilst the call was being made; flag the provider
+      as dead and start again. This is signified by err.value being a 
+      pb.PBConnectionLost error.
+    - The connection was closed cleanly whilst performing the operation; likely
+      the service was re-started. Current protocol is to re-issue the request but
+      in future the old worker may well finish the job so this error will not
+      be raised. This condition is signified by err.value being a ConnectionDone
+      instance.
+"""
+        if type(err.value) == StringType:
+            rd.errback(err)
+        elif isinstance(err.value, pb.PBConnectionLost) or \
+             isinstance(err.value, ConnectionDone):
+            self.kernel.workerStore[service].notifyDeadProvider(p)
+            self._call(rd, service, method, args, kwargs)
+        
 class TwistedPSCProxy(PSCProxy):        
     """ Proxy for a PSC that is running on the same domain as this 
 node and accepts Twisted PB RPC. This is the prefered proxy to use
@@ -50,8 +118,8 @@ domain)."""
         
     def call(self, service, method, *args, **kwargs):
         if not self.ACCEPTING_REQUESTS:
-            raise PelotonError("Cannot accept requests.")
-        d = defer.Deferred()
+            raise DeadProxyError("Cannot accept requests.")
+        d = Deferred()
         if self.remoteRef == None:
             self.requestCache.append([d, service, method, args, kwargs])
             if not self.CONNECTING:
@@ -124,30 +192,10 @@ class MessageBusPSCProxy(PSCProxy):
     """ Proxy for a PSC that is able only to accept RPC calls over
 the message bus for whatever reason. """
     pass
-          
-class LocalPSCProxy(PSCProxy):
-    """ Proxy for this 'local' PSC. """
-    def call(self, service, method, *args, **kwargs):
-        """ Use the following process to call the method:
-    - obtain a worker reference
-    - call the method in there
-    - park the deferred; return a new deferred to the caller of this method
-    - if error, reset and try again.
-    - if no error, put result onto return deferred.
-"""
-        while True:
-            try:
-    #            p = self.kernel.workerStore[service].getRandomProvider()
-                p = self.kernel.workerStore[service].getNextProvider()
-                return p.callRemote('call',method, *args, **kwargs)
-            except NoProvidersError, ex:
-                self.logger.error("No workers for service %s" % service)
-                raise
-            except pb.DeadReferenceError:
-                self.logger.error("Dead reference for %s provider" % service)
-                self.kernel.workerStore[service].notifyDeadProvider(p)                           
-   
+
+
 # mapping of proxy to specific RPC mechanisms
 # that a PSC may accept
 PSC_PROXIES = {'pb'  : TwistedPSCProxy,
                'bus' : MessageBusPSCProxy}
+          

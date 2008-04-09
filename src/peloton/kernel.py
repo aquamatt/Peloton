@@ -39,7 +39,7 @@ from peloton.exceptions import PelotonError
 from peloton.exceptions import ConfigurationError
 from peloton.exceptions import PluginError
 from peloton.exceptions import WorkerError
-from peloton.exceptions import NoProvidersError
+from peloton.exceptions import NoWorkersError
 
 class PelotonKernel(HandlerBase):
     """ The kernel is the core that starts key services of the 
@@ -563,7 +563,7 @@ a new launchTime provider for that version is added."""
         except IndexError:
             # all the providers are gone but we're still listed
             # as supplying this service.... for now just wash over
-            raise PelotonError("Service no longer available.")
+            raise NoWorkersError("Service no longer available.")
         lts = vrecs.keys()
         lts.sort()
        
@@ -575,7 +575,7 @@ version """
         providers = self.getProviders()
         np = len(providers)
         if np == 0:
-            raise NoProvidersError("No providers for service!")
+            raise NoWorkersError("No workers for service!")
         ix = random.randrange(np)
         return providers[ix]
     
@@ -585,18 +585,20 @@ version (picks in round-robin fashion from pool)."""
         providers = self.getProviders()
         v = providers.rrnext()
         if v==None:
-            raise NoProvidersError("No providers for service!")
+            raise NoWorkersError("No workers for service!")
         return v
 
     def removeProvider(self, provider):
         """ Remove the provider from this mapping, calling stop() on it
-as we go. """
+as we go. Returns the number of occurences removed."""
         emptyVersions=[]
+        n = 0
         for v, lts in self.versions.items():
             keysToRemove = []
             for k, p in lts.items():
                 if provider in p:
                     p.remove(provider)
+                    n+=1
                 if not p:
                     keysToRemove.append(k)
             for k in keysToRemove:
@@ -610,20 +612,31 @@ as we go. """
         except pb.DeadReferenceError:
             pass
 
+        return n
+
     def getLatestVersion(self):
         """ Return a (version, launchTime) tuple. """
-        versions = self.versions.keys()
-        versions.sort()
-        vrec = self.versions[versions[-1]]
+        vnums = self.versions.keys()
+        if not vnums:
+            raise NoWorkersError("No workers currently for %s" % self.name)
+        vnums.sort()
+        vrec = self.versions[vnums[-1]]
         lts = vrec.keys()
         lts.sort()
-        return versions[-1], lts[-1]
+        return vnums[-1], lts[-1]
         
     def notifyDeadProvider(self, provider):
         """ Remove this dead provider and trigger its replacement. """
-        self.removeProvider(provider)
-        version, launchTime = self.getLatestVersion()
-        self.kernel.startService(self.name, version, launchTime, 1)
+        try:
+            version, launchTime = self.getLatestVersion()
+            n = self.removeProvider(provider)
+            if n:
+                self.kernel.startService(self.name, version, launchTime, 1)
+            # else there were no occurences removed so this is likely already 
+            # being re-stated.
+        except NoWorkersError:
+            # again; nothing to worry about as the re-start will be underway.
+            pass
                 
     def setCurrent(self, version):
         """ Re-set the 'current' version. """
