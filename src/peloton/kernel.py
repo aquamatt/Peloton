@@ -644,6 +644,7 @@ as we go. Returns the number of occurences removed."""
 
     def closeAll(self):
         """ Close down ALL providers. """
+        self.kernel.routingTable.localProxy.stop()
         for version in self.versions.values():
             # version is dict keyed on launchTime
             for providerList in version.values():

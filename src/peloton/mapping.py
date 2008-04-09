@@ -455,7 +455,12 @@ list of available proxies. """
 
     def removeHandlerForService(self, service, proxy):
         """ Remove proxy from the list of proxies available for this service."""
-        self.pscByService[service].remove(proxy)
+        try:
+            self.pscByService[service].remove(proxy)
+        except ValueError:
+            pass
+        except KeyError:
+            pass
 
     def addHandlerForService(self, serviceName, guid=None, proxy=None):
         """ Add the handler for the PSC referenced by guid as a handler

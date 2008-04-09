@@ -26,6 +26,8 @@ another domain on the grid.
         self.profile = profile
         self.kernel = kernel
         self.logger = kernel.logger
+        self.ACCEPTING_REQUESTS = True
+        self.RUNNING = True
         
     def call(self, service, method, *args, **kwargs):
         """ Request the serice method be called on this 
@@ -34,10 +36,11 @@ PSC. """
         
     def stop(self):
         """ May be implemented if some action on stop is required. """
-        pass
+        self.RUNNING = False
         
 class LocalPSCProxy(PSCProxy):
     """ Proxy for this 'local' PSC. """
+    
     def call(self, service, method, *args, **kwargs):
         """ Use the following process to call the method:
     - obtain a worker reference
@@ -100,8 +103,12 @@ to be one of:
             rd.errback(err)
         elif isinstance(err.value, pb.PBConnectionLost) or \
              isinstance(err.value, ConnectionDone):
-            self.kernel.workerStore[service].notifyDeadProvider(p)
-            self._call(rd, service, method, args, kwargs)
+            if self.RUNNING:
+                self.kernel.workerStore[service].notifyDeadProvider(p)
+                self._call(rd, service, method, args, kwargs)
+            else:
+                rd.errback(NoWorkersError("No workers for service %s" % service))
+        
         
 class TwistedPSCProxy(PSCProxy):        
     """ Proxy for a PSC that is running on the same domain as this 
@@ -123,29 +130,35 @@ domain)."""
         if self.remoteRef == None:
             self.requestCache.append([d, service, method, args, kwargs])
             if not self.CONNECTING:
-                self.CONNECTING = True
                 self.__connect()
         else:
-            self.__call(d, service, method, args, kwargs)
+            try:
+                self.__call(d, service, method, args, kwargs)
+            except pb.DeadReferenceError:
+                self.ACCEPTING_REQUESTS = False
+                raise DeadProxyError("Dead reference to remote PSC")
         return d
-          
+    
     def __call(self, d, service, method, args, kwargs):
-        try:
-            cd = self.remoteRef.callRemote('relayCall', service, method, *args, **kwargs)
-            cd.addCallback(d.callback)
-            cd.addErrback(self.__callError, service, method, d)
-        except pb.DeadReferenceError, ex:
-            self.ACCEPTING_REQUESTS = False
-            d.errback(PelotonConnectionError("Dead reference error", ex))
-        
-    def __callError(self, err, service, method, d):
-        self.logger.error("Call error calling %s.%s: %s" % (service, method, err.getErrorMessage()))
-        d.errback(err)
+        cd = self.remoteRef.callRemote('relayCall', service, method, *args, **kwargs)
+        cd.addCallback(d.callback)
+        cd.addErrback(self.__callError, d, service, method)
+    
+    def __callError(self, err, d, service, method):
+#        self.logger.error("** Call error calling %s.%s: %s" % (service, method, err.parents[-1]))
+        if err.parents[-1] == 'twisted.spread.pb.PBConnectionDone' or \
+           err.parents[-1] == 'twisted.spread.pb.PBConnectionLost':
+#            self.logger.error("CALL ERROR %s CALLING %s.%s" % (err.parents[-1], service, method))
+            d.errback(DeadProxyError("Peer closed connection"))
+        else:
+            d.errback(err)
           
     def __connect(self):
         """ Connections to peers are made on demand so that only
 links that are actively used get made. This is the start of the
 connect sequence."""
+        self.CONNECTING = True
+#        self.logger.debug("CONNECT TO REMOTE PSC")
         factory = pb.PBClientFactory()
         reactor.connectTCP(self.profile['ipaddress'], 
                            self.profile['port'], 
@@ -175,18 +188,16 @@ connect sequence."""
         self.CONNECTING = False
         self.logger.error("TwistedPSCProxy: %s" % msg)
 
-        if type(err.value) == StringType:
-            error = PelotonConnectionError(str([err.value, err.parents[-1], err.parents]))
-        else:
-            error = PelotonConnectionError(msg, err.value)
-            
         while self.requestCache:
             req = self.requestCache.pop(0)
             d = req[0]
-            d.errback(error)
+            d.errback(DeadProxyError("Peer not present before connect"))
 
     def stop(self):
-        self.peer = self.remoteRef = None
+        if self.RUNNING:
+            self.ACCEPTING_REQUESTS = False
+            PSCProxy.stop(self)
+            self.peer = self.remoteRef = None
           
 class MessageBusPSCProxy(PSCProxy):
     """ Proxy for a PSC that is able only to accept RPC calls over

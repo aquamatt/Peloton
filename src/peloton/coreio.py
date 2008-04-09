@@ -10,7 +10,7 @@ to methods in these classes."""
 import peloton.utils.logging as logging
 from peloton.exceptions import NoProvidersError
 from peloton.exceptions import DeadProxyError
-from twisted.internet.threads import defer
+from twisted.internet.defer import Deferred
 from twisted.spread import pb
 
 from types import StringType
@@ -34,7 +34,7 @@ public_<name> by convention."""
     def public_call(self, sessionId, service, method, *args, **kwargs):
         """ Call a Peloton method in the specified service and return 
 a deferred for the result. """
-        d =  defer.Deferred()
+        d =  Deferred()
         self._publicCall(d, sessionId, service, method, args, kwargs)
         return d
     
@@ -56,7 +56,8 @@ a deferred for the result. """
                 self.__kernel__.routingTable.removeHandlerForService(service, p)
                 
     def __callError(self, err, proxy, d, sessionId, service, method, args, kwargs):
-        if err.parents[-1] == 'peloton.exceptions.NoWorkersError':
+        if err.parents[-1] == 'peloton.exceptions.NoWorkersError' or \
+           err.parents[-1] == 'peloton.exceptions.DeadProxyError':
             # so we got back from our PSC that it had no workers left. This is
             # despite trying to start some more. We respond by removing from 
             # the service handlers and trying another.
@@ -117,7 +118,21 @@ via adapters are named public_<name> by convention."""
         """ Called by a remote node to relay a method request to this node. 
 The method is now executed on this node."""
         p = self.__kernel__.routingTable.localProxy
-        return p.call(service, method, *args, **kwargs)
+        rd = Deferred()
+        d = p.call(service, method, *args, **kwargs)
+        d.addCallback(rd.callback)
+        d.addErrback(self.__callError,rd, p, service)
+        return rd
+
+    def __callError(self, err, d, proxy, service):
+        if err.parents[-1] == 'peloton.exceptions.NoWorkersError':
+            # so we got back from our PSC that it had no workers left. This is
+            # despite trying to start some more. We respond by removing from 
+            # the service handlers and trying another.
+            self.__kernel__.routingTable.removeHandlerForService(service, proxy)
+
+        d.errback(err)
+    
     
 class PelotonManagementInterface(PelotonInterface):
     """ Methods for use by management tools, such as a console, 
