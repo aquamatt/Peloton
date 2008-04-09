@@ -269,7 +269,6 @@ Profiles received are logged into the routing table.
         self.logger = kernel.logger
         self.dispatcher = kernel.dispatcher
         self.pscs=[]
-        self.pscByHost={}
         self.pscByService={}
         self.pscByGUID={}
 
@@ -352,7 +351,7 @@ to this node on its private channel psc.<guid>.init"""
             
         elif msg['action'] == 'serviceLibrary':
             self.kernel.serviceLibrary.merge(eval(msg['serviceLibrary']))
-            self.logger.debug("Service library from %s: %s" % (msg['sender_guid'], str(self.kernel.serviceLibrary)))
+#            self.logger.debug("Service library from %s: %s" % (msg['sender_guid'], str(self.kernel.serviceLibrary)))
 
     def _getProxyForProfile(self, profile):
         """ Return a proxy appropriate for the PSC described by this profile."""
@@ -391,6 +390,27 @@ to this node on its private channel psc.<guid>.init"""
                MethodEventHandler(self.respond_initChannel),
                "domain_control")
     
+    def removePSC(self, guid):
+        try:
+            proxy = self.pscByGUID[guid]
+        except KeyError:
+            # already removed
+            return
+
+        self.logger.info("Removing PSC: %s" % guid)
+        proxy.stop()
+        
+        # iter over services and remove from proxy by service
+        # with removeHandlerForService
+        for service, handlers in self.pscByService.items():
+            while proxy in handlers:
+                self.logger.info("Removing PSC %s for service %s" % (guid, service))
+                n=len(handlers)
+                handlers.remove(proxy)
+                        
+        del(self.pscByGUID[guid])
+        self.pscs.remove(proxy)
+    
     def addPSC(self, profile, serviceList=[]):
         """ Store the PSC provided. """
         try:
@@ -414,7 +434,6 @@ to this node on its private channel psc.<guid>.init"""
         if isinstance(pscProxy, LocalPSCProxy):
             self.localProxy = pscProxy
         self.pscs.append(pscProxy)
-        self.pscByHost[pscProxy.profile['ipaddress']] = pscProxy
         self.pscByGUID[pscProxy.profile['guid']] = pscProxy
 
         for svc in serviceList:
@@ -434,19 +453,31 @@ list of available proxies. """
         except KeyError:
             raise PelotonError("No Proxy for service %s" % service)
 
-    def removePscProxyForService(self, service, proxy):
+    def removeHandlerForService(self, service, proxy):
         """ Remove proxy from the list of proxies available for this service."""
         self.pscByService[service].remove(proxy)
 
     def addHandlerForService(self, serviceName, guid=None, proxy=None):
         """ Add the handler for the PSC referenced by guid as a handler
-for the named service. """
+for the named service. 
+
+Because one event is fired for every *worker* that is launched by a PSC, the
+lists of handlers for each service will contain multiple references to the
+same proxy on account of it having n workers to reference at the other end.
+
+This isn't so bad as it naturally introduces an element of weighting. To
+ensure that one host doesn't get unduly hit in the event of round robin
+routing we insert the new entries into a random point in the list.
+"""
         if not proxy and guid:
             proxy = self.pscByGUID[guid]
 
         if not self.pscByService.has_key(serviceName):
             self.pscByService[serviceName] = []
-        self.pscByService[serviceName].append(proxy)
+        handlers = self.pscByService[serviceName]
+        
+        insertPoint = random.randint(0, len(handlers))
+        handlers.insert(insertPoint, proxy)
         
     def _getShortServiceList(self):
         """ Return a list only of service names. """

@@ -23,7 +23,6 @@ import Queue
 import threading
 from twisted import version as twistedVersion
 from twisted.python import runtime
-import peloton.utils.logging as logging
 MIN_THREADS=5
 MAX_THREADS=150
 
@@ -49,8 +48,6 @@ class DaemonThreadPool_2(twisted.python.threadpool.ThreadPool):
             self.waiters = twisted.python.threadpool.ThreadSafeList()
             self.threads = twisted.python.threadpool.ThreadSafeList()
             self.working = twisted.python.threadpool.ThreadSafeList()
-
-        logging.getLogger().debug("Instantiating pool 2 DONE!")
         
     def startAWorker(self):
         self.workers = self.workers + 1

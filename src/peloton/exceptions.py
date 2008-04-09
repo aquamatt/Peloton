@@ -50,3 +50,9 @@ class WorkerError(PelotonError):
     """ Generic error raised if something untoward occurs in a worker
 process. """
     pass
+
+class PelotonConnectionError(PelotonError):
+    pass
+
+class NoProvidersError(PelotonError):
+    pass

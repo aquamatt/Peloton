@@ -39,6 +39,7 @@ from peloton.exceptions import PelotonError
 from peloton.exceptions import ConfigurationError
 from peloton.exceptions import PluginError
 from peloton.exceptions import WorkerError
+from peloton.exceptions import NoProvidersError
 
 class PelotonKernel(HandlerBase):
     """ The kernel is the core that starts key services of the 
@@ -316,16 +317,19 @@ hooks into the reactor. It is passed the entire config stack
         """ Initiate the process of launching a service. """
         self.serviceLoader.launchService(serviceName)
 
-    def startService(self, serviceName, version, launchTime):
-        """ Instruct start of numWorkers worker processes 
-running service named serviceName."""
+    def startService(self, serviceName, version, launchTime, numWorkers=None):
+        """ Instruct start of worker processes running service named serviceName. 
+The number of workers is determined from the profile but can be overridden with 
+numWorkers if set.
+"""
         tok = crypto.makeCookie(20)
         profile = self.serviceLibrary.getProfile(serviceName, version, launchTime)
-        numWorkers = int( profile.getpath('launch.workersperpsc') )
+        if numWorkers == None:
+            numWorkers = int( profile.getpath('launch.workersperpsc') )
         self.serviceLaunchTokens[tok] = [serviceName, version, launchTime, numWorkers, 0]
         d = deferToThread(self._startWorkerProcess, numWorkers, tok)
         d.addCallback(self._workerStarted, serviceName)
-
+        
     def _startWorkerProcess(self, numWorkers, token):
         """ Run in a thread by startService to spawn the 
 worker processes and initialise them. """
@@ -352,7 +356,7 @@ Returns the name of the service referenced by this token"""
         launchRecord[-1]+=1
         serviceName, version, launchTime = launchRecord[:3]
         if not self.workerStore.has_key(serviceName):
-            self.workerStore[serviceName] = ServiceProvider(serviceName)
+            self.workerStore[serviceName] = ServiceProvider(self, serviceName)
         self.workerStore[serviceName].addProvider(ref, version, launchTime)
         if launchRecord[-1] == launchRecord[-2]:
             del self.serviceLaunchTokens[token]
@@ -513,8 +517,9 @@ class ServiceProvider(object):
     """ Manages providers for a service - keeps records of what
 versions are available and the PSC 'providers' running the service. """
     
-    def __init__(self, name):
+    def __init__(self, kernel, name):
         """ Initialise a providers store with the name of the service."""
+        self.kernel = kernel
         self.name = name
         self.versions = {}
             
@@ -553,7 +558,12 @@ a new launchTime provider for that version is added."""
         """ Return all providers of the latest version."""
         versions = self.versions.keys()
         versions.sort()
-        vrecs = self.versions[versions[-1]]
+        try:
+            vrecs = self.versions[versions[-1]]
+        except IndexError:
+            # all the providers are gone but we're still listed
+            # as supplying this service.... for now just wash over
+            raise PelotonError("Service no longer available.")
         lts = vrecs.keys()
         lts.sort()
        
@@ -565,7 +575,7 @@ version """
         providers = self.getProviders()
         np = len(providers)
         if np == 0:
-            raise PelotonError("No providers for service!")
+            raise NoProvidersError("No providers for service!")
         ix = random.randrange(np)
         return providers[ix]
     
@@ -575,17 +585,45 @@ version (picks in round-robin fashion from pool)."""
         providers = self.getProviders()
         v = providers.rrnext()
         if v==None:
-            raise PelotonError("No providers for service!")
+            raise NoProvidersError("No providers for service!")
         return v
 
     def removeProvider(self, provider):
         """ Remove the provider from this mapping, calling stop() on it
 as we go. """
-        for lts in self.versions.values():
+        emptyVersions=[]
+        for v, lts in self.versions.items():
+            keysToRemove = []
             for k, p in lts.items():
                 if provider in p:
                     p.remove(provider)
-        provider.callRemote('stop')
+                if not p:
+                    keysToRemove.append(k)
+            for k in keysToRemove:
+                del(lts[k])
+            if not lts:
+                emptyVersions.append(v)
+        for k in emptyVersions:
+            del(self.versions[k])
+        try:
+            provider.callRemote('stop')
+        except pb.DeadReferenceError:
+            pass
+
+    def getLatestVersion(self):
+        """ Return a (version, launchTime) tuple. """
+        versions = self.versions.keys()
+        versions.sort()
+        vrec = self.versions[versions[-1]]
+        lts = vrec.keys()
+        lts.sort()
+        return versions[-1], lts[-1]
+        
+    def notifyDeadProvider(self, provider):
+        """ Remove this dead provider and trigger its replacement. """
+        self.removeProvider(provider)
+        version, launchTime = self.getLatestVersion()
+        self.kernel.startService(self.name, version, launchTime, 1)
                 
     def setCurrent(self, version):
         """ Re-set the 'current' version. """

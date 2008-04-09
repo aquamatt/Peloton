@@ -9,11 +9,15 @@ adapter provides services that are other than published interfaces
 to methods in these classes."""
 
 import peloton.utils.logging as logging
+from peloton.exceptions import PelotonConnectionError
 from peloton.exceptions import PelotonError
 from twisted.internet.threads import defer
 from twisted.internet.error import ConnectionDone
+from twisted.internet.error import ConnectionRefusedError
 from twisted.python.failure import Failure
 from twisted.spread import pb
+
+from types import StringType
 
 class PelotonInterface(object):
     """ Subclasses of the PelotonInterface will all need access to
@@ -45,22 +49,35 @@ a deferred for the result. """
                 p = self.__kernel__.routingTable.getPscProxyForService(service)
                 rd = p.call(service, method, *args, **kwargs)
                 rd.addCallback(d.callback)
-                rd.addErrback(self.__callError, d, sessionId, service, method, *args, **kwargs)
+                rd.addErrback(self.__callError, p, d, sessionId, service, method, *args, **kwargs)
                 break
             except PelotonError, err:
                 self.logger.error(str(err))
                 if p:
-                    self.__kernel__.routingTable.removePscProxyForService(service, p)
+                    self.__kernel__.routingTable.removeHandlerForService(service, p)
                 else:
-                    raise
+                    d.errback(err)
+                    break
 
-    def __callError(self, err, d, sessionId, service, method, *args, **kwargs):
+    def __callError(self, err, proxy, d, sessionId, service, method, *args, **kwargs):
         if isinstance(err, Failure) and \
             (isinstance(err.value, pb.PBConnectionLost) or \
             isinstance(err.value, ConnectionDone)):
             # try for another handler - perhaps the old one was re-started?
             self.logger.error("Lost a PSC: re-issuing request")
             self._publicCall(d, sessionId, service, method, *args, **kwargs)
+        elif isinstance(err, Failure) and \
+             isinstance(err.value, PelotonConnectionError):
+            # likely that a remote PSC has vanished - clean out and re-issue request
+            self.__kernel__.routingTable.removePSC(proxy.profile['guid'])
+            self._publicCall(d, sessionId, service, method, *args, **kwargs)
+        elif isinstance(err, Failure) and \
+            type(err.value) == StringType and \
+            err.value.startswith('[') and \
+            eval(err.value)[1] == "peloton.exceptions.NoProvidersError":
+
+            self._publicCall(d, sessionId, service, method, *args, **kwargs)
+        
         else:
             self.logger.error("Error making request of PSC: %s" % err.getErrorMessage())
             if isinstance(err.value, Exception):
