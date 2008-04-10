@@ -1,0 +1,14 @@
+--- pb.py	2008-04-10 09:42:51.000000000 +0100
++++ patched_pb.py	2008-04-10 09:41:18.000000000 +0100
+@@ -421,7 +421,10 @@
+             state['value'] = failure2Copyable(self.value, self.unsafeTracebacks)
+         else:
+             state['value'] = str(self.value) # Exception instance
+-        state['type'] = reflect.qual(self.type) # Exception class
++        if type(self.type) == types.StringType:
++            state['type'] = self.type
++        else:
++            state['type'] = reflect.qual(self.type) # Exception class
+         if self.unsafeTracebacks:
+             io = StringIO.StringIO()
+             self.printTraceback(io)

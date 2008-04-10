@@ -80,7 +80,10 @@ generator and is used simply to verify that this is indeed a valid
 and wanted contact."""
         self.logger.info("Starting worker, token=%s NOT VALIDATED" % token)        
         serviceName = self.kernel.addWorker(worker, token)
-        return (PelotonWorkerAdapter(self, serviceName, self.kernel),
+        pwa = PelotonWorkerAdapter(self, serviceName, self.kernel)
+        worker.checkBeat = pwa.checkBeat
+        
+        return (pwa,
                 serviceName,
                 self.kernel.initOptions.loglevel,
                 self.kernel.initOptions.logdir,
@@ -134,6 +137,11 @@ class PelotonWorkerAdapter(pb.Referenceable):
     """ Interface by which a worker may invoke actions on the kernel. """
     def __init__(self, name, pscRef, kernel):
         self.name = name
+        # each time the worker calls, this sets to zero
+        # each time the PSC checks it increments the value by
+        # one... if the value hits a threshold, e.g. 5, the
+        # worker is considered dead.
+        self.heartBeat = 0
         self.kernel = kernel
         self.pscRef = pscRef
         
@@ -150,6 +158,17 @@ class PelotonWorkerAdapter(pb.Referenceable):
     
     def remote_deregister(self, key, handler, exchange='events'):
         pass
+
+    def remote_heartBeat(self):
+        self.heartBeat = 0
+
+    def checkBeat(self, threshold=5):
+        """ Called from the PSC to check whether the worker
+is OK. the heartBeat counter is incremented. If the counter 
+exceeds the threshold value (default 5) checkBeat returns False,
+otherwise returns True. """
+        self.heartBeat += 1
+        return self.heartBeat <= threshold
 
     def remote_serviceStartOK(self, version):
         self.kernel.logger.info("Worker reports start OK for %s %s" % (self.name, version))

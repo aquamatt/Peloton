@@ -119,6 +119,8 @@ if not, let the PSC know we've failed and why, then initiate closedown. """
             self.pscReference.callRemote('serviceStartOK', self.__service.version)
         except Exception, ex:
             self.pscReference.callRemote('serviceStartFailed', str(ex))
+
+        reactor.callLater(3, self.heartBeat)
         
     def _clientConnectError(self, err):
         print("Error connecting with PSC: %s" % err.getErrorMessage())
@@ -127,6 +129,18 @@ if not, let the PSC know we've failed and why, then initiate closedown. """
     def closedown(self):
         self.stopService()
         reactor.stop()
+        
+    def heartBeat(self):
+        """ Call the heartBeat on the PSC reference to show we're alive."""
+        try:
+            d = self.pscReference.callRemote('heartBeat')
+            d.addErrback(self._heartBeatFailed)
+            reactor.callLater(3, self.heartBeat)
+        except pb.DeadReferenceError, ex:
+            self._heartBeatFailed(ex)
+        
+    def _heartBeatFailed(self, err):
+        self.closedown()
         
     def loadService(self):
         """ Loading a service happens as follows:

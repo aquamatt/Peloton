@@ -1,0 +1,11 @@
+Patches in this folder are as follows:
+
+pb_8_0_1.patch
+--------------
+
+Fixes error introduced in the 8 series with regards the re-raising of Failures
+from a process different to that in which it was originaly created.
+
+test_patch_8_0_1.py demonstrates the bug. 
+
+

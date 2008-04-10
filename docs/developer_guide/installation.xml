@@ -53,6 +53,37 @@
 	                   	    <filename>Twisted</filename> Version &gt;=8.0.1 obtainable
 						   from <ulink url='http://www.twistedmatrix.com'/>.
 	                   </para>
+						<para>
+							Twisted 8.0.1 introduces a bug not present in the 2.5 series with
+							regard the re-raising of Failures. If one processes raises an exception
+							which is caughte in another that tries to pass it  onto yet another deferred,
+							Twisted 8.0.1 raises an exception. The issue is with pb.py in the spread 
+							module a patch for which is as follows:
+						</para>
+<informalfigure>
+	<programlisting>
+--- pb.py       2008-04-10 09:42:51.000000000 +0100
++++ patched_pb.py       2008-04-10 09:41:18.000000000 +0100
+@@ -421,7 +421,10 @@
+             state['value'] = failure2Copyable(self.value, self.unsafeTracebacks)
+         else:
+             state['value'] = str(self.value) # Exception instance
+-        state['type'] = reflect.qual(self.type) # Exception class
++        if type(self.type) == types.StringType:
++            state['type'] = self.type
++        else:
++            state['type'] = reflect.qual(self.type) # Exception class
+         if self.unsafeTracebacks:
+             io = StringIO.StringIO()
+             self.printTraceback(io)
+	</programlisting>
+</informalfigure>
+					 <para>
+						 This patch is to be found in the <filename>patches</filename> directory
+						 of the Peloton distribution. The issue is ticket number #3174 in the Twisted
+						 Trac and if or when the behaviour changes in a future release this patch
+						 will be revoked.
+					 </para>
 	             </listitem>
 	             <listitem>
                        <para>

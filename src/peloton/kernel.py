@@ -522,6 +522,8 @@ versions are available and the PSC 'providers' running the service. """
         self.kernel = kernel
         self.name = name
         self.versions = {}
+        self.allProviders = []
+        LoopingCall(self._checkHeartBeat).start(3, False)
             
     def addProvider(self, provider, version, launchTime, closeOldProviders=True):
         """ Add a provider. By default and unless closeOldProviders is set False,
@@ -533,6 +535,7 @@ a new launchTime provider for that version is added."""
         if not vrec.has_key(launchTime):
             self.versions[version][launchTime] = RoundRobinList()
         vrec[launchTime].append(provider)
+        self.allProviders.append(provider)
         
         # close down all providers with older launchTime stamps
         if closeOldProviders:
@@ -540,6 +543,10 @@ a new launchTime provider for that version is added."""
             for olt in oldLaunchTimes:
                 for provider in vrec[olt]:
                     try:
+                        try:
+                            self.allProviders.remove(provider)
+                        except:
+                            pass
                         provider.callRemote('stop').addBoth(self._removeClosed, version, olt, provider)
                     except pb.DeadReferenceError:
                         pass
@@ -548,6 +555,10 @@ a new launchTime provider for that version is added."""
         try:
             if ref in self.versions[version][launchTime]:
                 self.versions[version][launchTime].remove(ref)
+                try:
+                    self.allProviders.remove(ref)
+                except:
+                    pass
                 if not self.versions[version][launchTime]:
                     del( self.versions[version][launchTime] )
         except KeyError:
@@ -612,6 +623,11 @@ as we go. Returns the number of occurences removed."""
         except pb.DeadReferenceError:
             pass
 
+        try:
+            self.allProviders.remove(provider)
+        except:
+            pass
+
         return n
 
     def getLatestVersion(self):
@@ -638,6 +654,12 @@ as we go. Returns the number of occurences removed."""
             # again; nothing to worry about as the re-start will be underway.
             pass
                 
+    def _checkHeartBeat(self):
+        """ Iterate over all providers, calling check heart beat. """
+        deadProviders = [p for p in self.allProviders if not p.checkBeat()]
+        for p in deadProviders:
+            self.notifyDeadProvider(p)
+                
     def setCurrent(self, version):
         """ Re-set the 'current' version. """
         pass
@@ -650,6 +672,10 @@ as we go. Returns the number of occurences removed."""
             for providerList in version.values():
                 # providerList is list of providers
                 for p in providerList:
+                    try:
+                        self.allProviders.remove(p)
+                    except:
+                        pass
                     p.callRemote('stop').addErrback(lambda _: None)
                     
     

@@ -99,16 +99,15 @@ to be one of:
       be raised. This condition is signified by err.value being a ConnectionDone
       instance.
 """
-        if type(err.value) == StringType:
-            rd.errback(err)
-        elif isinstance(err.value, pb.PBConnectionLost) or \
+        if isinstance(err.value, pb.PBConnectionLost) or \
              isinstance(err.value, ConnectionDone):
             if self.RUNNING:
                 self.kernel.workerStore[service].notifyDeadProvider(p)
                 self._call(rd, service, method, args, kwargs)
             else:
                 rd.errback(NoWorkersError("No workers for service %s" % service))
-        
+        else:
+            rd.errback(err)
         
 class TwistedPSCProxy(PSCProxy):        
     """ Proxy for a PSC that is running on the same domain as this 
