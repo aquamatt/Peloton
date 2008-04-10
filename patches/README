@@ -6,6 +6,9 @@ pb_8_0_1.patch
 Fixes error introduced in the 8 series with regards the re-raising of Failures
 from a process different to that in which it was originaly created.
 
+This patch is as submitted by 'therve' in response to issue 3174 on Twisted Trac:
+http://twistedmatrix.com/trac/ticket/3174
+
 test_patch_8_0_1.py demonstrates the bug. 
 
 

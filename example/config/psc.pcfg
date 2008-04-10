@@ -6,6 +6,7 @@
 
 # Individual PSC configuration
 bind=0.0.0.0:9100
+restPort=8080
 pscFolder=/tmp/psc
 
 [plugins]

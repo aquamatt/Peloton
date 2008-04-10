@@ -62,27 +62,31 @@
 						</para>
 <informalfigure>
 	<programlisting>
---- pb.py       2008-04-10 09:42:51.000000000 +0100
-+++ patched_pb.py       2008-04-10 09:41:18.000000000 +0100
-@@ -421,7 +421,10 @@
-             state['value'] = failure2Copyable(self.value, self.unsafeTracebacks)
-         else:
-             state['value'] = str(self.value) # Exception instance
--        state['type'] = reflect.qual(self.type) # Exception class
-+        if type(self.type) == types.StringType:
-+            state['type'] = self.type
-+        else:
-+            state['type'] = reflect.qual(self.type) # Exception class
-         if self.unsafeTracebacks:
-             io = StringIO.StringIO()
-             self.printTraceback(io)
+--- twisted/spread/pb.py        (revision 23266)
++++ twisted/spread/pb.py        (working copy)
+@@ -441,6 +441,16 @@
+     printBriefTraceback = printTraceback
+     printDetailedTraceback = printTraceback
++
++    def setCopyableState(self, state):
++        klass = reflect.namedAny(state['type'])
++        inst = klass(state['value'])
++        state['value'] = inst
++        state['type'] = klass
++        self.__dict__ = state
++
++
++
+ setUnjellyableForClass(CopyableFailure, CopiedFailure)
+ def failure2Copyable(fail, unsafeTracebacks=0):
 	</programlisting>
 </informalfigure>
 					 <para>
 						 This patch is to be found in the <filename>patches</filename> directory
 						 of the Peloton distribution. The issue is ticket number #3174 in the Twisted
 						 Trac and if or when the behaviour changes in a future release this patch
-						 will be revoked.
+						 will be revoked. The patch in the file is that supplied by a developer in response
+						 to the above query.
 					 </para>
 	             </listitem>
 	             <listitem>

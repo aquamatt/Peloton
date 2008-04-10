@@ -37,6 +37,7 @@ from peloton.utils import bigThreadPool
 
 from twisted.internet import reactor
 from twisted.internet.threads import deferToThread
+from twisted.internet.error import ReactorNotRunning
 from twisted.spread import pb
 from peloton.base import HandlerBase
 from peloton.exceptions import WorkerError
@@ -128,7 +129,10 @@ if not, let the PSC know we've failed and why, then initiate closedown. """
     
     def closedown(self):
         self.stopService()
-        reactor.stop()
+        try:
+            reactor.stop()
+        except ReactorNotRunning:
+            pass
         
     def heartBeat(self):
         """ Call the heartBeat on the PSC reference to show we're alive."""

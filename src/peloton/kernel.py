@@ -51,9 +51,8 @@ coreIO interfaces.
 
     #: List of classes that provide IO adapters for the Peloton node.
     __ADAPTERS__ = ["peloton.adapters.pb.PelotonPBAdapter",
-    #            "peloton.adapters.soap.PelotonSoapAdapter",
+                "peloton.adapters.rest.PelotonRestAdapter",
     #            "peloton.adapters.xmlrpc.PelotonXMLRPCAdapter",
-    #            "peloton.adapters.web.PelotonHTTPAdapter",
                 ]
 
     def __init__(self, options, args, config):

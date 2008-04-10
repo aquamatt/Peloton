@@ -8,9 +8,17 @@ import time
 class TestService(PelotonService):
     def public_sumint(self, x, y):
         """ Return the sum of integers x and y. """
+        x=int(x)
+        y=int(y)
         self.logger.info("Handling sum of %d and %d" % (x,y))
 #        print("Handling sum of %d and %d" % (x,y))
-        return int(x) + int(y)
+        return x+y
+        
+    def public_returnList(self, *args):
+        return args
+    
+    def public_returnDict(self, **kwargs):
+        return kwargs
         
     def public_slowCall(self, x):
         """ Sleep for x seconds. """

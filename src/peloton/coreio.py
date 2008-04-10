@@ -31,7 +31,7 @@ These methods are exposed via adapters. For clarity, although for no other
 technical reason, methods intended for use via adapters are named
 public_<name> by convention."""
 
-    def public_call(self, sessionId, service, method, *args, **kwargs):
+    def public_call(self, sessionId, service, method, args, kwargs):
         """ Call a Peloton method in the specified service and return 
 a deferred for the result. """
         d =  Deferred()
