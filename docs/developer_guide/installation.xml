@@ -84,9 +84,8 @@
 					 <para>
 						 This patch is to be found in the <filename>patches</filename> directory
 						 of the Peloton distribution. The issue is ticket number #3174 in the Twisted
-						 Trac and if or when the behaviour changes in a future release this patch
-						 will be revoked. The patch in the file is that supplied by a developer in response
-						 to the above query.
+						 Trac and a formal fix has been made and put into SVN so future releases will not require
+						 this patch.
 					 </para>
 	             </listitem>
 	             <listitem>

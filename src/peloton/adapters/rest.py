@@ -28,6 +28,7 @@ resources and session tracking is used. But... well...
         self.requestInterface = PelotonRequestInterface(kernel)
         self.formatters = {'xml' : XMLFormatter(),
                            'html' : HTMLFormatter(),
+                           'json' : JSONFormatter(),
                            }
         
     def start(self, configuration, options):
@@ -84,7 +85,9 @@ HTTP based adapters)."""
             ct, resp = self.formatters['html'].format(resp)
         request.setHeader('Content-Type', ct)
         request.setHeader('Content-Length', len(resp))
-        request.write(resp)
+        # str ensures not unicode which is not liked by 
+        # twisted.web
+        request.write(str(resp)) 
         request.finish()
         
     def deferredError(self, err, format, request):
@@ -95,7 +98,7 @@ HTTP based adapters)."""
             
         request.setHeader('Content-Type', ct)
         request.setHeader('Content-Length', len(err))
-        request.write(err)
+        request.write(str(err))
         request.finish()
 
     def render_info(self, request):
@@ -183,4 +186,17 @@ class HTMLFormatter(object):
             s.write("</body></html>")
 
         return "text/html", s.getvalue()
+    
+from peloton.utils.json import JSONWriter
+class JSONFormatter(object):
+    def __init__(self):
+        self.writer = JSONWriter()
+        
+    def format(self,v):
+        """ Returns content-type, content. """
+        try:
+            s = self.writer.serialize(v)
+        except:
+            s = u'"Unserialisable response: %s"' % str(v)
+        return "text/plain", s
     
