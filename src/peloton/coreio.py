@@ -14,6 +14,7 @@ from twisted.internet.defer import Deferred
 from twisted.spread import pb
 
 from types import StringType
+from cStringIO import StringIO
 
 class PelotonInterface(object):
     """ Subclasses of the PelotonInterface will all need access to
@@ -157,6 +158,30 @@ for use in such tools."""
             else:
                 theList.append(name)
         return theList
+    
+    def public_listNodes(self, pprint=False):
+        pscs = self.__kernel__.routingTable.pscByGUID
+        nodes = {}
+        for guid,psc in pscs.items():
+            nodes[guid] = "%(hostname)s - %(ipaddress)s:%(port)s" % psc.profile
+        if pprint:
+            s = StringIO()
+            for k,v in nodes.items():
+                s.write("%s: %s\n" % (k,v))
+            return s.getvalue()
+        return nodes
+        
+    def public_listServices(self, pprint=False):
+        pscs = self.__kernel__.routingTable.pscByService
+        services = {}
+        for svc, handlers in pscs.items():
+            services[svc] = len(handlers)
+        if pprint:
+            s = StringIO()
+            for k,v in services.items():
+                s.write("%s (%d handlers)\n" % (k, v))
+            return s.getvalue()
+        return services
     
     def public_showProfile(self):
         return self.__kernel__.profile

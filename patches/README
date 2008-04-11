@@ -11,4 +11,7 @@ http://twistedmatrix.com/trac/ticket/3174
 
 test_patch_8_0_1.py demonstrates the bug. 
 
-
+pb_r23300.py
+------------
+The trunk version of pb.py released in resolution of issues 3174 - to be used
+by Peloton distributions.

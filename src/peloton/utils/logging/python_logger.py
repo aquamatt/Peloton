@@ -10,6 +10,14 @@ import logging
 import logging.handlers
 import os
 
+class NullHandler(logging.Handler):
+    """ A logging handler that simply looses everying down the bit bucket..."""
+    def __init__(self):
+        logging.Handler.__init__(self)
+        
+    def emit(self, record):
+            pass
+
 _LOG_HANDLERS_ = []
 _DEFAULT_LEVEL_ = pul.ERROR
 
@@ -33,6 +41,10 @@ def initialise(rootLoggerName='PSC', logLevel=None, logdir='', logfile='', logTo
         logStreamHandler = logging.StreamHandler()
         logStreamHandler.setFormatter(formatter)
         _LOG_HANDLERS_.append(logStreamHandler)            
+        
+    if not _LOG_HANDLERS_:
+        # add a nullhandler for good measure
+        _LOG_HANDLERS_.append(NullHandler())
         
     logger = logging.getLogger()
     logger.name = rootLoggerName

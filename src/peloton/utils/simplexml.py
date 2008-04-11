@@ -10,7 +10,9 @@ from peloton.utils.json import JSONSerializer
 class XMLLanguageSerializer(JSONSerializer):
     """ Translates into similarly structure XML or HTML given
 tags at init time. Simple extension of the JSON code"""
-    def __init__(self, header, footer, listStart, listEnd, listItem, dictStart, dictEnd, dictItem, dataItemStart, dataItemEnd):
+    def __init__(self, header, footer, listStart, listEnd, 
+                 listItem, dictStart, dictEnd, dictItem, 
+                 dataItemStart, dataItemEnd):
         JSONSerializer.__init__(self)
         self.header = header
         self.footer = footer
@@ -30,9 +32,6 @@ tags at init time. Simple extension of the JSON code"""
         except KeyError, ke:
             return "Cannot serialize %s with type %s" \
                             % (str(obj), str(type(obj)))
-
-#            raise Exception("Cannot serialize %s with type %s" \
-#                            % (str(obj), str(type(obj))))
 
     def _format(self, obj, solo=True):
         """ Takes object obj and translates into a JSON string. If
@@ -63,33 +62,3 @@ dataItemEnd tags."""
                     {'key': key, 'value': val})
         return "%s\n%s\n%s" % (self.dictStart, "\n".join(tokens), self.dictEnd)
     
-#    def _tr_string(self, o):
-#        substitutions = [('\\', r'\\'),
-#                         ('"', r'\"'),
-#                         ('\r', r'\r'),
-#                         ('\n', r'\n'),
-#                         ('\t', r'\t'),
-#                         ('\f', r'\f'),
-#                         ('\b', r'\b'),
-#                         ]
-#        for s, r in substitutions:
-#            o = o.replace(s, r)
-#        return '"%s"' % o
-#    
-#    def _tr_unicode(self, o):
-#        return self._tr_string(o)
-#    
-#    def _tr_float(self, o):
-#        return "%f" % o
-#    
-#    def _tr_int(self, o):
-#        return "%d" % o
-#        
-#    def _tr_boolean(self, o):
-#        if o:
-#            return "true"
-#        else:
-#            return "false"
-#    
-#    def _tr_none(self, o):
-#        return "null"    

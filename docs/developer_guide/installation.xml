@@ -56,37 +56,15 @@
 						<para>
 							Twisted 8.0.1 introduces a bug not present in the 2.5 series with
 							regard the re-raising of Failures. If one processes raises an exception
-							which is caughte in another that tries to pass it  onto yet another deferred,
+							which is caught in another that tries to pass it  onto yet another deferred,
 							Twisted 8.0.1 raises an exception. The issue is with pb.py in the spread 
-							module a patch for which is as follows:
+							module and can be demonstrated with 
+							<filename>peloton/patches/test_patch_8_0_1.py<filename>. The same
+							<filename>patches</filename> directory contains <filename>pb_r23300.py</filename>
+							which is the entirety of pb.py r23300 which resolves this issue (which 
+							was raised on Twisted Trac as issue 3174). Please use this file if installing
+							from the 8.0.1 tarball.
 						</para>
-<informalfigure>
-	<programlisting>
---- twisted/spread/pb.py        (revision 23266)
-+++ twisted/spread/pb.py        (working copy)
-@@ -441,6 +441,16 @@
-     printBriefTraceback = printTraceback
-     printDetailedTraceback = printTraceback
-+
-+    def setCopyableState(self, state):
-+        klass = reflect.namedAny(state['type'])
-+        inst = klass(state['value'])
-+        state['value'] = inst
-+        state['type'] = klass
-+        self.__dict__ = state
-+
-+
-+
- setUnjellyableForClass(CopyableFailure, CopiedFailure)
- def failure2Copyable(fail, unsafeTracebacks=0):
-	</programlisting>
-</informalfigure>
-					 <para>
-						 This patch is to be found in the <filename>patches</filename> directory
-						 of the Peloton distribution. The issue is ticket number #3174 in the Twisted
-						 Trac and a formal fix has been made and put into SVN so future releases will not require
-						 this patch.
-					 </para>
 	             </listitem>
 	             <listitem>
                        <para>
