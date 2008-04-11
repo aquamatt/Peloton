@@ -12,7 +12,6 @@ from peloton.adapters import AbstractPelotonAdapter
 from peloton.coreio import PelotonRequestInterface
 
 from cStringIO import StringIO
-import types
 
 class PelotonRestAdapter(AbstractPelotonAdapter, resource.Resource):
     """ The REST adapter provides for accessing methods over
