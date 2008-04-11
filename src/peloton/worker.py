@@ -37,7 +37,11 @@ from peloton.utils import bigThreadPool
 
 from twisted.internet import reactor
 from twisted.internet.threads import deferToThread
-from twisted.internet.error import ReactorNotRunning
+try:
+    from twisted.internet.error import ReactorNotRunning
+except ImportError:
+    # running in Twisted 2.5
+    ReactorNotRunning = Exception
 from twisted.spread import pb
 from peloton.base import HandlerBase
 from peloton.exceptions import WorkerError
