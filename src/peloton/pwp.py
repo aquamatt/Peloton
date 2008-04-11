@@ -1,4 +1,4 @@
-# $Id: kernel.py 108 2008-04-04 15:39:30Z mp $
+# $Id$
 #
 # Copyright (c) 2007-2008 ReThought Limited and Peloton Contributors
 # All Rights Reserved

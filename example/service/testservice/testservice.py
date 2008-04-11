@@ -19,6 +19,15 @@ class TestService(PelotonService):
     
     def public_returnDict(self, **kwargs):
         return kwargs
+    
+    def public_returnMixed(self):
+        return {'name': 
+                 {'first':'Matthew',
+                  'last' :'Pontefract'},
+                'interests' : ['sailing', 'running', 'jam'],
+                'work' : [{'company':'RTL', 'position':'director'},
+                          {'company':'MPC', 'position':'Tower 5'}]
+                }
         
     def public_slowCall(self, x):
         """ Sleep for x seconds. """

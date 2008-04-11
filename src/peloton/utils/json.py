@@ -1,4 +1,4 @@
-# $Id: crypto.py 90 2008-03-23 23:43:25Z mp $
+# $Id$
 #
 # Copyright (c) 2007-2008 ReThought Limited and Peloton Contributors
 # All Rights Reserved
@@ -10,7 +10,7 @@ objects.
 class UnSerializableError(Exception): pass
 import types
 
-class JSONWriter(object):
+class JSONSerializer(object):
     """ Takes python object and returns a JSON string. """
     def __init__(self):
         self.TR_FUNCS = {types.ListType: self._tr_list,
@@ -24,7 +24,7 @@ class JSONWriter(object):
                     types.BooleanType: self._tr_boolean,
                     types.NoneType: self._tr_none}
         
-    def serialize(self, obj):
+    def write(self, obj):
         """ Takes object obj and translates into a JSON string. If
 obj or a component of obj is not serializable, UnSerializableError
 is raised. """

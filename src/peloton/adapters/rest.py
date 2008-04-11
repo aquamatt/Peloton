@@ -29,6 +29,7 @@ resources and session tracking is used. But... well...
         self.formatters = {'xml' : XMLFormatter(),
                            'html' : HTMLFormatter(),
                            'json' : JSONFormatter(),
+                           'raw' : NullFormatter(),
                            }
         
     def start(self, configuration, options):
@@ -51,9 +52,9 @@ HTTP based adapters)."""
         return self.render_PUT(request)
     
     def render_PUT(self, request):
-        if request.postpath[0]=='__info':
+        if '__info' in request.args.keys():
             resp = self.render_info(request)
-            self.deferredResponse(resp, request)
+            self.deferredResponse(resp, 'raw', request)
             return
         else:
             service, method = request.postpath[:2]
@@ -136,67 +137,57 @@ protocol's port."""
             d = self.connection.stopListening()
             d.addCallback(self._stopped)        
 
-####### NODDY - JUST FOR POC ###############
-class XMLFormatter(object):
-    def format(self,v):
-        """ Returns content-type, content. """
-        s = StringIO()
-        if type(v) == types.ListType or type(v) == types.TupleType:
-            s.write("<data>\n")
-            index = 0
-            for value in v:
-                s.write("  <item id='%d'>%s</item>\n" % (index, str(value)))
-                index+=1
-            s.write("</data>")
-
-        elif type(v) == types.DictType:
-            s.write("<data>\n")
-            for key, value in v.items():
-                s.write("  <item key='%s'>%s</item>\n" % (str(key), str(value)))
-            s.write("</data>")
+####### NODDY - JUST FOR POC ###############    
+from peloton.utils.simplexml import XMLLanguageSerializer
+class XMLFormatter(XMLLanguageSerializer):
+    def __init__(self):
+        XMLLanguageSerializer.__init__(self,
+                                     '<?xml version="1.0"?>\n<result>',
+                                     "</result>", 
+                                     "<list>", 
+                                     "</list>", 
+                                     "<item>%(value)s</item>", 
+                                     "<dict>", 
+                                     "</dict>", 
+                                     "<item id=%(key)s>%(value)s</item>",
+                                     "<data>",
+                                     "</data>")
         
-        else:
-            s.write("<data>\n")
-            s.write("  <value>\n    %s\n  </value>\n" % str(v))
-            s.write("</data>")
-            
-        return "text/xml", s.getvalue()
+    def format(self, v):
+        s = XMLLanguageSerializer.write(self, v)
+        return "text/xml", s
     
-class HTMLFormatter(object):
+class HTMLFormatter(XMLLanguageSerializer):
+    def __init__(self):
+        XMLLanguageSerializer.__init__(self,
+                                     '<html>\n<body>\n<h2>Your results</h2>\n',
+                                     "</body></html>", 
+                                     "<ol>", 
+                                     "</ol>", 
+                                     "<li>%(value)s</li>", 
+                                     "<ul>", 
+                                     "</ul>", 
+                                     "<li>%(key)s = %(value)s</li>",
+                                     "<p>",
+                                     "</p>")
     def format(self,v):
         """ Returns content-type, content. """
-        s = StringIO()
-        if type(v) == types.ListType or type(v) == types.TupleType:
-            s.write("<html><body><h2>Response</h2><ol>\n")
-            index = 0
-            for value in v:
-                s.write("  <li>[%d] %s</li>\n" % (index, str(value)))
-                index+=1
-            s.write("</ol></body></html>")
-            
-        elif type(v) == types.DictType:
-            s.write("<html><body><h2>Response</h2><ol>\n")
-            for key, value in v.items():
-                s.write("  <li>%s = %s</li>\n" % (str(key), str(value)))
-            s.write("</ol></body></html>")
+        s = XMLLanguageSerializer.write(self, v)
+        return "text/html", s
 
-        else:
-            s.write("<html><body><h2>Response</h2>\n")
-            s.write("%s\n" % str(v))
-            s.write("</body></html>")
-
-        return "text/html", s.getvalue()
-    
-from peloton.utils.json import JSONWriter
+from peloton.utils.json import JSONSerializer
 class JSONFormatter(object):
     def __init__(self):
-        self.writer = JSONWriter()
+        self.writer = JSONSerializer()
         
     def format(self,v):
         """ Returns content-type, content. """
         try:
-            s = self.writer.serialize(v)
+            s = self.writer.write(v)
         except:
             s = u'"Unserialisable response: %s"' % str(v)
         return "text/plain", s
-    
+
+class NullFormatter(object):
+    def format(self, v):
+        return "text/html", str(v)

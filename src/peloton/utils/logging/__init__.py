@@ -1,4 +1,4 @@
-# $Id: shell.py 77 2008-03-18 16:32:47Z mp $
+# $Id$
 #
 # Copyright (c) 2007-2008 ReThought Limited and Peloton Contributors
 # All Rights Reserved
