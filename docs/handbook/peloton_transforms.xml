@@ -1,0 +1,56 @@
+<!--
+# $Id: peloton.xml 31 2008-02-26 10:23:10Z as $
+#
+# Copyright (c) 2007-2008 ReThought Limited and Peloton Contributors
+# All Rights Reserved
+# See LICENSE for details
+-->
+
+<sect1>
+	<title>Transforms and templates</title>
+	<para>
+		One of the features of the &peloton; platform is that it automaticaly
+		publishes a service's methods by any and all protocols for which
+		it has adapters. However, to assume that the same result is meaningful
+		when sent over such protocols can be a bit presumptuous. 
+	</para>
+	<para>
+		Consider the following examples:
+	</para>
+	<itemizedlist>
+		<listitem>
+			<para>
+				A service provides the method <code>numRecords()</code> which
+				returns an integer. This is meaningful to Twisted RPC, XMLRPC
+				and SOAP clients but if retrieved by over HTTP by a client wanting
+				HTML it is sparse. One would probably wish to send a snippet of HTML,
+				so the integer needs to pass through a template. Furthermore the template
+				engine requires the data to be sent as part of a dictionary, so for this
+				example we will need two transforms to occur: first to make a dictionary
+				with one key returning the value of <code>numRecords()</code>, the second
+				to turn that into HTML.
+			</para>
+		</listitem>
+		<listitem>
+			<para>
+				A service returns a list of dictionaries representing a series
+				of news items. Rich clients calling over Twisted RPC or XMLRPC will
+				be able to process this structure. It would be good however
+				to have an RSS feed generated from this same data when someone calls 
+				over HTTP with the appropriate URL.
+			</para>
+		</listitem>
+	</itemizedlist>
+	<para>
+		Transforms can be chained together such that for any given target (HTML, XML, RSS etc)
+		the result from the method is passed through the chain, with the output of one being the
+		input to the next. The output from the final transform in the chain is returned to the
+		client. One or more of the transforms may be a templating step where the data is passed
+		to a Genshi template to transform the result into some text (usually XML) format.
+	</para>
+	<para>
+		Some transforms are implicit, such as when a template is placed in the resources directory
+		to be picked up and automatically associated with a method and target. Others are 
+		explicit. In the following sections we'll look at the various ways to transform data.
+	</para>
+</sect1>

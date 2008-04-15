@@ -44,8 +44,8 @@ def main():
                       default="Pelotonica")
     
     parser.add_option("-k", "--domainkey",
-                      help="""Domain key file [default: $PREFIX/keys/<domain>.key]""",
-                      default="$PREFIX/keys/$DOMAIN.key")
+                      help="""Domain key file [default: %default]""",
+                      default="$PREFIX/$DOMAIN.key")
     
     parser.add_option("-c", "--console", 
                       help="""Send to console instead of file""",

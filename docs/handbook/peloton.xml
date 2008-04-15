@@ -5,6 +5,7 @@
             <!ENTITY peloton "Peloton">
         <!ENTITY env SYSTEM "peloton_env.xml">
         <!ENTITY quickstart SYSTEM "peloton_quickstart.xml">
+        <!ENTITY transforms SYSTEM "peloton_transforms.xml">
 	    ]>
 
 <!--
@@ -43,7 +44,7 @@
 
 	<sect1 id='components'>
 		<title>
-			&peloton;, an overview
+			&peloton;: an overview
 		</title>
 		<para>
 		</para>
@@ -52,6 +53,7 @@
 <!-- THE CHAPTERS -->
 &env;
 &quickstart;
+&transforms;
 <!-- END OF DOC   -->
 
 </article>

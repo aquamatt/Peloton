@@ -8,8 +8,13 @@
 
 <sect1>
     <title>A Quick Start Overview</title>
+	<para>
+		OUT OF DATE: Need also to provide a newDomain and newGrid scripts to provide 
+		out-of-the-box template setups. This is just too fiddly otherwise. Explain
+		how to use these to generate the general idea, then newkey to change keys etc.
+	</para>
     <para>
-        So you've got &peloton; and supporting tools installed and you 
+        This chapter assumes you have peloton; and supporting tools installed and you 
 		want to start a grid. Take the following steps:
     </para>
 	<orderedlist>
