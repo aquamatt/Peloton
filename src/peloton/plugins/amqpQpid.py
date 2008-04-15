@@ -1,4 +1,4 @@
-# $Id$
+# $Id: amqpQpid.py 93 2008-03-25 22:08:27Z mp $
 #
 # Copyright (c) 2007-2008 ReThought Limited and Peloton Contributors
 # All Rights Reserved

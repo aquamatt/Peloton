@@ -1,4 +1,4 @@
-# $Id$
+# $Id: backpack.py 83 2008-03-21 00:20:56Z mp $
 #
 # Copyright (c) 2007-2008 ReThought Limited and Peloton Contributors
 # All Rights Reserved

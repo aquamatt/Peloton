@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<html>
+<head> <title>Echo response</title> </head>
+<body>
+ <h2>Echo!</h2>
+ <p>
+ ${d}
+ </p>
+</body>
+</html>

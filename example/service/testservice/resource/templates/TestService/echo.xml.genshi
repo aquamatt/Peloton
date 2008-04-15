@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+<result>
+      <echoResponse>
+        <echoValue>${d}</echoValue>
+      </echoResponse>
+</result>

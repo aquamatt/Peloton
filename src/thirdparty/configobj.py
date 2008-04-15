@@ -119,7 +119,7 @@ except NameError:
 
 __version__ = '4.5.2'
 
-__revision__ = '$Id$'
+__revision__ = '$Id: configobj.py 59 2008-03-12 10:33:50Z mp $'
 
 __docformat__ = "restructuredtext en"
 

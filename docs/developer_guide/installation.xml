@@ -97,6 +97,13 @@
 						   The message seems to be: install from the tarball.
 					   </para>
 	             </listitem>
+				 <listitem>
+					 <para>
+						 Genshi is the templating library used for XML and HTML output and it is a
+						 requirement to have it. Obtained from <ulink url=''/> or <filename>easy_intall</filename>able.
+						 Ubuntu also have a <filename>python-genshi</filename> package.
+					 </para>
+				 </listitem>
 <!--				
                  <listitem>
                        <para>
@@ -265,6 +272,14 @@
                         <entry>&tick;</entry>
                         <entry>Wrapper to the PyCrypto library</entry>
 						<entry>GPL</entry>
+                    </row>
+                    <row>
+                        <entry>Genshi</entry>
+                        <entry>0.4.4</entry>
+                        <entry>P</entry>
+                        <entry>&tick;</entry>
+                        <entry>Templating engine</entry>
+						<entry>BSD</entry>
                     </row>
 				</tbody>
 			  </tgroup>

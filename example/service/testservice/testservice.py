@@ -3,6 +3,8 @@
 # All Rights Reserved
 # See LICENSE for details
 from peloton.service import PelotonService
+from peloton.svcdeco import *
+from peloton.utils.transforms import *
 import time
 
 class TestService(PelotonService):
@@ -17,9 +19,14 @@ class TestService(PelotonService):
     def public_returnList(self, *args):
         return args
     
+    @localAudit
     def public_returnDict(self, **kwargs):
         return kwargs
     
+    @transform("xml", 
+               'stripKeys("interests")', 
+               "upperKeys()", 
+               "@template")
     def public_returnMixed(self):
         return {'name': 
                  {'first':'Matthew',
@@ -35,6 +42,21 @@ class TestService(PelotonService):
         time.sleep(x)
         return "Done a slow call"
     
+# The following transforms are implicitly applied; if 
+# template(...) receives non-dictionary data it applies
+# valueToDict automatically.
+#    @transform("xml", "valueToDict", "@template")
+#    @transform("html", "valueToDict", "@template")
+
+# You can change mime type for a particular target output
+#    @mimeType('html','text/xhtml')
+
+# And you can even add new target types for a method. So now,
+# as well as html, xml etc, you can also get the fakeml representation
+# of this method response.
+#   not that here the valueToDict is applied automaticaly in @template
+    @transform("fakeml", "@template")
+    @mimeType('fakeml', 'text/xml')
     def public_echo(self, x):
 #        raise NotImplementedError("OOOh - not ready")
         return x

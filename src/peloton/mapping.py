@@ -1,4 +1,4 @@
-# $Id$
+# $Id: mapping.py 118 2008-04-09 22:20:43Z mp $
 #
 # Copyright (c) 2007-2008 ReThought Limited and Peloton Contributors
 # All Rights Reserved
@@ -214,15 +214,24 @@ requirements of the service have been met."""
 class ServiceLibrary(PelotonConfigObj):
     """ Extension of PelotonProfile to be a service library with
 handy utility methods. """
-
     def setProfile(self, name, version, launchTime, profile):
         """ Sets the profile into the tree. Version will have dots which
 need converting to underscore otherwise the tree will have branches
 for each of major, minor and patch number. This would be OK but I think
 it will be more convenient to have version stored at one level in its
 entirety."""
+        self.setpath("lastversion.%s" % name, profile)
         version = version.replace('.','_')
+        
+        # evaluate some of the stringified entries
+        for method in profile['methods'].keys():
+            profile['methods'][method]['properties'] = \
+                eval(profile['methods'][method]['properties'])
+
         self.setpath("%s.%s.%s" % (name, version, str(launchTime)), profile)
+
+    def getLastProfile(self, name):
+        return self.getpath("lastversion.%s" % name)
 
     def getProfile(self, name, version, launchTime=None):
         """ Return the specified profile; if launchTime is not specified
@@ -305,8 +314,7 @@ to this node on its private channel psc.<guid>.init"""
                                         INVALID_COOKIE = True)
                 return
 
-            profile = eval(msg['profile'])
-    
+            profile = eval(msg['profile'])            
             if profile['guid'] != msg['sender_guid']:
                 self.dispatcher.fireEvent(key="psc.%s.init" % profile['guid'],
                                         action='FAIL',

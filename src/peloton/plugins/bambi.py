@@ -1,4 +1,4 @@
-# $Id$
+# $Id: bambi.py 86 2008-03-21 12:43:24Z mp $
 #
 # Copyright (c) 2007-2008 ReThought Limited and Peloton Contributors
 # All Rights Reserved

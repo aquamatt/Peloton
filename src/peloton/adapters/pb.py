@@ -1,4 +1,4 @@
-# $Id$
+# $Id: pb.py 120 2008-04-10 17:54:14Z mp $
 #
 # Copyright (c) 2007-2008 ReThought Limited and Peloton Contributors
 # All Rights Reserved
@@ -116,7 +116,7 @@ class PelotonClientAdapter(pb.Referenceable):
         self.clientObj = clientObj
         
     def remote_call(self, service, method, *args, **kwargs):
-        return self.requestInterface.public_call(self.clientObj, service, method, args, kwargs)
+        return self.requestInterface.public_call(self.clientObj, 'raw', service, method, args, kwargs)
    
     def remote_post(self, service, method, *args, **kwargs):
         raise NotImplementedError

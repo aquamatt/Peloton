@@ -1,4 +1,4 @@
-# $Id$
+# $Id: testConfig.py 106 2008-04-04 10:47:50Z mp $
 #
 # Copyright (c) 2007-2008 ReThought Limited and Peloton Contributors
 # All Rights Reserved
@@ -7,6 +7,7 @@
 
 from unittest import TestCase
 from peloton.utils.config import PelotonConfig
+from peloton.utils.config import findTemplateTargetsFor
 from peloton.utils.structs import FilteredOptionParser
 import os
 import random
@@ -245,5 +246,40 @@ class Test_PelotonConfig(TestCase):
         self.assertEquals(pc['psc.bind'], '0.0.0.0:9100')
         
 
-        
+
+class Test_templateTools(TestCase):
+    def setUp(self):
+        def touch(root, file):
+            o = open("%s/%s" % (root, file), 'wt')
+            o.write("hello")
+            o.close()
+        cwd = os.getcwd()
+        root = "%s/resource/templates/MyService" % cwd
+        os.makedirs(root)
+        for i in ['m1.xml.genshi','m1.html.genshi','m1.rss.genshi']:
+            touch(root, i)
+        for i in ['m2.xml.genshi','m2.html.genshi']:
+            touch(root, i)
+
+    def tearDown(self):
+        cwd = os.getcwd()
+        root = "%s/resource/templates/MyService" % cwd
+        for i in os.listdir(root):
+            os.unlink("%s/%s" % (root, i) )
+        os.removedirs(root)        
+
+    def test_findTemplateTargetsFor(self):
+        cwd = os.getcwd()
+        templates = findTemplateTargetsFor(cwd, 'MyService', 'm1')
+        self.assertEquals(len(templates), 3)
+        targets = [i[0] for i in templates]
+        self.assertTrue('xml' in targets)
+        self.assertTrue('html' in targets)
+        self.assertTrue('rss' in targets)
+
+        templates = findTemplateTargetsFor(cwd, 'MyService', 'm2')
+        targets = [i[0] for i in templates]
+        self.assertEquals(len(templates), 2)
+        self.assertTrue('xml' in targets)
+        self.assertTrue('html' in targets)
         

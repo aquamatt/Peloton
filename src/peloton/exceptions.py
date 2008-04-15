@@ -1,4 +1,4 @@
-# $Id$
+# $Id: exceptions.py 117 2008-04-09 16:55:41Z mp $
 #
 # Copyright (c) 2007-2008 ReThought Limited and Peloton Contributors
 # All Rights Reserved

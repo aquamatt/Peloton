@@ -1,4 +1,4 @@
-# $Id$
+# $Id: sshmanhole.py 105 2008-04-02 19:39:49Z mp $
 # This code modified from source originaly found at
 # http://buildbot.net/repos/trunk/buildbot/manhole.py
 #

@@ -1,4 +1,4 @@
-# $Id$
+# $Id: __init__.py 114 2008-04-07 22:23:16Z mp $
 #
 # Copyright (c) 2007-2008 ReThought Limited and Peloton Contributors
 # All Rights Reserved

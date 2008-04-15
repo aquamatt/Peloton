@@ -1,4 +1,4 @@
-# $Id$
+# $Id: worker.py 124 2008-04-11 19:20:07Z mp $
 #
 # Copyright (c) 2007-2008 ReThought Limited and Peloton Contributors
 # All Rights Reserved

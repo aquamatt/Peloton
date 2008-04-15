@@ -1,4 +1,4 @@
-# $Id$
+# $Id: coreio.py 123 2008-04-11 10:17:34Z mp $
 #
 # Copyright (c) 2007-2008 ReThought Limited and Peloton Contributors
 # All Rights Reserved
@@ -10,6 +10,7 @@ to methods in these classes."""
 import peloton.utils.logging as logging
 from peloton.exceptions import NoProvidersError
 from peloton.exceptions import DeadProxyError
+from peloton.exceptions import ServiceError
 from twisted.internet.defer import Deferred
 from twisted.spread import pb
 
@@ -32,20 +33,22 @@ These methods are exposed via adapters. For clarity, although for no other
 technical reason, methods intended for use via adapters are named
 public_<name> by convention."""
 
-    def public_call(self, sessionId, service, method, args, kwargs):
+    def public_call(self, sessionId, target, service, method, args, kwargs):
         """ Call a Peloton method in the specified service and return 
-a deferred for the result. """
+a deferred for the result. Target refers to the output channel, e.g. html
+or xml. """
         d =  Deferred()
-        self._publicCall(d, sessionId, service, method, args, kwargs)
+        self._publicCall(d, sessionId, target, service, method, args, kwargs)
         return d
     
-    def _publicCall(self, d, sessionId, service, method, args, kwargs):
+    def _publicCall(self, d, sessionId, target, service, method, args, kwargs):
         while True:
             try:
                 p = self.__kernel__.routingTable.getPscProxyForService(service)
                 rd = p.call(service, method, *args, **kwargs)
-                rd.addCallback(d.callback)
-                rd.addErrback(self.__callError, p, d, sessionId, service, method, args, kwargs)
+#                rd.addCallback(d.callback)
+                rd.addCallback(self.__callResponse, target, service, method, d)
+                rd.addErrback(self.__callError, p, d, sessionId, target, service, method, args, kwargs)
                 break
 
             except NoProvidersError, npe:
@@ -55,15 +58,26 @@ a deferred for the result. """
             
             except DeadProxyError, dpe:
                 self.__kernel__.routingTable.removeHandlerForService(service, p)
+
+    def __callResponse(self, rv, target, service, method, d):
+        profile = self.__kernel__.serviceLibrary.getLastProfile(service)
+        try:
+            txform = profile['methods'][method]['__outputTransform']
+        except KeyError:
+            txform = OutputTransform(profile['methods'][method]['properties'])
+            profile['methods'][method]['__outputTransform'] = txform
+        
+        rv = txform.transform(target, rv)
+        d.callback(rv)
                 
-    def __callError(self, err, proxy, d, sessionId, service, method, args, kwargs):
+    def __callError(self, err, proxy, d, sessionId, target, service, method, args, kwargs):
         if err.parents[-1] == 'peloton.exceptions.NoWorkersError' or \
            err.parents[-1] == 'peloton.exceptions.DeadProxyError':
             # so we got back from our PSC that it had no workers left. This is
             # despite trying to start some more. We respond by removing from 
             # the service handlers and trying another.
             self.__kernel__.routingTable.removeHandlerForService(service, proxy)
-            self._publicCall(d, sessionId, service, method, args, kwargs)
+            self._publicCall(d, sessionId, target, service, method, args, kwargs)
         else:
             d.errback(err)
     
@@ -195,4 +209,40 @@ for use in such tools."""
         
     def public_noop(self):
         self.__kernel__.domainManager.sendCommand('NOOP')
-        
+    
+from peloton.utils.transforms import *
+class OutputTransform(object):
+    """ Initialises, manages and processes the transformation
+of results from source to target. """
+    def __init__(self, methodProperties):
+        self.transformChains = {}
+        # pull out all transforms, get instances 
+        for k,v in methodProperties.items():
+            if not k.startswith('transform.'):
+                continue
+            target = k[10:]
+            transformChain = [eval(self.__clean(i)) for i in v]
+            self.transformChains[target] = transformChain
+        self.transformChains['raw'] = [lambda x:x]
+            
+    def __clean(self, method):
+        """ Takes an element of the transform chain as written in a
+service. If no arguments are passed you may write this as, for example,
+"defaultHTMLTransform" but to eval we need "defaultHTMLTransform()". 
+
+This adds the parantheses effectively.
+"""
+        if method.find("(") == -1:
+            return "%s()" % method
+        return method
+
+    def transform(self, target, value):
+        """ Transform value through the transform chain for the specified
+target. """
+        try:
+            chain = self.transformChains[target]
+            for fn in chain:
+                value = fn(value)
+            return value
+        except KeyError:
+            raise ServiceError("Invalid target (%s) to transform value %s" % (target, str(value)))

@@ -1,4 +1,4 @@
-# $Id$
+# $Id: config.py 110 2008-04-04 17:03:24Z mp $
 #
 # Copyright (c) 2007-2008 ReThought Limited and Peloton Contributors
 # All Rights Reserved
@@ -10,6 +10,7 @@ for Peloton configuration files.
 from configobj import ConfigObj, Section
 from fnmatch import fnmatchcase as fnmatch
 from types import DictType
+from fnmatch import fnmatchcase
 import os
 import peloton.utils.logging as logging
 from peloton.exceptions import ConfigurationError
@@ -313,4 +314,28 @@ def loadServiceProfile(servicePath, gridMode):
     for profile in profiles:
         serviceProfile.loadFromFile("%s/%s" % (configDir, profile))
     return serviceProfile
-    
+
+def findTemplateTargetsFor(servicePath, serviceName, method):
+    """ A template will automatically be found for service methods
+called over a given protocol if the file is placed in the right folder
+and named as follows::
+
+  <service path>/resource/templates/<serviceName>/<method>.<transform key>.genshi
+  
+So, for example, a template to make HTML for MyService.getUserNames when
+called over http might be as follows::
+
+  /var/services/myservice/resource/templates/MyService/getUserNames.html.genshi
+  
+This method looks for all templates for a method and returns a list of 
+transform targets for which templates exist.
+"""
+    try:
+        rootDir = "%s/resource/templates/%s" % (servicePath, serviceName)
+        files = [ (i[i.find('.')+1:-7], "%s/%s"%(rootDir,i)) for i in 
+                 os.listdir(rootDir)
+                 if fnmatchcase(i, "%s.*.genshi" % method)]
+        return files
+    except OSError, ex:
+        # path doesn't exist
+        return []

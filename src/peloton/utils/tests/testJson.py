@@ -1,4 +1,4 @@
-# $Id$
+# $Id: testJson.py 122 2008-04-11 08:22:28Z mp $
 #
 # Copyright (c) 2007-2008 ReThought Limited and Peloton Contributors
 # All Rights Reserved
@@ -14,17 +14,17 @@ class Test_JSON(TestCase):
         pass
     
     def test_serialize(self):
-        writer = json.JSONWriter()
+        writer = json.JSONSerializer()
         
-        self.assertEquals(writer.serialize(10), u"10")
-        self.assertEquals(writer.serialize("hello"), u'"hello"')
-        self.assertEquals(writer.serialize([10,20,30]), u"[10, 20, 30]")
-        self.assertEquals(writer.serialize((10,20,30)), u"[10, 20, 30]")
-        self.assertEquals(writer.serialize({'a':10,'b':'text'}), u'{"a": 10, "b": "text"}')
-        self.assertEquals(writer.serialize({'a':[10, 'text'], 'b':{123:'123'}}), u'{"a": [10, "text"], "b": {123: "123"}}')
-        self.assertEquals(writer.serialize({'a':[10, 'text'], 'b':{123:'123','floatval':123.45}}), u'{"a": [10, "text"], "b": {123: "123", "floatval": 123.450000}}')
-        self.assertEquals(writer.serialize("hello\nworld"), u'"hello\\nworld"')
-        self.assertEquals(writer.serialize("hello\n\rworld"), u'"hello\\n\\rworld"')
-        self.assertEquals(writer.serialize("\\hello\n\rworld"), u'"\\\\hello\\n\\rworld"')
-        self.assertEquals(writer.serialize(None), u'null')
-        self.assertRaises(json.UnSerializableError, writer.serialize, self)
+        self.assertEquals(writer.write(10), u"10")
+        self.assertEquals(writer.write("hello"), u'"hello"')
+        self.assertEquals(writer.write([10,20,30]), u"[10, 20, 30]")
+        self.assertEquals(writer.write((10,20,30)), u"[10, 20, 30]")
+        self.assertEquals(writer.write({'a':10,'b':'text'}), u'{"a": 10, "b": "text"}')
+        self.assertEquals(writer.write({'a':[10, 'text'], 'b':{123:'123'}}), u'{"a": [10, "text"], "b": {123: "123"}}')
+        self.assertEquals(writer.write({'a':[10, 'text'], 'b':{123:'123','floatval':123.45}}), u'{"a": [10, "text"], "b": {123: "123", "floatval": 123.450000}}')
+        self.assertEquals(writer.write("hello\nworld"), u'"hello\\nworld"')
+        self.assertEquals(writer.write("hello\n\rworld"), u'"hello\\n\\rworld"')
+        self.assertEquals(writer.write("\\hello\n\rworld"), u'"\\\\hello\\n\\rworld"')
+        self.assertEquals(writer.write(None), u'null')
+        self.assertRaises(json.UnSerializableError, writer.write, self)

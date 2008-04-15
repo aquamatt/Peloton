@@ -1,4 +1,4 @@
-# $Id$
+# $Id: python_logger.py 123 2008-04-11 10:17:34Z mp $
 #
 # Copyright (c) 2007-2008 ReThought Limited and Peloton Contributors
 # All Rights Reserved

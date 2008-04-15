@@ -1,4 +1,4 @@
-# $Id$
+# $Id: rest.py 125 2008-04-11 20:35:48Z mp $
 #
 # Copyright (c) 2007-2008 ReThought Limited and Peloton Contributors
 # All Rights Reserved
@@ -12,6 +12,7 @@ from peloton.adapters import AbstractPelotonAdapter
 from peloton.coreio import PelotonRequestInterface
 
 from cStringIO import StringIO
+import types
 
 class PelotonRestAdapter(AbstractPelotonAdapter, resource.Resource):
     """ The REST adapter provides for accessing methods over
@@ -25,11 +26,6 @@ resources and session tracking is used. But... well...
         AbstractPelotonAdapter.__init__(self, kernel, 'REST Adapter')
         resource.Resource.__init__(self)
         self.requestInterface = PelotonRequestInterface(kernel)
-        self.formatters = {'xml' : XMLFormatter(),
-                           'html' : HTMLFormatter(),
-                           'json' : JSONFormatter(),
-                           'raw' : NullFormatter(),
-                           }
         
     def start(self, configuration, options):
         """ Implement to initialise the adapter based on the 
@@ -53,15 +49,15 @@ HTTP based adapters)."""
     def render_PUT(self, request):
         if '__info' in request.args.keys():
             resp = self.render_info(request)
-            self.deferredResponse(resp, 'raw', request)
+            self.deferredResponse(resp, request)
             return
         else:
             service, method = request.postpath[:2]
             split = method.split('.')
             if len(split)==1:
-                format = 'html'
+                target = 'html'
             else:
-                method, format = split
+                method, target = split
                 
             args = request.postpath[2:]
             kwargs={}
@@ -70,35 +66,41 @@ HTTP based adapters)."""
                     kwargs[k] = v[0]
                 else:
                     kwargs[k] = v
+
+            try:
+                profile = self.kernel.serviceLibrary.getLastProfile(service)
+                mimeType = profile['methods'][method]['properties']['mimetype.%s'%target]
+            except:
+                try:
+                    mimeType = {'html':'text/html',
+                          'xml':'text/xml',
+                          'json':'text/plain',
+                          'raw':'text/plain'}[target]
+                except KeyError:
+                    mimeType = 'text/plain'
+
                     
             sessionId="TOBESORTED"
-            d = self.requestInterface.public_call(sessionId, service, method, args, kwargs )
-            d.addCallback(self.deferredResponse, format, request)
-            d.addErrback(self.deferredError, format, request)
+            d = self.requestInterface.public_call(sessionId, target, service, method, args, kwargs )
+            d.addCallback(self.deferredResponse, mimeType, request)
+            d.addErrback(self.deferredError, target, request)
 
         return server.NOT_DONE_YET
         
-    def deferredResponse(self, resp, format, request):
-        try:
-            ct, resp = self.formatters[format].format(resp)
-        except KeyError:
-            ct, resp = self.formatters['html'].format(resp)
-        request.setHeader('Content-Type', ct)
-        request.setHeader('Content-Length', len(resp))
+    def deferredResponse(self, resp, mimeType, request):
         # str ensures not unicode which is not liked by 
         # twisted.web
-        request.write(str(resp)) 
+        resp = str(resp)
+        request.setHeader('Content-Type', mimeType)
+        request.setHeader('Content-Length', len(resp))
+        request.write(resp)
         request.finish()
         
     def deferredError(self, err, format, request):
-        try:
-            ct, err = self.formatters[format].format(err)
-        except KeyError:
-            ct, err = self.formatters['html'].format(err)
-            
-        request.setHeader('Content-Type', ct)
+        err = "ERROR: (%s) %s" % (err.parents[-1], err.getErrorMessage())
+        request.setHeader('Content-Type', 'text/plain')
         request.setHeader('Content-Length', len(err))
-        request.write(str(err))
+        request.write(err)
         request.finish()
 
     def render_info(self, request):
@@ -135,58 +137,3 @@ protocol's port."""
         if self.connection:
             d = self.connection.stopListening()
             d.addCallback(self._stopped)        
-
-####### NODDY - JUST FOR POC ###############    
-from peloton.utils.simplexml import XMLLanguageSerializer
-class XMLFormatter(XMLLanguageSerializer):
-    def __init__(self):
-        XMLLanguageSerializer.__init__(self,
-                                     '<?xml version="1.0"?>\n<result>',
-                                     "</result>", 
-                                     "<list>", 
-                                     "</list>", 
-                                     "<item>%(value)s</item>", 
-                                     "<dict>", 
-                                     "</dict>", 
-                                     "<item id=%(key)s>%(value)s</item>",
-                                     "<data>",
-                                     "</data>")
-        
-    def format(self, v):
-        s = XMLLanguageSerializer.write(self, v)
-        return "text/xml", s
-    
-class HTMLFormatter(XMLLanguageSerializer):
-    def __init__(self):
-        XMLLanguageSerializer.__init__(self,
-                                     '<html>\n<body>\n<h2>Your results</h2>\n',
-                                     "</body></html>", 
-                                     "<ol>", 
-                                     "</ol>", 
-                                     "<li>%(value)s</li>", 
-                                     "<ul>", 
-                                     "</ul>", 
-                                     "<li>%(key)s = %(value)s</li>",
-                                     "<p>",
-                                     "</p>")
-    def format(self,v):
-        """ Returns content-type, content. """
-        s = XMLLanguageSerializer.write(self, v)
-        return "text/html", s
-
-from peloton.utils.json import JSONSerializer
-class JSONFormatter(object):
-    def __init__(self):
-        self.writer = JSONSerializer()
-        
-    def format(self,v):
-        """ Returns content-type, content. """
-        try:
-            s = self.writer.write(v)
-        except:
-            s = u'"Unserialisable response: %s"' % str(v)
-        return "text/plain", s
-
-class NullFormatter(object):
-    def format(self, v):
-        return "text/html", str(v)
