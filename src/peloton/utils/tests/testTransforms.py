@@ -17,13 +17,14 @@ class Test_Transforms(TestCase):
         pass
     
     def test_valueToDict(self):
-        self.assertEquals(valueToDict('a'), {'value':'a'})
-        self.assertEquals(valueToDict(1), {'value':1})
-        self.assertEquals(valueToDict([1,2,3]), {'value':[1,2,3]})
+        v2d = valueToDict()
+        self.assertEquals(v2d('a'), {'d':'a'})
+        self.assertEquals(v2d(1), {'d':1})
+        self.assertEquals(v2d([1,2,3]), {'d':[1,2,3]})
         
     def test_stripKeys(self):
         data = {'a':1, 'b':2, 'c':3, 'd':4}
-        stripKeys(data, 'b', 'c')
+        stripKeys('b', 'c')(data)
         self.assertEquals(len(data), 2)
         self.assertTrue(data.has_key('a'))
         self.assertTrue(data.has_key('d'))
@@ -32,7 +33,7 @@ class Test_Transforms(TestCase):
         
     def test_upperKeys(self):
         data = {'a':1, 'b':2, 'c':3, 'd':4}
-        upperKeys(data)
+        upperKeys()(data)
         dataSet = Set(data.keys())
         testSet = Set(['A','B','C','D'])
         self.assertEquals(dataSet-testSet, Set([]))

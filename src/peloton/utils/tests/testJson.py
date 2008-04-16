@@ -26,5 +26,24 @@ class Test_JSON(TestCase):
         self.assertEquals(writer.write("hello\nworld"), u'"hello\\nworld"')
         self.assertEquals(writer.write("hello\n\rworld"), u'"hello\\n\\rworld"')
         self.assertEquals(writer.write("\\hello\n\rworld"), u'"\\\\hello\\n\\rworld"')
+        self.assertEquals(writer.write([True, False, None, 10]), u'[true, false, null, 10]')
         self.assertEquals(writer.write(None), u'null')
         self.assertRaises(json.UnSerializableError, writer.write, self)
+        
+    def test_read(self):
+        j = json.JSONSerializer()
+        testObjects = [10,
+                       "hello",
+                       [10,20,30],
+                       "hello\nworld",
+                       {'a':[10, 'text'], 'b':{123:'123','floatval':123.45}},
+                       True,
+                       False,
+                       None,
+                       [True, False, 10],
+                       ]
+        
+        for to in testObjects:
+            v = j.write(to)
+            _v = j.read(v)
+            self.assertEquals(to, _v)

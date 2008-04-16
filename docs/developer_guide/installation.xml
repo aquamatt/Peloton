@@ -100,7 +100,7 @@
 				 <listitem>
 					 <para>
 						 Genshi is the templating library used for XML and HTML output and it is a
-						 requirement to have it. Obtained from <ulink url=''/> or <filename>easy_intall</filename>able.
+						 requirement to have it. Obtained from <ulink url='http://genshi.edgewall.org/'/> or <filename>easy_intall</filename>able.
 						 Ubuntu also have a <filename>python-genshi</filename> package.
 					 </para>
 				 </listitem>

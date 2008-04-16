@@ -9,14 +9,16 @@ from twisted.internet.error import CannotListenError
 from twisted.web import server
 from twisted.web import resource
 from peloton.adapters import AbstractPelotonAdapter
+from peloton.adapters.xmlrpc import PelotonXMLRPCHandler
 from peloton.coreio import PelotonRequestInterface
 
 from cStringIO import StringIO
 import types
 
-class PelotonRestAdapter(AbstractPelotonAdapter, resource.Resource):
-    """ The REST adapter provides for accessing methods over
-HTTP and receiving the results in a desired format.
+class PelotonHTTPAdapter(AbstractPelotonAdapter, resource.Resource):
+    """ The HTTP adapter provides for accessing methods over
+HTTP and receiving the results in a desired format. The main interface
+is rest-like but it also provides XMLRPC.
 
 Strictly speaking this isn't true rest: URIs refer to services not
 resources and session tracking is used. But... well... 
@@ -26,6 +28,7 @@ resources and session tracking is used. But... well...
         AbstractPelotonAdapter.__init__(self, kernel, 'REST Adapter')
         resource.Resource.__init__(self)
         self.requestInterface = PelotonRequestInterface(kernel)
+        self.xmlrpcHandler = PelotonXMLRPCHandler(kernel)
         
     def start(self, configuration, options):
         """ Implement to initialise the adapter based on the 
@@ -35,22 +38,26 @@ into the reactor, probably calling reactor.listenTCP or adding
 itself to another protocol as a resource (this is the case for most
 HTTP based adapters)."""
         try:
-            self.connection = reactor.listenTCP(int(configuration['psc.restPort']),
+            self.connection = reactor.listenTCP(int(configuration['psc.httpPort']),
                               server.Site(self),
                               interface=configuration['psc.bind_interface'])
         except CannotListenError:
-            self.kernel.logger.info("Cannot start REST interface: port %s in use" % configuration['psc.restPort'])
+            self.kernel.logger.info("Cannot start HTTP interface: port %s in use" % configuration['psc.httpPort'])
             self.connection = None
         
 
     def render_GET(self, request):    
-        return self.render_PUT(request)
+        return self.render_POST(request)
     
-    def render_PUT(self, request):
-        if '__info' in request.args.keys():
+    def render_POST(self, request):
+        if request.postpath and request.postpath[0] == "RPC2":
+            return self.xmlrpcHandler._resource.render(request)
+        
+        elif '__info' in request.args.keys():
             resp = self.render_info(request)
             self.deferredResponse(resp, request)
             return
+        
         else:
             service, method = request.postpath[:2]
             split = method.split('.')

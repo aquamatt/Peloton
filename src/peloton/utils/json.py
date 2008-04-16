@@ -11,7 +11,8 @@ class UnSerializableError(Exception): pass
 import types
 
 class JSONSerializer(object):
-    """ Takes python object and returns a JSON string. """
+    """ Takes python object and returns a JSON string, or takes a string and
+returns python. Handles all except unicode literals. """
     def __init__(self):
         self.TR_FUNCS = {types.ListType: self._tr_list,
                     types.TupleType: self._tr_list,
@@ -49,13 +50,14 @@ is raised. """
         return u"{" + u", ".join(tokens) + u"}"
     
     def _tr_string(self, o):
-        substitutions = [('\\', r'\\'),
+        substitutions = [('/', r'\/'),
+                         ('\\', r'\\'),
                          ('"', r'\"'),
-                         ('\r', r'\r'),
-                         ('\n', r'\n'),
-                         ('\t', r'\t'),
-                         ('\f', r'\f'),
                          ('\b', r'\b'),
+                         ('\f', r'\f'),
+                         ('\n', r'\n'),
+                         ('\r', r'\r'),
+                         ('\t', r'\t'),
                          ]
         for s, r in substitutions:
             o = o.replace(s, r)
@@ -78,3 +80,12 @@ is raised. """
     
     def _tr_none(self, o):
         return u"null"
+    
+    def read(self, json):
+        """ Take a JSON string and return a Python object. """
+        # define true, false and null so that they get correctly
+        # interpreted in the eval of the json string.
+        true=True
+        false=False
+        null=None
+        return eval(json)

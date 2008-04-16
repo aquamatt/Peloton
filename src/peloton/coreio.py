@@ -60,14 +60,15 @@ or xml. """
                 self.__kernel__.routingTable.removeHandlerForService(service, p)
 
     def __callResponse(self, rv, target, service, method, d):
-        profile = self.__kernel__.serviceLibrary.getLastProfile(service)
-        try:
-            txform = profile['methods'][method]['__outputTransform']
-        except KeyError:
-            txform = OutputTransform(profile['methods'][method]['properties'])
-            profile['methods'][method]['__outputTransform'] = txform
-        
-        rv = txform.transform(target, rv)
+        if not target == 'raw':
+            profile = self.__kernel__.serviceLibrary.getLastProfile(service)
+            try:
+                txform = profile['methods'][method]['__outputTransform']
+            except KeyError:
+                txform = OutputTransform(profile['methods'][method]['properties'])
+                profile['methods'][method]['__outputTransform'] = txform
+            
+            rv = txform.transform(target, rv)
         d.callback(rv)
                 
     def __callError(self, err, proxy, d, sessionId, target, service, method, args, kwargs):
@@ -223,7 +224,6 @@ of results from source to target. """
             target = k[10:]
             transformChain = [eval(self.__clean(i)) for i in v]
             self.transformChains[target] = transformChain
-        self.transformChains['raw'] = [lambda x:x]
             
     def __clean(self, method):
         """ Takes an element of the transform chain as written in a
