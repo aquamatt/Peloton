@@ -40,7 +40,9 @@ closing a node down."""
         # delay helps ensure things closedown neatly... think
         # the shutdown tramples on event handler code. Not sure.
         # Anyhow... it helps.
-        reactor.callLater(0.1, self.closedown)
+        if not self.__CLOSING_DOWN__:
+            self.__CLOSING_DOWN__ = True
+            reactor.callLater(0.1, self.closedown)
     
     def _signalReload(self, num, frame):
         """ Reaction to a SIGHUP: need to re-start so as to re-load configuration
@@ -50,6 +52,7 @@ files etc."""
     def _setSignalHandlers(self):
         """Set signal traps for INT and TERM to the _signalClosedown method
 that tidies up behind itself."""
+        self.__CLOSING_DOWN__ = False
         signal.signal(signal.SIGINT, self._signalClosedown)
         signal.signal(signal.SIGTERM, self._signalClosedown)
         signal.signal(signal.SIGHUP, self._signalReload)    

@@ -184,7 +184,6 @@ launch sequencer. Type of message is indicated by msg['action'] value. """
                 self.logger.debug("Launch sequencer notified of service start: %s - %s " % (self.serviceName, msg['token']))
                 self.launchPending -= 1
                 self.workersRequired -= 1
-                self.kernel.routingTable.addHandlerForService(msg['serviceName'], guid=msg['sender_guid'])
 
         self.checkQueue()
 
@@ -361,6 +360,19 @@ to this node on its private channel psc.<guid>.init"""
             self.kernel.serviceLibrary.merge(eval(msg['serviceLibrary']))
 #            self.logger.debug("Service library from %s: %s" % (msg['sender_guid'], str(self.kernel.serviceLibrary)))
 
+    def respond_serviceNotification(self, msg, exch, key, ctag):
+        """ Service notifications are sent out when a service is started.
+We need to update the routing table. """
+        if msg['state'] == 'running':
+            self.logger.info("Service %s started on %s" % (msg['serviceName'], msg['sender_guid']))
+            self.addHandlerForService(msg['serviceName'], 
+                                      guid=msg['sender_guid'])
+        elif msg['state'] == 'stopped':
+            self.removeHandlerForService(msg['serviceName'], 
+                                         guid=msg['sender_guid'])
+            self.logger.info("Service %s stopped on %s" % (msg['serviceName'], msg['sender_guid']))
+            
+    
     def _getProxyForProfile(self, profile):
         """ Return a proxy appropriate for the PSC described by this profile."""
 
@@ -398,6 +410,10 @@ to this node on its private channel psc.<guid>.init"""
                MethodEventHandler(self.respond_initChannel),
                "domain_control")
     
+        self.dispatcher.register('psc.service.notification', 
+                                 MethodEventHandler(self.respond_serviceNotification), 
+                                 'domain_control')
+        
     def removePSC(self, guid):
         try:
             proxy = self.pscByGUID[guid]
@@ -461,10 +477,25 @@ list of available proxies. """
         except KeyError:
             raise NoProvidersError("No Proxy for service %s" % service)
 
-    def removeHandlerForService(self, service, proxy):
-        """ Remove proxy from the list of proxies available for this service."""
+    def removeHandlerForService(self, service, guid=None, proxy=None, removeAll=False):
+        """ Remove proxy from the list of proxies available for this 
+service. Note that the list of proxies will include multiple references to
+the same proxy if more than worker is associated with the PSC referenced.
+
+Remove will remove only one of these which is the correct behaviour as
+remove is called once per signal received from a dying worker. 
+
+If you really do want all proxies removed, specify removeAll=True"""
+        if guid and not proxy:
+            proxy = self.pscByGUID[guid]
+    
         try:
-            self.pscByService[service].remove(proxy)
+            proxies = self.pscByService[service]
+            if removeAll:
+                while proxy in proxies:
+                    proxies.remove(proxy)
+            else:
+                proxies.remove(proxy)
         except ValueError:
             pass
         except KeyError:
@@ -482,7 +513,7 @@ This isn't so bad as it naturally introduces an element of weighting. To
 ensure that one host doesn't get unduly hit in the event of round robin
 routing we insert the new entries into a random point in the list.
 """
-        if not proxy and guid:
+        if guid and not proxy:
             proxy = self.pscByGUID[guid]
 
         if not self.pscByService.has_key(serviceName):

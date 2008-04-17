@@ -57,7 +57,7 @@ or xml. """
                 break
             
             except DeadProxyError, dpe:
-                self.__kernel__.routingTable.removeHandlerForService(service, p)
+                self.__kernel__.routingTable.removeHandlerForService(service, proxy=p, removeAll=True)
 
     def __callResponse(self, rv, target, service, method, d):
         if not target == 'raw':
@@ -77,7 +77,7 @@ or xml. """
             # so we got back from our PSC that it had no workers left. This is
             # despite trying to start some more. We respond by removing from 
             # the service handlers and trying another.
-            self.__kernel__.routingTable.removeHandlerForService(service, proxy)
+            self.__kernel__.routingTable.removeHandlerForService(service, proxy=proxy, removeAll=True)
             self._publicCall(d, sessionId, target, service, method, args, kwargs)
         else:
             d.errback(err)
@@ -145,7 +145,7 @@ The method is now executed on this node."""
             # so we got back from our PSC that it had no workers left. This is
             # despite trying to start some more. We respond by removing from 
             # the service handlers and trying another.
-            self.__kernel__.routingTable.removeHandlerForService(service, proxy)
+            self.__kernel__.routingTable.removeHandlerForService(service, proxy=proxy, removeAll=True)
 
         d.errback(err)
     

@@ -102,7 +102,6 @@ with all messages to be handled by a peloton.events.AbstractEventHandler instanc
             raise MessagingError("Subscription to %s.%s attempted with invalid handler: %s" % (exchange, key, str(handler)))
         key = "%s.%s" % (self.domain, key)
         queue = "%s.%s" % (exchange,key)
-            
         if not self.ctagByQueue.has_key(queue):
             qname, _, _ = self.channel.queue_declare(exclusive=True).fields
             self.channel.queue_bind(queue=qname, exchange=exchange, routing_key=key)
@@ -124,8 +123,8 @@ with all messages to be handled by a peloton.events.AbstractEventHandler instanc
         try:
             handlers = self.handlersByCtag[ctag]
             if handler not in handlers:
-                handler.append(handler)
-        except:
+                handlers.append(handler)
+        except Exception, ex:
             self.handlersByCtag[ctag] = [handler]
         
         

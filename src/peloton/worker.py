@@ -134,7 +134,8 @@ if not, let the PSC know we've failed and why, then initiate closedown. """
     def closedown(self):
         self.stopService()
         try:
-            reactor.stop()
+            reactor.callLater(0.5,reactor.stop)
+#            reactor.stop()
         except ReactorNotRunning:
             pass
         
@@ -183,6 +184,12 @@ the service might require.
     def stopService(self):
         """ Calls stop() on the managed service. """
         try:
+            self.pscReference.callRemote('fireEvent', 
+                                  'psc.service.notification',
+                                  'domain_control',
+                                  serviceName=self.name,
+                                  state='stopped',
+                                  token=self.token)
             self.__service.stop()
         except Exception, ex:
             raise ServiceError("Error stopping service %s" % self.name, ex)
