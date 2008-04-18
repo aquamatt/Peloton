@@ -29,6 +29,13 @@ resources and session tracking is used. But... well...
         resource.Resource.__init__(self)
         self.requestInterface = PelotonRequestInterface(kernel)
         self.xmlrpcHandler = PelotonXMLRPCHandler(kernel)
+
+        # setup info template loader
+        from peloton.utils.transforms import template
+        source=__file__.split('/')[:-1]
+        source.extend(['templates','request_info.html.genshi'])
+        self.infoTemplate = template("/".join(source))
+        
         
     def start(self, configuration, options):
         """ Implement to initialise the adapter based on the 
@@ -54,9 +61,8 @@ HTTP based adapters)."""
             return self.xmlrpcHandler._resource.render(request)
         
         elif '__info' in request.args.keys():
-            resp = self.render_info(request)
+            resp = self.infoTemplate({'rq':request})
             self.deferredResponse(resp, 'text/html',request)
-            return
         
         else:
             service, method = request.postpath[:2]
@@ -109,34 +115,7 @@ HTTP based adapters)."""
         request.setHeader('Content-Length', len(err))
         request.write(err)
         request.finish()
-
-    def render_info(self, request):
-        from peloton.utils.transforms import template
-        t = template()
-#    def render_info(self, request):
-#        resp = StringIO()
-#        resp.write("<html><head><title>Peloton Request</title></head>")
-#        resp.write("<body><h2>Your request</h2>")
-#        resp.write("<p style='font-weight:bold'>The service, method path, *args path:</p>")
-#        resp.write("<ol>")
-#        for p in request.postpath:
-#            resp.write("<li>%s</li>" % p) 
-#        resp.write("</ol>")
-#        resp.write("<p style='font-weight:bold'>The **kwargs:</p>")
-#        resp.write("<ul>")
-#        for k,v in request.args.items():
-#            resp.write("<li>%s=%s</li>" % (k, str(v))) 
-#        resp.write("</ul>")
-#        
-#        resp.write("<p style='font-weight:bold'>The headers:</p>")
-#        resp.write("<ul>")
-#        for k,v in request.received_headers.items():
-#            resp.write("<li>%s=%s</li>" % (k, str(v))) 
-#        resp.write("</ul>")
-#        
-#        resp.write("</body></html>")
-#        return resp.getvalue()
-            
+                
     def _stopped(self, x):
         """ Handler called when reactor has stopped listening to this
 protocol's port."""

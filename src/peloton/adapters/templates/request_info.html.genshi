@@ -1,22 +1,70 @@
 <genshi xmlns:py="http://genshi.edgewall.org/" py:strip="">
-<html>
-	<head><title>Peloton Request</title></head>
-<body><h2>Your request</h2>
-<p style='font-weight:bold'>The service, method path, *args path:</p>
-<ol>
-for p in request.postpath:
-    <li py:for="pp in rq.postpath">${pp}</li> 
-</ol>
-<p style='font-weight:bold'>The **kwargs:</p>
-<ul>
-for k,v in request.args.items():
-    <li>%s=%s</li>" % (k, str(v))) 
-</ul>
+	<html>
+		<head>
+			<title>Peloton Request</title>
+		</head>
+		<style>
+			body {
+			    font-family: verdana,arial,sans-serif;
+				font-size:80%;
+			    color: #444;
+			    background-color:#668;
+			}
+			#main {
+			    width: 80%;
+				border: 2px solid #444;
+				padding-left: 20px;
+				padding-right: 20px;
+				background-color: white;
+				margin-left: auto;
+				margin-right: auto;
+			}
+			#titleBar {
+			    font-size: 200%;
+			    font-weight: bold;
+			    color: #335;
+			        text-align: right;
+			}
+			#subTitleBar {
+			    font-size: 80%;
+			    color: #88a;
+			    border-bottom: solid 1px #da7c0d;
+			        text-align: right;
+			}
+		</style>
 
-<p style='font-weight:bold'>The headers:</p>
-<ul>
-    <li py:for="k,v in rq.received_headers.items()">${k} = ${v}</li> 
-</ul>
-
-</body></html>
+	    <body>
+			<div id='main'>
+	            <div id='titleBar'>
+	                Peloton
+	            </div>
+	            <div id='subTitleBar'>
+	                grid computing, batteries included
+	            </div>
+		
+				<h2>Request details</h2>
+				<p>Client: ${rq.client.host}</p>
+				<p style='font-weight:bold'>
+					Service, method and positional args (request postpath):
+				</p>
+				<ol>
+					<li py:for="pp in rq.postpath">${pp}</li> 
+				</ol>
+				<p style='font-weight:bold'>Keyword arguments (request args):</p>
+				<ul>
+					<li py:for="k,v in rq.args.items()">${k} = ${v}</li> 
+				</ul>
+		
+				<p style='font-weight:bold'>Request headers:</p>
+				<ul>
+					<li py:for="k,v in rq.headers.items()">${k} = ${v}</li> 
+				</ul>
+	
+				<p style='font-weight:bold'>Received headers:</p>
+				<ul>
+					<li py:for="k,v in rq.received_headers.items()">${k} = ${v}</li> 
+				</ul>
+			</div>
+		</body>
+	</html>
 </genshi>
