@@ -51,3 +51,6 @@ pscFolder=/tmp/psc
     storageBackend=peloton.plugins.backpack.BackPackSQLite
 #    storeFile=$pscFolder/sessionStore.db
     storeFile=:memory:
+    # cache parameters
+    cacheTTL=120
+    cacheMaxEntries=-1 # -1=unlimited

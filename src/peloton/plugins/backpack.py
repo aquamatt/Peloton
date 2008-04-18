@@ -28,8 +28,6 @@ The store conforms to interface to allow for changing in the future.
 
 KNOWN ISSUES:
 
- - on set, value is set then sent to master then the invalidate message
-   gets acted upon not only by others, but by the sender as well!
  - All nodes trap invalidate and populate their own store, thus all nodes
    end up with full copy of cache. This should be changed so that only 
    certain keys are kept by all, and maybe even only the advertised 'edge' 
@@ -41,6 +39,8 @@ KNOWN ISSUES:
    'jump the queue' and to have timed purges if the handling thread is blocking on get. Alternative is to loop with 
    timer, but that's horrible. I think there's a Queue implementation with a timeout somewhere; that could work...
 - getMulti and delete not yet implemented.
+
+- need to implement manual purge of entire parent group
 """
     def initialise(self):
         # get class for persistence and initialise
@@ -64,18 +64,15 @@ KNOWN ISSUES:
         self.kernel.deregisterCallable('backpack')
             
 class BackPackIO(pb.Referenceable):
-    """ Referenceable used by nodes to communicate with each other. Used
-both by nodes that are Storage Nodes and nodes that are just clients. The
-clients persist their cache in the same way that a server persists the master 
-list for its domain. """
+    """ Referenceable used by client nodes to communicate with the master. """
     def __init__(self, backpack):
         self.backpack = backpack
         
     def remote_get(self, parent, key):
         return self.backpack.get(parent, key)
     
-    def remote_set(self, parent, key, value):
-        self.backpack.set(parent, key, value)
+    def remote_set(self, parent, key, value, source):
+        self.backpack.set(parent, key, value, False, source=source)
     
     def remote_getmulti(self, parent, keys):
         return self.backpack.getmulti(self, parent, keys)
@@ -85,13 +82,11 @@ list for its domain. """
     
 class BackPackPersistentStore(object):
     """ Base class for all persistence back-ends for the BackPack system. """
-    def __init__(self, kernel, config, defaultTTL=60):
-        """ defaultTTL applies only to non-master nodes. """
+    def __init__(self, kernel, config):
         self.kernel = kernel
         self.config = config
-        self.defaultTTL=defaultTTL
-        self.ttl = defaultTTL
-        
+        self.cacheTTL=config.as_int('cacheTTL')
+        self.masterGUID = ''
         self.mbusChannel = 'psc.plugins.backpack.%s' % self.config['storeName']
     
     def start(self):
@@ -101,10 +96,9 @@ class BackPackPersistentStore(object):
         raise NotImplementedError()
 
 class BackPackSQLite(BackPackPersistentStore, AbstractEventHandler):
-    def __init__(self, kernel, config, defaultTTL=60):
-        BackPackPersistentStore.__init__(self, kernel, config, defaultTTL)
+    def __init__(self, kernel, config):
+        BackPackPersistentStore.__init__(self, kernel, config)
         AbstractEventHandler.__init__(self)
-        
         # store updates prior to master coming online
         self.remoteUpdateQueue = []
         self.kernel.dispatcher.register(self.mbusChannel, self, 'domain_control')
@@ -120,6 +114,7 @@ class BackPackSQLite(BackPackPersistentStore, AbstractEventHandler):
             self.masterRef = None
             self.CONNECTING_MASTER = False
             self._seekMaster()
+            self.ttl = self.cacheTTL
             
         self.db = sqlite.connect(storeFile)
         self.kernel.logger.debug("Going to create table")
@@ -155,7 +150,7 @@ class BackPackSQLite(BackPackPersistentStore, AbstractEventHandler):
             cur.close()
         return v
         
-    def set(self, parent, key, value, netUpdate=False):
+    def set(self, parent, key, value, netUpdate=False, source=None):
         """ if netUpdate is True this will not propagate upstream...
 used when responding to an invalidation request."""
         cur = self.db.cursor()
@@ -173,16 +168,17 @@ used when responding to an invalidation request."""
         if (not self.isMaster) and (not netUpdate):
             if self.masterRef:
                 # update the master
-                self.masterRef.callRemote('set', parent, key, value)
+                self.masterRef.callRemote('set', parent, key, value, self.kernel.guid)
             else:
-                self.remoteUpdateQueue.put( ('set', parent, key, value) )
+                self.remoteUpdateQueue.put( ('set', parent, key, value, self.kernel.guid) )
         elif self.isMaster:
             self.kernel.dispatcher.fireEvent(self.mbusChannel,
                                              'domain_control',
                                              type='INVALIDATE',
                                              parent=parent,
                                              datakey=key,
-                                             value=rvalue
+                                             value=rvalue,
+                                             source=source
                                              )
 
         # required for use in lambda function in get, above
@@ -203,12 +199,12 @@ used when responding to an invalidation request."""
                                              )
             reactor.callLater(5, self._seekMaster)
 
-    def _connectMaster(self, masterGUID):
+    def _connectMaster(self):
         self.CONNECTING_MASTER = True
         try:
-            proxy = self.kernel.routingTable.pscByGUID[masterGUID]  
+            proxy = self.kernel.routingTable.pscByGUID[self.masterGUID]  
         except KeyError:
-            reactor.callLater(0.2, self._connectMaster, masterGUID)
+            reactor.callLater(0.2, self._connectMaster)
             return
         
         d = proxy.getInterface(self.config['storeName'])
@@ -242,13 +238,14 @@ used when responding to an invalidation request."""
                                      ) 
                        
         elif msg['type'] == 'I_AM_MASTER':
-            if self.isMaster:
-                return
             masterGUID = msg['sender_guid']
-            self._connectMaster(masterGUID)
+            if self.isMaster or self.masterGUID == masterGUID:
+                return
+            self.masterGUID = masterGUID
+            self._connectMaster()
         
         elif msg['type'] == 'INVALIDATE':
-            if self.isMaster:
+            if self.isMaster or msg['source']==self.kernel.guid:
                 return
             self.set(msg['parent'], msg['datakey'], eval(msg['value']), True)
     

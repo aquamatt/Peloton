@@ -28,7 +28,8 @@ class BambiPlugin(PelotonPlugin):
     def send(self):
         store = self.kernel.plugins['sessionStore']
         store.set('jolly.good', 'test', 2008)
-        store.set('jolly.good', 'test', 'hello world')
+#        store.set('jolly.good', 'test', 'hello world')
+#        store.set('jolly.good','test',[10,20,30])
         store.set('jolly.good', 'hello', 'hello M')
         
     def receive(self):
