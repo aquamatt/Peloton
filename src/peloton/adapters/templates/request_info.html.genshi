@@ -1,0 +1,22 @@
+<genshi xmlns:py="http://genshi.edgewall.org/" py:strip="">
+<html>
+	<head><title>Peloton Request</title></head>
+<body><h2>Your request</h2>
+<p style='font-weight:bold'>The service, method path, *args path:</p>
+<ol>
+for p in request.postpath:
+    <li py:for="pp in rq.postpath">${pp}</li> 
+</ol>
+<p style='font-weight:bold'>The **kwargs:</p>
+<ul>
+for k,v in request.args.items():
+    <li>%s=%s</li>" % (k, str(v))) 
+</ul>
+
+<p style='font-weight:bold'>The headers:</p>
+<ul>
+    <li py:for="k,v in rq.received_headers.items()">${k} = ${v}</li> 
+</ul>
+
+</body></html>
+</genshi>
