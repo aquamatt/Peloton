@@ -37,6 +37,10 @@ PSC. """
     def stop(self):
         """ May be implemented if some action on stop is required. """
         self.RUNNING = False
+
+    def getInterface(self, name):
+        """ Returns the named plugin interface. """
+        raise NotImplementedError
         
 class LocalPSCProxy(PSCProxy):
     """ Proxy for this 'local' PSC. """
@@ -122,12 +126,20 @@ domain)."""
         self.ACCEPTING_REQUESTS = True
         self.requestCache = []
         
+        # deferreds that need calling back when the connection
+        # is made
+        self.startupListeners = []
+        
     def call(self, service, method, *args, **kwargs):
         if not self.ACCEPTING_REQUESTS:
             raise DeadProxyError("Cannot accept requests.")
         d = Deferred()
         if self.remoteRef == None:
             self.requestCache.append([d, service, method, args, kwargs])
+            sud = Deferred()
+            sud.addCallback(self.flushRequests)
+            sud.addErrback(self.flushRequestsErr)
+            self.startupListeners.append(sud)
             if not self.CONNECTING:
                 self.__connect()
         else:
@@ -151,7 +163,28 @@ domain)."""
             d.errback(DeadProxyError("Peer closed connection"))
         else:
             d.errback(err)
+    
+    def getInterface(self, name):
+        d = Deferred()
+        if self.remoteRef == None:
+            sud = Deferred()
+            self.startupListeners.append(sud)
+            sud.addCallback(self._getInterface,d, name)
+            sud.addErrback(self._getInterfaceErr, d)
+            if not self.CONNECTING:
+                self.__connect()
+        else:
+            self._getInterface(0, d, name)
+        return d
+    
+    def _getInterface(self, _, d, name):
+        dd = self.remoteRef.callRemote("getInterface", name)
+        dd.addCallback(d.callback)
+        dd.addErrback(d.errback)
           
+    def _getInterfaceErr(self, err, d):
+        d.errback(DeadProxyError("Could not obtain interface from remote PSC"))
+        
     def __connect(self):
         """ Connections to peers are made on demand so that only
 links that are actively used get made. This is the start of the
@@ -175,22 +208,30 @@ connect sequence."""
     def __refReceived(self, ref):
         self.remoteRef = ref
         self.CONNECTING = False
-        self.logger.info("Referenced received from peer; flushing %d requests" % len(self.requestCache))
+        while self.startupListeners:
+            self.startupListeners.pop().callback(True)
+
+    def __connectError(self, err, msg):
+        self.ACCEPTING_REQUESTS = False
+        self.CONNECTING = False
+        self.logger.error("TwistedPSCProxy: %s" % msg)
+        while self.startupListeners:
+            self.startupListeners.pop().errback(err)
+            
+    def flushRequests(self, _):
+        self.logger.debug("Flushing %d requests" % len(self.requestCache))
         while self.requestCache:
             req = self.requestCache.pop(0)
             d = req[0]
             request = req[1:]
             self.__call(d, *request)
         
-    def __connectError(self, err, msg):
-        self.ACCEPTING_REQUESTS = False
-        self.CONNECTING = False
-        self.logger.error("TwistedPSCProxy: %s" % msg)
-
+    def flushRequestsErr(self, err):
+        """ Called if there was a failure connecting to PSC. """
         while self.requestCache:
             req = self.requestCache.pop(0)
             d = req[0]
-            d.errback(DeadProxyError("Peer not present before connect"))
+            d.errback(DeadProxyError("Peer not present before connect (%s)" % err.getErrorMessage()))
 
     def stop(self):
         if self.RUNNING:

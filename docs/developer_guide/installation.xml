@@ -104,6 +104,12 @@
 						 Ubuntu also have a <filename>python-genshi</filename> package.
 					 </para>
 				 </listitem>
+				 <listitem>
+					 <para>
+						 PySQLite - the Python library for working with SQLlite which is used by the <code>Backpack</code>
+						 storage module. Naturally this also requires SQLite be installed.
+					 </para>
+				 </listitem>
 <!--				
                  <listitem>
                        <para>
@@ -280,6 +286,22 @@
                         <entry>&tick;</entry>
                         <entry>Templating engine</entry>
 						<entry>BSD</entry>
+                    </row>
+                    <row>
+                        <entry>PySQLite</entry>
+                        <entry>2.3.4-2</entry>
+                        <entry>PB</entry>
+                        <entry>&tick;</entry>
+                        <entry>Binding for SQLite</entry>
+						<entry>Custom(free)</entry>
+                    </row>
+                    <row>
+                        <entry>SQLite</entry>
+                        <entry>3.4.2</entry>
+                        <entry>A</entry>
+                        <entry>&tick;</entry>
+                        <entry>Binding for SQLite</entry>
+						<entry>Custom(free)</entry>
                     </row>
 				</tbody>
 			  </tgroup>

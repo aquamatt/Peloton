@@ -149,7 +149,6 @@ The method is now executed on this node."""
 
         d.errback(err)
     
-    
 class PelotonManagementInterface(PelotonInterface):
     """ Methods for use by management tools, such as a console, 
 the SSH terminal or similar. All methods prefixed public_ are available 

@@ -95,20 +95,20 @@ and wanted contact."""
 used. Returns a PelotonClientAdapter"""
         return PelotonClientAdapter(self.kernel, clientObj)
 
-    def remote_getInterface(self, name):
-        """ Return the named interface to a plugin. """
-        return self.kernel.getCallable(name)
-    
 class PelotonInternodeAdapter(pb.Referenceable):
     def __init__(self, kernel, peerGUID):
         self.requestInterface = PelotonInternodeInterface(kernel)
         self.logger = kernel.logger
         self.peerGUID = peerGUID
+        self.kernel = kernel
         
     def remote_relayCall(self, service, method, *args, **kwargs):
         return self.requestInterface.public_relayCall(self.peerGUID, service, method, *args, **kwargs)
    
-
+    def remote_getInterface(self, name):
+        """ Return the named interface to a plugin. """
+        return self.kernel.getCallable(name)
+    
 class PelotonClientAdapter(pb.Referenceable):
     def __init__(self, kernel, clientObj):
         self.requestInterface = PelotonRequestInterface(kernel)

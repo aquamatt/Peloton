@@ -23,7 +23,21 @@
 			    font-size: 200%;
 			    font-weight: bold;
 			    color: #335;
-			        text-align: right;
+			}
+			#titleBarTable {
+				padding: 0px;
+				margin: 0px;
+				width: 100%;
+			}
+			td.tbar {
+				padding: 0px;
+				margin: 0px;
+			    font-size: 180%;
+			    font-weight: bold;
+			    color: #335;
+			}
+			td.smallHead {
+			    font-size: 120%;
 			}
 			#subTitleBar {
 			    font-size: 80%;
@@ -36,14 +50,18 @@
 	    <body>
 			<div id='main'>
 	            <div id='titleBar'>
-	                Peloton
+					<table id='titleBarTable'>
+						<tr>
+							<td class='tbar smallHead'>Request details</td>
+							<td class='tbar' align='right'>Peloton</td>
+						</tr>
+					</table>
 	            </div>
 	            <div id='subTitleBar'>
 	                grid computing, batteries included
 	            </div>
 		
-				<h2>Request details</h2>
-				<p>Client: ${rq.client.host}</p>
+				<p><span style='font-weight:bold'>Client:</span> ${rq.client.host}</p>
 				<p style='font-weight:bold'>
 					Service, method and positional args (request postpath):
 				</p>
@@ -62,7 +80,7 @@
 	
 				<p style='font-weight:bold'>Received headers:</p>
 				<ul>
-					<li py:for="k,v in rq.received_headers.items()">${k} = ${v}</li> 
+					<li py:for="k,v in rq.received_headers.items()">${k} = ${v.replace(',',', ')}</li> 
 				</ul>
 			</div>
 		</body>

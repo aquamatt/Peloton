@@ -60,6 +60,7 @@ completely isolated from the external bus.
         # the external bus being connected, we collect the
         # registrations and pump them through once ready.
         self.preInitRegistrations=[]
+        self.preInitEvents=[]
         
     def joinExternalBus(self):
         """ Called once the plugins have been loaded. """
@@ -70,10 +71,17 @@ completely isolated from the external bus.
         
         # push through any pre-init registrations
         while self.preInitRegistrations:
-            args, kwargs = self.preInitRegistrations.pop()
+            args, kwargs = self.preInitRegistrations.pop(0)
             self.register(*args, **kwargs)
             self.kernel.logger.debug("Pre-init registration for %s " % args[0])
 
+        # push through any pre-init events
+        if self.preInitEvents:
+            self.kernel.logger.debug("Pre-init events being fired (%d) " % len(self.preInitEvents))
+            
+        while self.preInitEvents:
+            args, kwargs = self.preInitEvents.pop(0)
+            self.fireEvent(*args, **kwargs)
         
     def registerInternal(self, key, handler):
         """ Register handler for internal events keyed on 'key'. 
@@ -123,6 +131,11 @@ of the kwargs of this method. """
         """ Temporary method that collects calls to register prior to 
 the external event bus 'register' being hooked in. """
         self.preInitRegistrations.append((args, kwargs))
+
+    def fireEvent(self, *args, **kwargs):
+        """ Temporary method that collects events to be fired as soon
+as the external event bus is initialised. """
+        self.preInitEvents.append((args, kwargs))
 
 class AbstractEventBusPlugin(object):
     """ Define all methods that the plugins must provide

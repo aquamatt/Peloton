@@ -48,8 +48,6 @@ Transforms all keys in data (assuming it is a dictionary) to uppercase.
         return data
     return _fn
 
-
-
 xmlFormatter = XMLFormatter()
 htmlFormatter = HTMLFormatter()
 

@@ -8,52 +8,35 @@
 can insert any old rubbish here to test new kernel wotsits.
 """
 from peloton.plugins import PelotonPlugin
-from peloton.events import AbstractEventHandler
 from twisted.internet import reactor
+from twisted.internet.defer import maybeDeferred
 
-class BambiPlugin(PelotonPlugin, AbstractEventHandler):
+class BambiPlugin(PelotonPlugin):
     def initialise(self):
         pass
     
     def start(self):
-        reactor.callWhenRunning(self.kernel.dispatcher.registerInternal, 
-                                "testing.testing", self)
-        reactor.callWhenRunning(self.kernel.dispatcher.registerInternal, 
-                                "something.else", self)
-        reactor.callWhenRunning(reactor.callLater, 1, 
-                                self.kernel.dispatcher.fireInternalEvent, 
-                                "testing.testing", 
-                                wally=27)
-
-        reactor.callWhenRunning(reactor.callLater, 2, 
-                                self.kernel.dispatcher.fireInternalEvent, 
-                                "something.else", 
-                                wally=222)
+        if self.kernel.hasFlag('bambisender'):
+            reactor.callLater(3, self.send)
+        else:
+            reactor.callLater(3, self.receive)
+            
     
     def stop(self):
         pass
     
-    def eventReceived(self, msg, x, k):
-        if msg['wally'] == 27:
-            self.logger.debug("Bambi got %d (%s)" % (msg['wally'], k))
-            reactor.callLater(1, self.kernel.dispatcher.fireInternalEvent,
-                              "testing.testing",
-                              wally = 28)
-
-        elif msg['wally'] == 28:
-            self.logger.debug("Bambi got %d (%s)" % (msg['wally'], k))
-            self.kernel.dispatcher.deregisterInternal(self)
-            reactor.callLater(1, self.kernel.dispatcher.fireInternalEvent,
-                              "testing.testing",
-                              wally = 29)
-            
-        elif msg['wally'] == 222:
-            self.logger.debug("Bambi got %d (%s)" % (msg['wally'], k))
-
-        elif msg['wally'] == 29:
-            self.logger.debug("Got 29 but shouldn't have!")
+    def send(self):
+        store = self.kernel.plugins['sessionStore']
+        store.set('jolly.good', 'test', 2008)
+        store.set('jolly.good', 'test', 'hello world')
+        store.set('jolly.good', 'hello', 'hello M')
         
-        else:
-            self.logger.debug("Oh - what's this? %s " % str(msg))
-    
-            
+    def receive(self):
+        store = self.kernel.plugins['sessionStore']
+        maybeDeferred(store.get, 'jolly.good', 'test').addCallback(self.printResult)
+        maybeDeferred(store.get,'jolly.good', 'hello').addCallback(self.printResult)
+        reactor.callLater(3, self.receive)
+
+    def printResult(self, v):
+        self.logger.debug("BAMBI smelt %s, type %s" % ( str(v), str(type(v))) )
+        

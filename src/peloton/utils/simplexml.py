@@ -86,9 +86,70 @@ class HTMLFormatter(XMLLanguageSerializer):
     """ Noddy serialiser takes Python struct and makes HTML. 
 Returns tupple of (content-type, value)"""
     def __init__(self):
+        header = """<html>
+        <head>
+            <title>Peloton result</title>
+        </head>
+        <style>
+            body {
+                font-family: verdana,arial,sans-serif;
+                font-size:80%;
+                color: #444;
+                background-color:#668;
+            }
+            #main {
+                width: 80%;
+                border: 2px solid #444;
+                padding-left: 20px;
+                padding-right: 20px;
+                background-color: white;
+                margin-left: auto;
+                margin-right: auto;
+            }
+            #titleBar {
+                font-size: 200%;
+                font-weight: bold;
+                color: #335;
+            }
+            #titleBarTable {
+                padding: 0px;
+                margin: 0px;
+                width: 100%;
+            }
+            td.tbar {
+                padding: 0px;
+                margin: 0px;
+                font-size: 180%;
+                font-weight: bold;
+                color: #335;
+            }
+            td.smallHead {
+                font-size: 120%;
+            }
+            #subTitleBar {
+                font-size: 80%;
+                color: #88a;
+                border-bottom: solid 1px #da7c0d;
+                    text-align: right;
+            }
+        </style>
+        <body>
+            <div id='main'>
+                <div id='titleBar'>
+                    <table id='titleBarTable'>
+                        <tr>
+                            <td class='tbar smallHead'>Response</td>
+                            <td class='tbar' align='right'>Peloton</td>
+                        </tr>
+                    </table>
+                </div>
+                <div id='subTitleBar'>
+                    grid computing, batteries included
+                </div>
+"""
         XMLLanguageSerializer.__init__(self,
-                                     '<html>\n<body>\n<h2>Result</h2>\n',
-                                     "</body></html>", 
+                                     header,
+                                     "</div></body></html>", 
                                      "<ol>", 
                                      "</ol>", 
                                      "<li>%(value)s</li>", 

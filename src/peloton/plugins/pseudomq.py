@@ -28,8 +28,8 @@ no guarantee of anything. It's for testing.
 
 Read again: It's for testing.
 
-One node must be started as a server (config isServer=True) and 
-all others must be clients (isServer=False).
+One node must be started as a server (flag 'mqserver' is set) and 
+all others must be clients (flag 'mqserver' is not set).
 
 The system is run entirely over PB and cannot be used to simulate
 messaging between domains. This can only run a single domain.
@@ -62,7 +62,7 @@ event key and the queue keys. It has to match based on AMQP pattern
 matching rules; this is done with the matchKey method.
 """
     def initialise(self):
-        self.isServer = self.config.as_bool('isServer')
+        self.isServer = self.kernel.hasFlag('mqserver')
         self.host, port = self.config['host'].split(':')
         try:
             self.port = int(port)

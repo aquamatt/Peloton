@@ -39,15 +39,15 @@ pscFolder=/tmp/psc
     password=admin
     
   [[backpack]]
-    name=keystore # overide name to standard
+    name=sessionStore # overide name to standard
                   # so that whatever the implementation,
-                  # the keystore is always obtained wiht
+                  # the session store is always obtained with
                   # this name
-    comment=The Peloton key store
+    comment=The Peloton session store
     class=peloton.plugins.backpack.BackPackPlugin
-    enabled=False
+    storeName=sessionStore
+    enabled=True
     # plugin conf
-    storageNode=True
-    storageBackend=peloton.plugins.backpack.BackPackZODB
-    storageRoot=$pscFolder
-       
+    storageBackend=peloton.plugins.backpack.BackPackSQLite
+#    storeFile=$pscFolder/sessionStore.db
+    storeFile=:memory:

@@ -204,6 +204,10 @@ key."""
 
         return(cookie, key)
 
+    def hasFlag(self, flag):
+        """ Return true if 'flag' was set on the command line. """
+        return flag in self.initOptions.flags
+
     def closedown(self, x=0):
         """Closedown in an orderly fashion."""
             
@@ -378,7 +382,7 @@ Returns the name of the service referenced by this token"""
         """ Register a pb.Referenceable interface by name so that
 it can be obtained by remote clients. This is the mechanism by which
 kernel plugins may publish callable interfaces. """
-        if isinstance(pb.Referenceable, iface):
+        if isinstance(iface, pb.Referenceable):
             self.logger.info("Registering interface: %s" % name)
             self.callables[name] = iface
         else:
