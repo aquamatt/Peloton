@@ -26,7 +26,6 @@ from peloton.events import EventDispatcher
 from peloton.events import MethodEventHandler
 from peloton.utils import crypto
 from peloton.utils import getClassFromString
-from peloton.utils import chop
 from peloton.utils import locateFile
 from peloton.utils import getExternalIPAddress
 from peloton.utils.structs import RoundRobinList
@@ -34,7 +33,6 @@ from peloton.mapping import ServiceLoader
 from peloton.mapping import RoutingTable
 from peloton.mapping import ServiceLibrary
 from peloton.profile import PelotonProfile
-from peloton.exceptions import PelotonError
 from peloton.exceptions import ConfigurationError
 from peloton.exceptions import PluginError
 from peloton.exceptions import WorkerError
@@ -133,7 +131,7 @@ The method returns only when the reactor stops.
             
         # (3) generate session keys
         self.sessionKey = crypto.newKey(512)
-        self.publicKey = self.sessionKey.exportKey()
+        self.publicKey = self.sessionKey.publickey()
         self.guid = str(uuid.uuid1())
         self.profile['guid'] = self.guid
         self.logger.info("Node UUID: %s" % self.profile['guid'])
@@ -179,27 +177,11 @@ key."""
         try:
             keyfile = locateFile(keyfile, self.initOptions.configdirs)
             if os.path.isfile(keyfile):
-                o = open(keyfile, 'rt')
-                cookie = chop(o.readline())
-                aKey = ""
-                while True:
-                    aKey = o.readline() 
-                    if aKey.startswith("<StartPycryptoKey>"):
-                        break
-                while True:
-                    l = o.readline()
-                    if not l:
-                        raise ConfigurationError()
-                    aKey = aKey + l
-                    if l.startswith("<EndPycryptoKey>"):
-                        break
-                key = crypto.importKey(aKey)
-                o.close()
+                cookie, key = crypto.loadKeyAndCookieFile(keyfile)
             else:
                 raise ConfigurationError("Key file is unreadable, does not exist or is corrupted: %s" % keyfile)
-        except:
-            raise ConfigurationError("Key file is unreadable, does not exist or is corrupted: %s" % keyfile)
-
+        except Exception, ex:
+            raise ConfigurationError("Key file is unreadable, does not exist or is corrupted: %s (%s)" % (keyfile, str(ex)))
         return(cookie, key)
 
     def hasFlag(self, flag):

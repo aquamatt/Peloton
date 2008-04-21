@@ -83,20 +83,6 @@
 						into which you must place the spec file downloaded from <ulink url='https://jira.amqp.org/confluence/download/attachments/720900/amqp0-8.xml'>here</ulink>.
 					</para>
 				 </listitem>						
-	             <listitem>
-	                   <para>
-	                   	   <classname>PyCrypto</classname> and <classname>ezPyCrypto</classname>. The former is available from <ulink url='http://www.amk.ca/python/code/crypto.html'/> and 
-						   the latter from <ulink url='http://www.freenet.org.nz/ezPyCrypto/'/>. 
-	                   </para>
-					   <para>
-					   	   <classname>PyCrypto</classname> may be installed on Debian from the 
-						   <filename>python-crypto</filename> package although at the time of
-						   writing package depended on Python &lt;= 2.5 which means a manual install
-						   is required (quite un-necessary as far as I can tell). Ubuntu is better but 
-						   some encryption schemes are missing and this breaks <filename>ezPyCrypto</filename>.
-						   The message seems to be: install from the tarball.
-					   </para>
-	             </listitem>
 				 <listitem>
 					 <para>
 						 Genshi is the templating library used for XML and HTML output and it is a
@@ -110,31 +96,11 @@
 						 storage module. Naturally this also requires SQLite be installed.
 					 </para>
 				 </listitem>
-<!--				
-                 <listitem>
-                       <para>
-                            <filename>python-memcache</filename> pure-python interface to <filename>memcached</filename>.
-							A slower alternative to <filename>cmemcache</filename> discussed below. Only install if
-							you cannot install <filename>cmemcache</filename>.
-                       </para>
-                 </listitem>
--->	
 			</orderedlist>
 		</sect2>
 		<sect2>
 			 <title>Non-Python libraries</title>
 			 <orderedlist>
-<!--				 
-			     <listitem>
-			         <para>
-			         	<filename>cmemcache</filename> obtainable from <ulink url='http://gijsbert.org/cmemcache/'/>
-						is a faster version of the pure-Python <filename>Python-Memcache</filename> library
-						for interacting with <filename>memcached</filename>. Either may be used; &peloton;
-						will try <filename>cmemcache</filename> first and fall back to <filename>Python-Memcache</filename>
-						if not available.
-					</para>
-				</listitem>
--->				 
 			     <listitem>
 			         <para>
 					</para>
@@ -146,7 +112,7 @@
             <orderedlist>
                  <listitem>
                        <para>
-                            <filename>RebbitMQ</filename> Version &gt;=1.2.0
+                            <filename>RabbitMQ</filename> Version &gt;=1.2.0
                        </para>
 					   <para>
 					   	   RabbitMQ is a supported messaging backend. MQ servers need
@@ -164,15 +130,6 @@
                             <ulink url='https://jira.amqp.org/confluence/display/AMQP/Download'/>.
                        </para>
                  </listitem>
-<!--
-                 <listitem>
-                       <para>
-                       	    <filename>memcached</filename> - the robust and road-tested cacheing daemon.
-							Also the accompanying <filename>libmemcached</filename> if you wish to build 
-							<filename>cmemcache</filename>.
-                       </para>
-                 </listitem>
--->	
                  <listitem>
                        <para>
                        </para>
@@ -221,32 +178,6 @@
                         <entry>Python asynchronous networking library</entry>
 						<entry>MIT</entry>
                     </row>
-<!--
-			        <row>
-                        <entry>memcached</entry>
-                        <entry>1.1.12</entry>
-                        <entry>A</entry>
-                        <entry>&tick;</entry>
-                        <entry>Provides distributed result cache</entry>
-						<entry>BSD</entry>
-			        </row>
-                    <row>
-                        <entry>cmemcache</entry>
-                        <entry>0.91</entry>
-                        <entry>PB</entry>
-                        <entry>(&tick;)</entry>
-                        <entry>Fast memcache adapter</entry>
-						<entry>GPL</entry>
-                    </row>	
-                    <row>
-                        <entry>python-memcache</entry>
-                        <entry>1.40</entry>
-                        <entry>P</entry>
-                        <entry>(&tick;)</entry>
-                        <entry>Pure Python memcache adapter; a slower alternative to cmemcache</entry>
-						<entry>Python</entry>
-                    </row>
--->	
                     <row>
                         <entry>RabbitMQ</entry>
                         <entry>1.2.0</entry>
@@ -270,14 +201,6 @@
                         <entry>&tick;</entry>
                         <entry>Python cryptography library</entry>
 						<entry>Python</entry>
-                    </row>
-                    <row>
-                        <entry>ezPyCrypto</entry>
-                        <entry>0.1.1</entry>
-                        <entry>P</entry>
-                        <entry>&tick;</entry>
-                        <entry>Wrapper to the PyCrypto library</entry>
-						<entry>GPL</entry>
                     </row>
                     <row>
                         <entry>Genshi</entry>

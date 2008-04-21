@@ -39,4 +39,10 @@ class Test_PelotonProfile(TestCase):
         ct = crypto.encrypt(v, self.key)
         pt = crypto.decrypt(ct, self.key)
         self.assertEquals(pt, v)
+
+        # test big string
+        v = {'a':1,2:56,'greeting':'hello world'*500, 'weight':21.34}
+        ct = crypto.encrypt(v, self.key)
+        pt = crypto.decrypt(ct, self.key)
+        self.assertEquals(pt, v)
         

@@ -14,23 +14,13 @@ import sys
 import peloton
 from peloton.utils.crypto import makeCookie
 from peloton.utils.crypto import newKey
+from peloton.utils.crypto import makeKeyAndCookieFile
 from peloton.utils.structs import FilteredOptionParser
 from peloton.utils import chop
 
 tokenlength = 50
 keylength = 512
 __VERSION__ = "0.1"
-
-def makeKeyFile(keyfile, toConsole=False):
-    cookie = makeCookie(tokenlength)
-    key = newKey(keylength, True)
-    contents = cookie+"\n"+key
-    if toConsole:
-        print(contents)
-    else:
-        f = open(keyfile,'wt')
-        f.writelines(contents)
-        f.close()
 
 def main():
     usage = "usage: %prog [options]" # add 'arg1 arg2' etc as required
@@ -53,7 +43,13 @@ def main():
                       default=False)
 
     opts, args = parser.parse_args()
-    makeKeyFile(os.path.expanduser(opts.domainkey), opts.console)
+    if opts.console:
+        outfile=None
+    else:
+        outfile = os.path.expanduser(opts.domainkey)
+    f = makeKeyAndCookieFile(outfile, keylength, tokenlength)
+    if opts.console:
+        print f
     return 0
 
 if __name__ == '__main__':
