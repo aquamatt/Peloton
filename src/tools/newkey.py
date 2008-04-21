@@ -5,8 +5,8 @@
 # See LICENSE for details
 """ Create a new domain key file which is composed of the following:
   - A random 50 character cookie
-  - An ezPyCrypto public key
-  - The corresponding ezPyCrypto private key
+  - A public key
+  - The corresponding private key
 """
 import os
 import sys

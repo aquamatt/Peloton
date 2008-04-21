@@ -13,7 +13,6 @@ import subprocess
 import time
 import uuid
 
-import ezPyCrypto
 import peloton.utils.logging as logging
 
 from twisted import __version__ as twistedVersion
@@ -194,8 +193,7 @@ key."""
                     aKey = aKey + l
                     if l.startswith("<EndPycryptoKey>"):
                         break
-                key =  ezPyCrypto.key()
-                key.importKey(aKey)
+                key = crypto.importKey(aKey)
                 o.close()
             else:
                 raise ConfigurationError("Key file is unreadable, does not exist or is corrupted: %s" % keyfile)

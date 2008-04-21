@@ -8,6 +8,7 @@ import random
 import ezPyCrypto
 import cPickle as pickle
 from peloton.exceptions import PelotonError
+from yawPyCrypto import AsciiKey
 
 # default character set on which to draw to make cookies
 tokenspace = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
@@ -30,6 +31,12 @@ textEncoded is set True. """
         return key.exportKeyPrivate()
     else:
         return key
+
+def importKey(keyStr):
+    """ Takes keyStr, an ascii encoded key, and returns a key. """
+    key =  ezPyCrypto.key()
+    key.importKey(keyStr)
+
 
 def encrypt(data, key):
     """ Takes data, pickles to string and encrypts into ASCII for
