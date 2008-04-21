@@ -42,7 +42,7 @@
 			<title>Python libraries</title>
 			<para>
 				The following pythonlibraries are either required always required when using 
-				particular modulesand must be installed either by installer scripts 
+				particular modules and must be installed either by installer scripts 
 				(distutils, Debian package etc) or by the system administrator. The summary table
 				(see <xref linkend='dependency_summary_table'/>)
 				details which packages are necessary under what circumstances.
@@ -96,6 +96,13 @@
 						 storage module. Naturally this also requires SQLite be installed.
 					 </para>
 				 </listitem>
+				<listitem>
+					<para>
+						PyCrypto is the Python cryptography library. Debian/Ubuntu package
+						python-crypto is fine otherwise the package may be downloaded from 
+						<ulink url='http://sourceforge.net/projects/pycrypto'/>.
+					</para>
+				</listitem>
 			</orderedlist>
 		</sect2>
 		<sect2>

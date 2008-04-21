@@ -4,7 +4,6 @@
 # See LICENSE for details
 from peloton.service import PelotonService
 from peloton.svcdeco import *
-from peloton.utils.transforms import *
 import time
 
 class TestService(PelotonService):
