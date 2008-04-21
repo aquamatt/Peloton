@@ -41,20 +41,6 @@ def POSIX_makeDaemon():
     else:
         os._exit(0) # Exit parent of the first child.
 
-    # Close all open file descriptors.  This prevents the child from keeping
-    # open any file descriptors inherited from the parent.  
-    import resource
-    maxfd = resource.getrlimit(resource.RLIMIT_NOFILE)[1]
-    if (maxfd == resource.RLIM_INFINITY):
-        maxfd = MAXFD
-    # Iterate through and close all file descriptors.
-    for fd in range(0, maxfd):
-        try:
-            os.close(fd)
-        except OSError:    
-            # ERROR, fd wasn't open to begin with (ignored)
-            pass
-
     # redirect stdin/out/err to /dev/null (or equivalent) 
     fd = os.open(REDIRECT_TO, os.O_RDWR)    
     
@@ -63,8 +49,9 @@ def POSIX_makeDaemon():
     os.dup2(fd, 1)            # standard output (1)
     os.dup2(fd, 2)            # standard error (2)
 
+
 def WINDOWS_makeDaemon():
-    raise NotImplementedError("Sorry: your platform (%s) is not yet supported by Peloton" % os.name)
+    print("Cannot daemonize on windows as yet. Start as a service or with 'start'")
 
 
 # Set makeDaemon according to platform

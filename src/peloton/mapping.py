@@ -487,7 +487,11 @@ remove is called once per signal received from a dying worker.
 
 If you really do want all proxies removed, specify removeAll=True"""
         if guid and not proxy:
-            proxy = self.pscByGUID[guid]
+            try:
+                proxy = self.pscByGUID[guid]
+            except KeyError:
+                # guess it's already gone!
+                return
     
         try:
             proxies = self.pscByService[service]

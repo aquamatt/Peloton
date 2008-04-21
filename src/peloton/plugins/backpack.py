@@ -41,6 +41,8 @@ KNOWN ISSUES:
 - getMulti and delete not yet implemented.
 
 - need to implement manual purge of entire parent group
+- test with file-based storage
+- implement slave system
 """
     def initialise(self):
         # get class for persistence and initialise
