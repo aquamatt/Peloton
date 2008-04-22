@@ -36,6 +36,7 @@ class ServiceBuilder(object):
                                 'tests' : {},
                                 'scripts': {},
                                 'resource': {
+                                        'static' : {},
                                         'templates' : {
                                                 serviceName: {}
                                                        }

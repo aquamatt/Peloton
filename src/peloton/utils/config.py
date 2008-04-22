@@ -282,9 +282,10 @@ that whole configuration. """
         
 from peloton.exceptions import ServiceNotFoundError    
 import peloton.profile
-def locateService(serviceName, servicePath, gridMode):
-    """ Searches for the service named serviceName in ther service path
-and loads the profile. Returns (serviceDirectory, profile).
+def locateService(serviceName, servicePath, gridMode='test', returnProfile=True):
+    """ Searches for the service named serviceName in the service path
+and loads the profile. Returns (serviceDirectory, profile) unless 
+returnProfile is False in which case (serviceDirectory, None) returned.
 
 Raises ServiceNotFoundError if the service is not found (surprise)."""
     #    search through service path
@@ -301,9 +302,12 @@ Raises ServiceNotFoundError if the service is not found (surprise)."""
         logger.info("Found more than one location for service %s (using first)" % serviceName)
     if not locations:
         raise ServiceNotFoundError("Could not find service %s" % serviceName)
-
+    
     servicePath = locations[0]
-    serviceProfile = loadServiceProfile(servicePath, gridMode)
+    if returnProfile:
+        serviceProfile = loadServiceProfile(servicePath, gridMode)
+    else:
+        serviceProfile = None
     return (servicePath, serviceProfile)
 
 def loadServiceProfile(servicePath, gridMode):

@@ -472,7 +472,10 @@ his own commands.
             self.kernel.logger.debug("NOOP Called on domain_control")
             
     def sendCommand(self, command, *args, **kwargs):
-        """ Send a command in the manner described in respond_commandRequest. """
+        """ Send a command in the manner described in respond_commandRequest. 
+*args are placed in msg['args'] and any keyword arguments are added to msg.
+If kwargs are supplied that conflict with required msg arguments (ie
+command, args, cookie, time or issuer) an exception will be raised."""
         now = time.time()
         msg = {'command':command, 
                'args':args,
@@ -613,7 +616,7 @@ version (picks in round-robin fashion from pool)."""
     def removeProvider(self, provider):
         """ Remove the provider from this mapping, calling stop() on it
 as we go. Returns the number of occurences removed."""
-        emptyVersions=[]
+        emptyVersions=[] 
         n = 0
         for v, lts in self.versions.items():
             keysToRemove = []

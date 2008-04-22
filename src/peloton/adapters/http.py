@@ -8,13 +8,25 @@ from twisted.internet import reactor
 from twisted.internet.error import CannotListenError
 from twisted.web import server
 from twisted.web import resource
+from twisted.web.static import FileTransfer
 from peloton.adapters import AbstractPelotonAdapter
 from peloton.adapters.xmlrpc import PelotonXMLRPCHandler
 from peloton.coreio import PelotonRequestInterface
+from peloton.utils.config import locateService
 
 from cStringIO import StringIO
 import os
 import types
+
+binaryFileMimeTypes = {'.png':'image/PNG','.jpg':'image/JPEG',
+       '.jpeg':'image/JPEG','.gif':'image/GIF','.bmp':'image/BMP',
+       '.pdf':'application/PDF',
+       '.zip':'application/x-zip-compressed',
+       '.tgz':'application/x-gzip'}
+
+plainFileMimeTypes = {'.css':'text/css',
+      '.html' : 'text/html; charset=UTF-8',
+      '.js':'text/javascript'}
 
 class PelotonHTTPAdapter(AbstractPelotonAdapter, resource.Resource):
     """ The HTTP adapter provides for accessing methods over
@@ -26,7 +38,7 @@ resources and session tracking is used. But... well...
 """
     isLeaf = True
     def __init__(self, kernel):
-        AbstractPelotonAdapter.__init__(self, kernel, 'REST Adapter')
+        AbstractPelotonAdapter.__init__(self, kernel, 'HTTP Adapter')
         resource.Resource.__init__(self)
         self.requestInterface = PelotonRequestInterface(kernel)
         self.xmlrpcHandler = PelotonXMLRPCHandler(kernel)
@@ -36,7 +48,6 @@ resources and session tracking is used. But... well...
         source=os.path.split(__file__)[0].split(os.sep)
         source.extend(['templates','request_info.html.genshi'])
         self.infoTemplate = template("/".join(source))
-        
         
     def start(self, configuration, options):
         """ Implement to initialise the adapter based on the 
@@ -61,6 +72,12 @@ HTTP based adapters)."""
         if request.postpath and request.postpath[0] == "RPC2":
             return self.xmlrpcHandler._resource.render(request)
         
+        elif request.postpath and request.postpath[0] == "static":
+            servicePath, _ = locateService(request.postpath[1], 
+                                           self.kernel.initOptions.servicepath, 
+                                           returnProfile = False)
+            self.deliverStaticContent(servicePath+'/resource/static', request.postpath[2:], request)
+            
         elif '__info' in request.args.keys():
             resp = self.infoTemplate({'rq':request})
             self.deferredResponse(resp, 'text/html',request)
@@ -117,6 +134,46 @@ HTTP based adapters)."""
         request.write(err)
         request.finish()
                 
+    def deliverStaticContent(self, resourceRoot, requestPath, request):
+        """Read and deliver the static data content directly. """
+        resourcePath = os.path.realpath('%s/%s' % (resourceRoot, '/'.join(requestPath)))
+        resourcePath = resourcePath.replace('//','/')
+        resourceRoot = resourceRoot.replace('//','/')
+        if not resourcePath.startswith(resourceRoot):
+            request.setResponseCode(404)
+            self.kernel.logger.debug("Relative path (%s|%s|%s) in request points outside of resource root" % (requestPath,resourcePath, resourceRoot))
+            request.write("Relative path points outside resource root")
+            request.finish()
+            return
+        
+        if not os.path.isfile(resourcePath):
+            request.setResponseCode(404)
+            self.kernel.logger.debug("Request for non-existent static content")
+            request.write("Static content unavailable.")
+            request.finish()
+            return
+        
+        suffix = resourcePath[resourcePath.rfind('.'):]
+
+        if suffix in binaryFileMimeTypes.keys():
+            openMode = 'rb'
+            request.setHeader('Content-Type', binaryFileMimeTypes[suffix])
+        elif suffix in plainFileMimeTypes.keys():
+            openMode = 'rt'
+            request.setHeader('Content-Type', plainFileMimeTypes[suffix])
+        else:
+            openMode = 'rt'
+            request.setHeader('Content-Type', 'text/html')
+        try:
+            res = open(resourcePath, openMode)
+            fsize = os.stat(resourcePath)[6]
+            FileTransfer(res, fsize, request)
+        except Exception, ex:
+            request.setResponseCode(404)
+            request.write("Could not read resource %s: %s" % (resourcePath, str(ex)))
+            self.kernel.logger.debug("Could not read static resource %s: %s" % (resourcePath, str(ex)))
+            request.finish()
+
     def _stopped(self, x):
         """ Handler called when reactor has stopped listening to this
 protocol's port."""
