@@ -1,0 +1,12 @@
+from unittest import TestCase
+from ${module}.${package} import ${name}
+
+class Test_${name}(TestCase):
+    def setUp(self):
+        pass
+        
+    def tearDown(self):
+        pass
+        
+    def test_TESTMETHOD(self):
+        pass

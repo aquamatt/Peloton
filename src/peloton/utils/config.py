@@ -309,10 +309,13 @@ Raises ServiceNotFoundError if the service is not found (surprise)."""
 def loadServiceProfile(servicePath, gridMode):
     """Return the profile for this service"""
     configDir = os.sep.join([servicePath, 'config'])
-    profiles = ["profile.pcfg", "%s_profile.pcfg" % gridMode]
     serviceProfile = peloton.profile.PelotonProfile()
-    for profile in profiles:
-        serviceProfile.loadFromFile("%s/%s" % (configDir, profile))
+    serviceProfile.loadFromFile("%s/profile.pcfg" % configDir)
+    try:
+        serviceProfile.loadFromFile("%s/%s_profile.pcfg" % (configDir, gridMode))
+    except ConfigurationError:
+        # if there is no gridmode-specific config that's no big deal.
+        pass
     return serviceProfile
 
 def findTemplateTargetsFor(servicePath, serviceName, method):

@@ -13,6 +13,7 @@ from peloton.adapters.xmlrpc import PelotonXMLRPCHandler
 from peloton.coreio import PelotonRequestInterface
 
 from cStringIO import StringIO
+import os
 import types
 
 class PelotonHTTPAdapter(AbstractPelotonAdapter, resource.Resource):
@@ -32,7 +33,7 @@ resources and session tracking is used. But... well...
 
         # setup info template loader
         from peloton.utils.transforms import template
-        source=__file__.split('/')[:-1]
+        source=os.path.split(__file__)[0].split(os.sep)
         source.extend(['templates','request_info.html.genshi'])
         self.infoTemplate = template("/".join(source))
         

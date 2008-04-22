@@ -1,0 +1,11 @@
+# $$Id$$
+from peloton.service import PelotonService
+from peloton.svcdeco import *
+
+class ${name}(PelotonService):
+    def public_sum(self, x, y):
+        "Example service method."
+        x = int(x)
+        y = int(y)
+        return x+y
+		

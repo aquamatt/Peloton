@@ -1,0 +1,13 @@
+# $$Id$$
+name=${name}
+comment=${name} service
+author=author
+buildversion=0
+version=0.0.1
+
+[psclimits]
+   mincpus=1
+  
+[launch]
+   minpscs=2
+   workersperpsc=2

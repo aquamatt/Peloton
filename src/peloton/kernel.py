@@ -38,6 +38,8 @@ from peloton.exceptions import PluginError
 from peloton.exceptions import WorkerError
 from peloton.exceptions import NoWorkersError
 
+from sets import Set
+
 class PelotonKernel(HandlerBase):
     """ The kernel is the core that starts key services of the 
 node, registers with the grid, pulls together all kernel modules
@@ -71,9 +73,7 @@ coreIO interfaces.
 
         # get path to pwp - it'll be in the same directory
         # as this file. pwp.py starts Peloton workers.
-        fspec = __file__.split('/')[:-1]
-        fspec.append('pwp.py')
-        self.pwp = os.sep.join(fspec)
+        self.pwp = os.path.split(__file__)[0] + os.sep + 'pwp.py'
         if not os.path.isfile(self.pwp):
             raise Exception("Cannot find worker process launcher %s!" % self.pwp)
         
@@ -299,6 +299,21 @@ hooks into the reactor. It is passed the entire config stack
         """ Initiate the process of launching a service. """
         self.serviceLoader.launchService(serviceName)
 
+    def stopService(self, serviceName):
+        """ Signal the gride to stop the named service on this domain. """
+        self.domainManager.sendCommand('SERVICE_SHUTDOWN', serviceName=serviceName)
+    
+    def _stopService(self, serviceName):
+        """ Stop all workers running the named service. """
+        self.logger.info("Stopping service: %s" % serviceName)
+        try:
+            providers = self.workerStore[serviceName]
+            providers.closeAll()
+            del(self.workerStore[serviceName])
+        except KeyError:
+            # not running this service 
+            pass
+
     def startService(self, serviceName, version, launchTime, numWorkers=None):
         """ Instruct start of worker processes running service named serviceName. 
 The number of workers is determined from the profile but can be overridden with 
@@ -448,12 +463,15 @@ his own commands.
             # call later to allow the remaining events
             # to be processed otherwise there can be a messy
             # shutdown...
-            reactor.callLater(0.01,self.kernel.closedown)
+            reactor.callLater(0.01, self.kernel.closedown)
+            
+        if command['command'] == 'SERVICE_SHUTDOWN':
+            reactor.callLater(0.01, self.kernel._stopService, command['serviceName'])
         
         elif command['command'] == 'NOOP':
             self.kernel.logger.debug("NOOP Called on domain_control")
             
-    def sendCommand(self, command, *args):
+    def sendCommand(self, command, *args, **kwargs):
         """ Send a command in the manner described in respond_commandRequest. """
         now = time.time()
         msg = {'command':command, 
@@ -461,6 +479,17 @@ his own commands.
                'cookie':crypto.makeCookie(20),
                'time':now,
                'issuer':self.kernel.guid }
+        # raise Exception if any keys in kwargs match those in the
+        # msg which are all considered 'protected'. Prevents accidental
+        # overwriting
+        msgKeySet = Set(msg.keys())
+        kwargsKeySet = Set(kwargs.keys())
+
+        if (msgKeySet-kwargsKeySet) != msgKeySet:
+            raise Exception("Send command given kwargs that attempt overwrite of restricted keys. ")
+        
+        msg.update(kwargs)
+        
         ct = crypto.encrypt(msg, self.kernel.domainKey)
         self.dispatcher.fireEvent(key="psc.command",
                                 exchange="domain_control",
@@ -648,7 +677,6 @@ as we go. Returns the number of occurences removed."""
 
     def closeAll(self):
         """ Close down ALL providers. """
-        self.kernel.routingTable.localProxy.stop()
         for version in self.versions.values():
             # version is dict keyed on launchTime
             for providerList in version.values():

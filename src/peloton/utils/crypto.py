@@ -22,7 +22,7 @@ a suitable default is provided.)
 """
     tchars = len(tokenspace)
     cookie = "".join([tokenspace[random.randrange(0,tchars)] 
-                      for i in xrange(tokenlength)])
+                      for _ in xrange(tokenlength)])
     return cookie
 
 def newKey(lenbits=512):
