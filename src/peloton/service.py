@@ -141,3 +141,6 @@ Can be used to setup database pools etc. Overide in actual services. """
 Can be used to cleanup database pools etc. Overide in actual services. """
         pass
     
+    def public_index(self):
+        """ Default index page for HTTP connections. """
+        return "There is no index for this service!"

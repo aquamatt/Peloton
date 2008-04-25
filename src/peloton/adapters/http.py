@@ -13,6 +13,7 @@ from peloton.adapters import AbstractPelotonAdapter
 from peloton.adapters.xmlrpc import PelotonXMLRPCHandler
 from peloton.coreio import PelotonRequestInterface
 from peloton.utils.config import locateService
+from peloton.exceptions import ServiceError
 
 from cStringIO import StringIO
 import os
@@ -78,18 +79,28 @@ HTTP based adapters)."""
                                            returnProfile = False)
             self.deliverStaticContent(servicePath+'/resource/static', request.postpath[2:], request)
             
-        elif '__info' in request.args.keys():
+        elif request.postpath and request.postpath[0] == "inspect":
             resp = self.infoTemplate({'rq':request})
             self.deferredResponse(resp, 'text/html',request)
         
         else:
-            service, method = request.postpath[:2]
+            if request.postpath[-1] == '':
+                request.postpath = request.postpath[:-1]
+            try:
+                service, method = request.postpath[:2]
+            except ValueError:
+                if len(request.postpath) == 1:
+                    service = request.postpath[0]
+                    method = 'index'
+                else:
+                    raise ServiceError("Method or service not found for %s " % str(request.postpath))
+                
             split = method.split('.')
             if len(split)==1:
                 target = 'html'
             else:
                 method, target = split
-                
+
             args = request.postpath[2:]
             kwargs={}
             for k,v in request.args.items():

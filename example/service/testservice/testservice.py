@@ -7,6 +7,9 @@ from peloton.svcdeco import *
 import time
 
 class TestService(PelotonService):
+    def public_index(self):
+        return "Hi! You've got the TestService!"
+    
     def public_sumint(self, x, y):
         """ Return the sum of integers x and y. """
         x=int(x)
