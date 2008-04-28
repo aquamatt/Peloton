@@ -77,7 +77,7 @@ HTTP based adapters)."""
             servicePath, _ = locateService(request.postpath[1], 
                                            self.kernel.initOptions.servicepath, 
                                            returnProfile = False)
-            self.deliverStaticContent(servicePath+'/resource/static', request.postpath[2:], request)
+            self.deliverStaticContent(servicePath+'/resource', request.postpath[2:], request)
             
         elif request.postpath and request.postpath[0] == "inspect":
             resp = self.infoTemplate({'rq':request})
@@ -149,8 +149,12 @@ HTTP based adapters)."""
         """Read and deliver the static data content directly. """
         resourcePath = os.path.realpath('%s/%s' % (resourceRoot, '/'.join(requestPath)))
         resourcePath = resourcePath.replace('//','/')
-        resourceRoot = resourceRoot.replace('//','/')
-        if not resourcePath.startswith(resourceRoot):
+#        resourceRoot = resourceRoot.replace('//','/')
+
+        # os.path.realpath expands softlinks. If we did not do this for
+        # resource root it may not match resourcePath.
+        realResourceRoot = os.path.realpath(resourceRoot)
+        if not resourcePath.startswith(realResourceRoot):
             request.setResponseCode(404)
             self.kernel.logger.debug("Relative path (%s|%s|%s) in request points outside of resource root" % (requestPath,resourcePath, resourceRoot))
             request.write("Relative path points outside resource root")

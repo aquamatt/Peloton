@@ -12,12 +12,15 @@ Each returned method take one argument, the data to transform, and output
 a single value, the transformed data. Optionally static arguments 
 may be passed in after the input data argument to control the transform
 """
+import sys
+import os
 import types
 from peloton.utils.simplexml import HTMLFormatter
 from peloton.utils.simplexml import XMLFormatter
+from peloton.exceptions import PelotonError
 
 def valueToDict():
-    """ Takes data and returns the dict {'value':data}. """
+    """ Takes data and returns the dict {'d':data}. """
     def _fn(data):
         return {'d':data}
     return _fn
@@ -46,6 +49,12 @@ Transforms all keys in data (assuming it is a dictionary) to uppercase.
                 data[k.upper()] = v
                 del(data[k])
         return data
+    return _fn
+
+def string():
+    """ Stringify output """
+    def _fn(data):
+        return str(data)
     return _fn
 
 xmlFormatter = XMLFormatter()
@@ -83,10 +92,44 @@ def jsonTransform():
 from genshi.template import TemplateLoader
 templateLoader = TemplateLoader([])
 templateLoader.auto_reload = True
+def _expand(f):
+    """ If f is @-prefixed string assume the name is a service
+name and return the full path to it. """
+    if f and f[0] == '@':
+        svcName = f[1:]
+        svcFolderName = svcName.lower()
+        # iterate over python path looking for sub-dirs svcFolderName.
+        # return first to be found or raise PelotonError
+        for p in sys.path:
+            fname = p+'/'+svcFolderName+'/resource'
+            if os.path.exists(fname):
+                return fname
+        raise PelotonError("Could not locate servcie for %s" % f)
+    else:
+        return f
+
 def template(templateFile):
     """ Passes data through a template. Automaticaly applies valueToDict
-if the data is not a dictionary. """
+if the data is not a dictionary. 
+
+template file is either an absolute path (bad form) or relative to the 
+resource folder in a service
+where the service is referenced as @ServiceName. This allows a template
+in another service to be referenced. So, if the template foo.html.genshi
+in the DuckPond service one would reference::
+
+  @DuckPond/templates/DuckPond/foo.html.genshi
+  
+"""
     _valueToDict = valueToDict()
+    # expand any @ entries
+    path, file = os.path.split(templateFile)
+    try:
+        path = [_expand(i) for i in path.split('/')]
+    except:
+        path=[]
+    templateFile = "%s/%s" % ("/".join(path), file)
+
     def _fn(data):
         if not type(data) == types.DictType:
             data = _valueToDict(data)
