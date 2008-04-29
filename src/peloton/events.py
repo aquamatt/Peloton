@@ -3,6 +3,7 @@
 # Copyright (c) 2007-2008 ReThought Limited and Peloton Contributors
 # All Rights Reserved
 # See LICENSE for details
+from twisted.spread.pb import DeadReferenceError
 """ Core interface to the event bus. This module also contains
 a base class for all event bus plugins. 
 
@@ -164,6 +165,7 @@ into the event message. """
 class DebugEventHandler(AbstractEventHandler):
     """ Dump message to the logger with which the handler is initialised. """
     def __init__(self, logger):
+        AbstractEventHandler.__init__(self)
         self.logger = logger
         
     def eventReceived(self, msg, exchange='', key='', ctag=''):
@@ -175,10 +177,29 @@ class MethodEventHandler(AbstractEventHandler):
 four arguments msg, exchange, key and ctag. This handler
 will simply pass the call through. """
     def __init__(self, f):
+        AbstractEventHandler.__init__(self)
         self.f = f
         
     def eventReceived(self, msg, exchange='', key='', ctag=''):
         self.f(msg, exchange, key, ctag)
+        
+class RemoteEventHandler(AbstractEventHandler):
+    """Server side handler that takes a Referenceable that
+provides remote_eventReceived and reflects the call through.
+This is the proxy for a remote handler. """
+    def __init__(self, remoteHandler):
+        AbstractEventHandler.__init__(self)
+        self.remoteHandler = remoteHandler
+        self.DEAD = False
+        
+    def eventReceived(self, msg, exchange='', key='', ctag=''):
+        if self.DEAD:
+            return
+        try:
+            self.remoteHandler.callRemote('eventReceived', msg, exchange, \
+                                      key, ctag)
+        except DeadReferenceError:
+            self.DEAD = True
         
 from Queue import Queue        
 class QueueEventHandler(AbstractEventHandler, Queue):
@@ -189,6 +210,7 @@ Use to handle events asynchronously or as a place from which
 multiple threads can pick events off in turn.
 """
     def __init__(self, *args, **kwargs):
+        AbstractEventHandler.__init__(self)
         Queue.__init__(self, *args, **kwargs)
         
     def eventReceived(self, msg, exchange='', key='', ctag=''):

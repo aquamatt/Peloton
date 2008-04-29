@@ -11,6 +11,7 @@ from peloton.adapters import AbstractPelotonAdapter
 from peloton.profile import PelotonProfile
 from peloton.coreio import PelotonRequestInterface
 from peloton.coreio import PelotonInternodeInterface
+from peloton.events import RemoteEventHandler
 
 class PelotonPBAdapter(AbstractPelotonAdapter, pb.Root):
     """ The primary client adapter for Peloton is the Python Twisted PB
@@ -111,9 +112,11 @@ class PelotonInternodeAdapter(pb.Referenceable):
     
 class PelotonClientAdapter(pb.Referenceable):
     def __init__(self, kernel, clientObj):
+        self.dispatcher = kernel.dispatcher
         self.requestInterface = PelotonRequestInterface(kernel)
         self.logger = kernel.logger
         self.clientObj = clientObj
+        self.eventHandlers=[]
         
     def remote_call(self, service, method, *args, **kwargs):
         return self.requestInterface.public_call(self.clientObj, 'raw', service, method, args, kwargs)
@@ -127,12 +130,28 @@ class PelotonClientAdapter(pb.Referenceable):
     def remote_postAt(self, dateTime, service, method, *args, **kwargs):
         raise NotImplementedError
     
-    def remote_fireEvent(self, eventChannel, eventName, payload):
-        raise NotImplementedError
+    def remote_fireEvent(self, key, exchange='events', **kwargs):
+        """ Fire an event onto the bus. """
+        self.dispatcher.fireEvent(key, exchange, **kwargs)
     
-    def remote_subscribeToEvent(self, eventChannel, eventName=None):
-        raise NotImplementedError
+    def remote_register(self, key, handler, exchange='events'):
+        handler = RemoteEventHandler(handler)
+        self.eventHandlers.append(handler)
+        self.dispatcher.register(key, handler, exchange)
     
+    def remote_deregister(self, handler):
+        for h in self.eventHandlers:
+            if h.remoteHandler == handler:
+                handler = h
+                break
+        else:
+            # no handler registered
+            self.logger.error("Attempt to de-register handler for event that is not registered.")
+            return
+
+        self.dispatcher.deregister(handler)
+        self.eventHandlers.remove(handler)
+        
 class PelotonWorkerAdapter(pb.Referenceable):
     """ Interface by which a worker may invoke actions on the kernel. """
     def __init__(self, name, pscRef, kernel):
@@ -156,7 +175,7 @@ class PelotonWorkerAdapter(pb.Referenceable):
     def remote_register(self, key, handler, exchange='events'):
         pass
     
-    def remote_deregister(self, key, handler, exchange='events'):
+    def remote_deregister(self, handler):
         pass
 
     def remote_heartBeat(self):
