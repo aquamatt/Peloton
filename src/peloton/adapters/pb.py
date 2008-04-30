@@ -12,6 +12,7 @@ from peloton.profile import PelotonProfile
 from peloton.coreio import PelotonRequestInterface
 from peloton.coreio import PelotonInternodeInterface
 from peloton.events import RemoteEventHandler
+from peloton.exceptions import PelotonError
 
 class PelotonPBAdapter(AbstractPelotonAdapter, pb.Root):
     """ The primary client adapter for Peloton is the Python Twisted PB
@@ -113,7 +114,8 @@ class PelotonInternodeAdapter(pb.Referenceable):
 class PelotonClientAdapter(pb.Referenceable):
     def __init__(self, kernel, clientObj):
         self.dispatcher = kernel.dispatcher
-        self.guid = kernel.guid
+        self.profile = kernel.profile
+        self.routingTable = kernel.routingTable
         self.requestInterface = PelotonRequestInterface(kernel)
         self.logger = kernel.logger
         self.clientObj = clientObj
@@ -153,10 +155,20 @@ class PelotonClientAdapter(pb.Referenceable):
         self.dispatcher.deregister(handler)
         self.eventHandlers.remove(handler)
    
-    def remote_getGUID(self):
-        """ Returns the GUID of this PSC. Helps client listen for messages
-specific to its own master. """
-        return self.guid
+    def remote_getPSCProfile(self, guid=None):
+        """ Returns the serialised profile for the referenced PSC or self if guid
+is None. """
+        if not guid:
+            return repr(self.profile)
+        else:
+            try:
+                return repr(self.routingTable.pscByGUID[guid].profile)
+            except KeyError:
+                raise PelotonError("%s is unknown" % guid)
+    
+    def remote_getRegisteredExchanges(self):
+        """ Return a list of event exchanges registered in the dispatcher. """
+        return self.dispatcher.getRegisteredExchanges()
         
 class PelotonWorkerAdapter(pb.Referenceable):
     """ Interface by which a worker may invoke actions on the kernel. """

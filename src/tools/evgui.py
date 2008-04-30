@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'evgui.ui'
 #
-# Created: Wed Apr 30 18:46:45 2008
+# Created: Wed Apr 30 22:33:22 2008
 #      by: PyQt4 UI code generator 4.3.3
 #
 # WARNING! All changes made in this file will be lost!
@@ -34,9 +34,10 @@ class Ui_MainWindow(object):
         self.label.setObjectName("label")
         self.hboxlayout.addWidget(self.label)
 
-        self.exchangeField = QtGui.QLineEdit(self.centralwidget)
-        self.exchangeField.setObjectName("exchangeField")
-        self.hboxlayout.addWidget(self.exchangeField)
+        self.exchangeComboBox = QtGui.QComboBox(self.centralwidget)
+        self.exchangeComboBox.setMinimumSize(QtCore.QSize(200,0))
+        self.exchangeComboBox.setObjectName("exchangeComboBox")
+        self.hboxlayout.addWidget(self.exchangeComboBox)
 
         self.label_2 = QtGui.QLabel(self.centralwidget)
 

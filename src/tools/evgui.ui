@@ -45,7 +45,14 @@
        </widget>
       </item>
       <item>
-       <widget class="QLineEdit" name="exchangeField" />
+       <widget class="QComboBox" name="exchangeComboBox" >
+        <property name="minimumSize" >
+         <size>
+          <width>200</width>
+          <height>0</height>
+         </size>
+        </property>
+       </widget>
       </item>
       <item>
        <widget class="QLabel" name="label_2" >

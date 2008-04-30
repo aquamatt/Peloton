@@ -69,6 +69,7 @@ completely isolated from the external bus.
         setattr(self, 'register', externalBus.register)
         setattr(self, 'deregister', externalBus.deregister)
         setattr(self, 'fireEvent', externalBus.fireEvent)
+        setattr(self, 'getRegisteredExchanges', externalBus.getRegisteredExchanges)
         
         # push through any pre-init registrations
         while self.preInitRegistrations:
@@ -137,6 +138,10 @@ the external event bus 'register' being hooked in. """
         """ Temporary method that collects events to be fired as soon
 as the external event bus is initialised. """
         self.preInitEvents.append((args, kwargs))
+
+    def getRegisteredExchanges(self):
+        """ Temporary method that returns an empty list. """
+        return []
 
 class AbstractEventBusPlugin(object):
     """ Define all methods that the plugins must provide

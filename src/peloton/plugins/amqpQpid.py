@@ -79,7 +79,7 @@ at an un-wholesome rate.
                      ('logging', 'topic'),
                      ('events', 'topic')]
 
-        self.validExchanges = []
+        self.registeredExchanges = []
 
         self.mqueue = DeferredQueue()        
         self.mqueue.get().addCallback(self._processQueue)    
@@ -88,7 +88,7 @@ at an un-wholesome rate.
         self.channel.channel_open()
         for x,t in exchanges:
             self.channel.exchange_declare(exchange=x, type=t, auto_delete=True)
-            self.validExchanges.append(x)
+            self.registeredExchanges.append(x)
             
     def stop(self):
         for _, _, q in self.ctagByQueue.values():
@@ -100,7 +100,7 @@ at an un-wholesome rate.
     def register(self, key, handler, exchange='events'):
         """ Register to receive events from the specified exchange (default 'events')
 with all messages to be handled by a peloton.events.AbstractEventHandler instance."""
-        if exchange not in self.validExchanges:
+        if exchange not in self.registeredExchanges:
             raise MessagingError("Exchange %s not valid" % exchange)
         if not isinstance(handler, AbstractEventHandler):
             raise MessagingError("Subscription to %s.%s attempted with invalid handler: %s" % (exchange, key, str(handler)))
@@ -153,7 +153,7 @@ with all messages to be handled by a peloton.events.AbstractEventHandler instanc
     def fireEvent(self, key, exchange='events', **kwargs):
         """ Fire an event with routing key 'key' on the specified
 exchange using kwargs to build the event message. """
-        if exchange not in self.validExchanges:
+        if exchange not in self.registeredExchanges:
             raise MessagingError("Exchange %s not valid" % exchange)
         kwargs.update({'sender_guid' : self.node_guid})
         msg = Content(pickle.dumps(kwargs))
@@ -207,4 +207,5 @@ pass the message to them. """
             for h in handlersToGo:
                 self.deregister(h)
     
-    
+    def getRegisteredExchanges(self):
+        return self.registeredExchanges

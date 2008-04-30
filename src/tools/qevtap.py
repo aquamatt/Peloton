@@ -14,6 +14,7 @@ from twisted.internet import defer
 from twisted.internet.threads import deferToThread
 from twisted.spread import pb
 from peloton.utils.structs import FilteredOptionParser
+from peloton.profile import PelotonProfile
 
 from PyQt4 import QtCore
 from PyQt4 import QtGui
@@ -36,7 +37,7 @@ class EventHandler(pb.Referenceable):
 class ClosedownListener(pb.Referenceable):
     def remote_eventReceived(self,msg, exchange, key, ctag):
         if msg['action'] == 'disconnect' and \
-            msg['sender_guid'] == state.pscGUID:
+            msg['sender_guid'] == state.profile['guid']:
             state.mainWindow.sbLabel.setText("*** DISCONNECTED ***")
 
 class MainWindow(QtGui.QMainWindow, Ui_MainWindow):
@@ -47,36 +48,29 @@ class MainWindow(QtGui.QMainWindow, Ui_MainWindow):
         self.connect(self.actionEvent_Viewer, QtCore.SIGNAL('triggered()'), self.setMode)
         self.connect(self.actionLog_Viewer, QtCore.SIGNAL('triggered()'), self.setMode)        
         
-        self.exchangeField.setText(state.options.exchange)
-        self.messageKeyField.setText(state.options.key)
         self.sb = self.statusBar()
         self.sbLabel = QtGui.QLabel()
         self.sb.addPermanentWidget(self.sbLabel)
-        self.connect(self.exchangeField, QtCore.SIGNAL('editingFinished()'), self.resetHandler)
+        self.connect(self.exchangeComboBox, QtCore.SIGNAL('currentIndexChanged()'), self.resetHandler)
         self.connect(self.messageKeyField, QtCore.SIGNAL('editingFinished()'), self.resetHandler)
 
-    def resetHandler(self):
+    def resetHandler(self, *args):
         state.options.key = str(self.messageKeyField.text())
-        state.options.exchange = str(self.exchangeField.text())
+        state.options.exchange = str(self.exchangeComboBox.currentText())
         try:
             state.iface.callRemote('deregister', state.handler)
-            d = state.iface.callRemote('register',state.options.key,state.handler,state.options.exchange)
-            d.addErrback(self.registrationFailure)
+            state.iface.callRemote('register',state.options.key,state.handler,state.options.exchange)
         except pb.DeadReferenceError:
             print("Server closed connection unexpectedly!")
             self.stop()
             sys.exit()
-
-    def registrationFailure(self, err):
-        text = self.exchangeField.text()
-        self.exchangeField.setText("***%s***" % text)
 
     def setMode(self):
         """ Called when mode is selected from menu. """
         if state.mode == LOG_VIEWER:
             state.mode = EVENT_VIEWER
             self.messageKeyField.setEnabled(True)
-            self.exchangeField.setEnabled(True)
+            self.exchangeComboBox.setEnabled(True)
             self.actionEvent_Viewer.setChecked(True)
             self.actionLog_Viewer.setChecked(False)
             self.logTextEdit.clear()
@@ -84,9 +78,9 @@ class MainWindow(QtGui.QMainWindow, Ui_MainWindow):
         elif state.mode == EVENT_VIEWER:
             state.mode = LOG_VIEWER
             self.messageKeyField.setText('psc.logging')
-            self.exchangeField.setText('logging')
+            self.exchangeComboBox.setCurrentIndex(self.exchangeComboBox.findText('logging'))
             self.messageKeyField.setEnabled(False)
-            self.exchangeField.setEnabled(False)
+            self.exchangeComboBox.setEnabled(False)
             self.actionEvent_Viewer.setChecked(False)
             self.actionLog_Viewer.setChecked(True)
             self.logTextEdit.clear()
@@ -95,8 +89,13 @@ class MainWindow(QtGui.QMainWindow, Ui_MainWindow):
     def callError(self, err):
         self.outputField.setText('Error calling Peloton PSC')
         print(str(err))
+
+    def foundProfile(self, profile):
+        profile = eval(profile)
+        print("%s == %s:%s" % (profile['guid'],profile['hostname'], profile['port']))
         
     def loggerEventFired(self, msg, exchange, key, ctag):
+        state.iface.callRemote('getPSCProfile', msg['sender_guid']).addCallback(self.foundProfile).addErrback(lambda x: 0)
         if state.mode == LOG_VIEWER:
             self._displayLogEvent(msg, exchange, key, ctag)
         else:
@@ -124,12 +123,19 @@ class MainWindow(QtGui.QMainWindow, Ui_MainWindow):
         except:
             msg['__color'] = '000000'
         try:
-            self.logTextEdit.append("""<span style='color:#%(__color)s'>%(levelname)s @ %(asctime)s : %(message)s</span><br/>""" % msg)
+            self.logTextEdit.append("""<span style='color:#%(__color)s'>%(levelname)s : %(asctime)s : %(message)s</span><br/>""" % msg)
         except Exception, ex:
             print "Error: " + str(ex)
 
     def connectEvents(self):
         state.handler = EventHandler(self.loggerEventFired)
+
+    def setExchanges(self, exchanges):
+        for x in exchanges:
+            self.exchangeComboBox.addItem(x)
+        self.exchangeComboBox.setCurrentIndex(self.exchangeComboBox.findText(state.options.exchange))
+        self.messageKeyField.setText(state.options.key)
+        self.setMode()
         self.resetHandler()
 
     def exit(self):
@@ -159,13 +165,16 @@ def loggedIn(iface):
     state.iface = iface
     state.mainWindow.connectEvents()
     state.mainWindow.setVisible(True)
-    d = state.iface.callRemote('getGUID')
-    d.addCallback(setGUID)
+    d = state.iface.callRemote('getPSCProfile')
+    d.addCallback(setProfile)
     d.addErrback(connectionError)
+    d = state.iface.callRemote('getRegisteredExchanges')
+    d.addCallback(state.mainWindow.setExchanges)
 
-def setGUID(guid):
-    state.pscGUID = guid
-    state.mainWindow.sbLabel.setText('Connected to %s' % guid)
+def setProfile(profile):
+    state.profile = eval(profile)
+    s = state.profile
+    state.mainWindow.sbLabel.setText('Connected to %s:%s (%s)' % (s['hostname'], s['port'], s['guid']))
     state.closedownHandler = ClosedownListener()
     state.iface.callRemote('register', 'psc.presence', state.closedownHandler, 'domain_control')
 
@@ -189,19 +198,15 @@ if __name__ == '__main__':
     parser.add_option("--host","-H",
                      help="Host for PSC to contact [default %default]",
                      default="localhost")
-    parser.add_option("--key", "-k",
-                      help="""Message key - may include the wildcards 
- # (match zero or more tokens) or * (match a single token) as defined in the
- AMQP specification [default %default]""",
-                      default="#")
-
-    parser.add_option("--exchange", "-x",
-                      help="Exchange [default %default]",
-                      default="events")
 
     options, args = parser.parse_args()
     state.options = options
+    state.options.key='psc.logging'
+    state.options.exchange='logging'
     state.mode = EVENT_VIEWER
+    # need a refactor - for a start event_viewer is immediately
+    # toggled to LOG_VIEWER by a later call to setMode which should
+    # really be toggleMode etc.
     
     initGUI()
     connect()

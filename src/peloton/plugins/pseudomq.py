@@ -132,6 +132,9 @@ server. """
             else:
                 self.eventFiringQueue.append((key, exchange, kwargs))
 
+    def getRegisteredExchanges(self):
+        return [x.name for x in self.exchanges]
+
     def eventReceived(self, msg, exchange, key, ctag=''):
         """ Forward event received from server to locally registered
 nodes. """
