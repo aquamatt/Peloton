@@ -79,6 +79,8 @@ at an un-wholesome rate.
                      ('logging', 'topic'),
                      ('events', 'topic')]
 
+        self.validExchanges = []
+
         self.mqueue = DeferredQueue()        
         self.mqueue.get().addCallback(self._processQueue)    
         
@@ -86,7 +88,8 @@ at an un-wholesome rate.
         self.channel.channel_open()
         for x,t in exchanges:
             self.channel.exchange_declare(exchange=x, type=t, auto_delete=True)
-
+            self.validExchanges.append(x)
+            
     def stop(self):
         for _, _, q in self.ctagByQueue.values():
             try:
@@ -97,18 +100,23 @@ at an un-wholesome rate.
     def register(self, key, handler, exchange='events'):
         """ Register to receive events from the specified exchange (default 'events')
 with all messages to be handled by a peloton.events.AbstractEventHandler instance."""
-
+        if exchange not in self.validExchanges:
+            raise MessagingError("Exchange %s not valid" % exchange)
         if not isinstance(handler, AbstractEventHandler):
             raise MessagingError("Subscription to %s.%s attempted with invalid handler: %s" % (exchange, key, str(handler)))
         key = "%s.%s" % (self.domain, key)
         queue = "%s.%s" % (exchange,key)
         if not self.ctagByQueue.has_key(queue):
-            qname, _, _ = self.channel.queue_declare(exclusive=True).fields
-            self.channel.queue_bind(queue=qname, exchange=exchange, routing_key=key)
-            ctag = self.channel.basic_consume(queue=qname, no_ack=True).consumer_tag
-            q = self.connection.queue(ctag)
-            self.ctagByQueue[queue] = (ctag, qname, q)
-            self._startListener(ctag, q)
+            try:
+                qname, _, _ = self.channel.queue_declare(exclusive=True).fields
+                self.channel.queue_bind(queue=qname, exchange=exchange, routing_key=key)
+                ctag = self.channel.basic_consume(queue=qname, no_ack=True).consumer_tag
+                q = self.connection.queue(ctag)
+                self.ctagByQueue[queue] = (ctag, qname, q)
+                self._startListener(ctag, q)
+            except Exception:
+                self.logger.error("Message published to closed exchange: %s/%s " % (exchange, key))
+                raise MessagingError("Message published to closed exchange: %s/%s " % (exchange, key))
         else:
             ctag, qname, _ = self.ctagByQueue[queue]
 
@@ -134,7 +142,7 @@ with all messages to be handled by a peloton.events.AbstractEventHandler instanc
             queue = "%s.%s" % (exchange,key)
             self.handlersByCtag[ctag].remove(handler)
             if not self.handlersByCtag[ctag]:
-                self.channel.queue_delete(queue=qname)
+#                self.channel.queue_delete(queue=qname)
                 del(self.handlersByCtag[ctag])
                 _, _, q = self.ctagByQueue[queue]
                 q.close()
@@ -145,10 +153,16 @@ with all messages to be handled by a peloton.events.AbstractEventHandler instanc
     def fireEvent(self, key, exchange='events', **kwargs):
         """ Fire an event with routing key 'key' on the specified
 exchange using kwargs to build the event message. """
+        if exchange not in self.validExchanges:
+            raise MessagingError("Exchange %s not valid" % exchange)
         kwargs.update({'sender_guid' : self.node_guid})
         msg = Content(pickle.dumps(kwargs))
-        self.channel.basic_publish(content=msg, exchange=exchange, 
+        try:
+            self.channel.basic_publish(content=msg, exchange=exchange, 
                          routing_key='%s.%s' % (self.domain, key))
+        except Exception:
+            self.logger.error("Message published to closed exchange: %s/%s " % (exchange, key))
+            raise MessagingError("Message published to closed exchange: %s/%s " % (exchange, key))
         
     def _startListener(self, ctag, q):
         """ Start a thread that listens for messages on a given 
@@ -180,9 +194,17 @@ pass the message to them. """
         content = pickle.loads(msg.content.body)
         if self.handlersByCtag.has_key(ctag):
             # may have been deleted already.
+            handlersToGo = []
             for handler in self.handlersByCtag[ctag]:
-                handler.eventReceived(content, exchange=exchange, 
+                try:
+                    handler.eventReceived(content, exchange=exchange, 
                                       key=routing_key, ctag=ctag)
+                except:
+                    # error in handler; remove it:
+                    self.logger.error("Error in event handler; removing.")
+                    handlersToGo.append(handler)
 
+            for h in handlersToGo:
+                self.deregister(h)
     
     

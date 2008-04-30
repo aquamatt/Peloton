@@ -9,6 +9,7 @@ import peloton.utils.logging as pul
 import logging
 import logging.handlers
 import os
+import cPickle as pickle
 
 class NullHandler(logging.Handler):
     """ A logging handler that simply looses everying down the bit bucket..."""
@@ -61,4 +62,32 @@ def getLogger(name=''):
     l = logging.getLogger(name)
     l.setLevel(_DEFAULT_LEVEL_)
     return l
+
+class BusLogHandler(logging.Handler):
+    """ A logging handler that puts log messages onto the message bus.
+    """
+    def __init__(self, kernel):
+        logging.Handler.__init__(self)
+        self.kernel = kernel
+        logging.getLogger().addHandler(self)
+
+    def makeEvent(self, record):
+        event={}
+        keys = ['asctime', 'filename', 'funcName', 'levelname', 
+                'lineno', 'message', 'module', 'name', 'pathname',  
+                'process', 'threadName']
+        for key in keys:
+            event[key] = getattr(record, key)
+
+        return event
+    
+    def send(self, event):
+        self.kernel.dispatcher.fireEvent(key="psc.logging", exchange='logging', **event)
+
+    def emit(self, record):
+        try:
+            event = self.makeEvent(record)
+            self.send(event)
+        except Exception, ex:
+            print(ex)
 

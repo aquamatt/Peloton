@@ -47,49 +47,52 @@ if specified. """
         __LOGGER__.getLogger().info("Logger initialised with defaults!")
     return __LOGGER__.getLogger(name)
 
-class BasePelotonLogger(object):
-    """ Base class for all Peloton logger systems """
-    _LOG_LEVEL__ = ERROR
-    
-    def debug(self, msg):
-        raise NotImplementedError()
-    
-    def info(self, msg):
-        raise NotImplementedError()
-    
-    def warn(self, msg):
-        raise NotImplementedError()
+def setBusLogger(kernel):
+    __LOGGER__.BusLogHandler(kernel)
 
-    def warning(self, msg):
-        self.warn(msg)
-        
-    def error(self, msg):
-        raise NotImplementedError()
-    
-    def critical(self, msg):
-        raise NotImplementedError()
-    
-    def fatal(self, msg):
-        raise NotImplementedError()
-    
-    def exception(self, msg):
-        raise NotImplementedError()
-
-    def setLevel(level=ERROR):
-        """ Set the log level to level (constants defined in 
-logging are:
-    
-    - DEBUG
-    - INFO
-    - WARN
-    - WARNING
-    - ERROR
-    - CRITICAL
-    - FATAL
-        
-When the level is set all messages at that level or higher (later in the
-list) are output; all others are ignored. For example, if loglevel==WARN
-then WARN[ING], ERROR, CRITICAL and FATAL messages will be output whilst
-INFO and DEBUG messages will silently be dropped.
-"""
-        pass
+#class BasePelotonLogger(object):
+#    """ Base class for all Peloton logger systems """
+#    _LOG_LEVEL__ = ERROR
+#    
+#    def debug(self, msg):
+#        raise NotImplementedError()
+#    
+#    def info(self, msg):
+#        raise NotImplementedError()
+#    
+#    def warn(self, msg):
+#        raise NotImplementedError()
+#
+#    def warning(self, msg):
+#        self.warn(msg)
+#        
+#    def error(self, msg):
+#        raise NotImplementedError()
+#    
+#    def critical(self, msg):
+#        raise NotImplementedError()
+#    
+#    def fatal(self, msg):
+#        raise NotImplementedError()
+#    
+#    def exception(self, msg):
+#        raise NotImplementedError()
+#
+#    def setLevel(level=ERROR):
+#        """ Set the log level to level (constants defined in 
+#logging are:
+#    
+#    - DEBUG
+#    - INFO
+#    - WARN
+#    - WARNING
+#    - ERROR
+#    - CRITICAL
+#    - FATAL
+#        
+#When the level is set all messages at that level or higher (later in the
+#list) are output; all others are ignored. For example, if loglevel==WARN
+#then WARN[ING], ERROR, CRITICAL and FATAL messages will be output whilst
+#INFO and DEBUG messages will silently be dropped.
+#"""
+#        pass

@@ -28,8 +28,12 @@ def clientConnect(svr, options):
     d.addCallback(gotIface, options)
     d.addErrback(error, None, options)
     
+def registered(_):
+    print("Registered and listening. ")
+    
 def gotIface(iface, options):
     d = iface.callRemote('register', options.key, handler, options.exchange)
+    d.addCallback(registered)
     d.addErrback(error, iface, options)        
     
 def error(err, iface, options):

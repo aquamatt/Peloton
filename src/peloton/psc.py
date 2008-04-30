@@ -62,7 +62,9 @@ subprocess module.
                         logfile='psc.log', 
                         logToConsole=options.nodetach)
     logging.getLogger().info("Kernel starting; pid = %d" % os.getpid())
-    ex = PelotonKernel(options, args, pc).start()
+    kernel = PelotonKernel(options, args, pc)
+    logging.setBusLogger(kernel)
+    ex = kernel.start()
     return ex
 
 def main():

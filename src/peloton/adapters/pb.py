@@ -113,6 +113,7 @@ class PelotonInternodeAdapter(pb.Referenceable):
 class PelotonClientAdapter(pb.Referenceable):
     def __init__(self, kernel, clientObj):
         self.dispatcher = kernel.dispatcher
+        self.guid = kernel.guid
         self.requestInterface = PelotonRequestInterface(kernel)
         self.logger = kernel.logger
         self.clientObj = clientObj
@@ -151,6 +152,11 @@ class PelotonClientAdapter(pb.Referenceable):
 
         self.dispatcher.deregister(handler)
         self.eventHandlers.remove(handler)
+   
+    def remote_getGUID(self):
+        """ Returns the GUID of this PSC. Helps client listen for messages
+specific to its own master. """
+        return self.guid
         
 class PelotonWorkerAdapter(pb.Referenceable):
     """ Interface by which a worker may invoke actions on the kernel. """

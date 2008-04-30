@@ -190,16 +190,10 @@ This is the proxy for a remote handler. """
     def __init__(self, remoteHandler):
         AbstractEventHandler.__init__(self)
         self.remoteHandler = remoteHandler
-        self.DEAD = False
         
     def eventReceived(self, msg, exchange='', key='', ctag=''):
-        if self.DEAD:
-            return
-        try:
-            self.remoteHandler.callRemote('eventReceived', msg, exchange, \
+        self.remoteHandler.callRemote('eventReceived', msg, exchange, \
                                       key, ctag)
-        except DeadReferenceError:
-            self.DEAD = True
         
 from Queue import Queue        
 class QueueEventHandler(AbstractEventHandler, Queue):

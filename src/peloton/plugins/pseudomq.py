@@ -332,7 +332,10 @@ class PseudoQueue(object):
         deadHandlers = []
         for h in self.handlers:
             if isinstance(h, AbstractEventHandler):
-                h.eventReceived(message, exchange, key, '')
+                try:
+                    h.eventReceived(message, exchange, key, '')
+                except:
+                    deadHandlers.append(h)
             else:
                 try:
                     h.callRemote('eventReceived', msgPickle, exchange, key, '')
