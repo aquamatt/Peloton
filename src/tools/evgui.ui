@@ -117,6 +117,9 @@
    <property name="text" >
     <string>Exit</string>
    </property>
+   <property name="shortcut" >
+    <string>Ctrl+Q</string>
+   </property>
   </action>
   <action name="actionEvent_Viewer" >
    <property name="checkable" >
@@ -128,6 +131,9 @@
    <property name="text" >
     <string>Event Viewer</string>
    </property>
+   <property name="shortcut" >
+    <string>Ctrl+E</string>
+   </property>
   </action>
   <action name="actionLog_Viewer" >
    <property name="checkable" >
@@ -135,6 +141,9 @@
    </property>
    <property name="text" >
     <string>Log Viewer</string>
+   </property>
+   <property name="shortcut" >
+    <string>Ctrl+L</string>
    </property>
   </action>
  </widget>

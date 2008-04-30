@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'evgui.ui'
 #
-# Created: Wed Apr 30 22:33:22 2008
+# Created: Wed Apr 30 23:24:41 2008
 #      by: PyQt4 UI code generator 4.3.3
 #
 # WARNING! All changes made in this file will be lost!
@@ -107,6 +107,9 @@ class Ui_MainWindow(object):
         self.menuFIle.setTitle(QtGui.QApplication.translate("MainWindow", "File", None, QtGui.QApplication.UnicodeUTF8))
         self.menuMode.setTitle(QtGui.QApplication.translate("MainWindow", "Mode", None, QtGui.QApplication.UnicodeUTF8))
         self.actionExit.setText(QtGui.QApplication.translate("MainWindow", "Exit", None, QtGui.QApplication.UnicodeUTF8))
+        self.actionExit.setShortcut(QtGui.QApplication.translate("MainWindow", "Ctrl+Q", None, QtGui.QApplication.UnicodeUTF8))
         self.actionEvent_Viewer.setText(QtGui.QApplication.translate("MainWindow", "Event Viewer", None, QtGui.QApplication.UnicodeUTF8))
+        self.actionEvent_Viewer.setShortcut(QtGui.QApplication.translate("MainWindow", "Ctrl+E", None, QtGui.QApplication.UnicodeUTF8))
         self.actionLog_Viewer.setText(QtGui.QApplication.translate("MainWindow", "Log Viewer", None, QtGui.QApplication.UnicodeUTF8))
+        self.actionLog_Viewer.setShortcut(QtGui.QApplication.translate("MainWindow", "Ctrl+L", None, QtGui.QApplication.UnicodeUTF8))
 
