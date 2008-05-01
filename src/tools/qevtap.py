@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 """QT Event Viewer for Peloton"""
-
+import sys
 from twisted.python import threadable
 threadable.init()
 
@@ -18,7 +18,9 @@ from peloton.profile import PelotonProfile
 
 from PyQt4 import QtCore
 from PyQt4 import QtGui
+import math
 import sys
+import time
 
 VERSION="0.1.0"
 EVENT_VIEWER, LOG_VIEWER = (0,1)
@@ -43,6 +45,9 @@ class ClosedownListener(pb.Referenceable):
 class MainWindow(QtGui.QMainWindow, Ui_MainWindow):
     def __init__(self):
         QtGui.QMainWindow.__init__(self)
+        # keyed on GUID this stores data about each host 
+        self.profiles= {}
+
         self.setupUi(self)
         self.connect(self.actionExit, QtCore.SIGNAL('triggered()'), self.exit)        
         self.connect(self.actionEvent_Viewer, QtCore.SIGNAL('triggered()'), self.setMode)
@@ -53,7 +58,8 @@ class MainWindow(QtGui.QMainWindow, Ui_MainWindow):
         self.sb.addPermanentWidget(self.sbLabel)
         self.connect(self.exchangeComboBox, QtCore.SIGNAL('currentIndexChanged()'), self.resetHandler)
         self.connect(self.messageKeyField, QtCore.SIGNAL('editingFinished()'), self.resetHandler)
-
+        
+        
     def resetHandler(self, *args):
         state.options.key = str(self.messageKeyField.text())
         state.options.exchange = str(self.exchangeComboBox.currentText())
@@ -92,10 +98,12 @@ class MainWindow(QtGui.QMainWindow, Ui_MainWindow):
 
     def foundProfile(self, profile):
         profile = eval(profile)
+        self.profiles[profile['guid']] = profile
         print("%s == %s:%s" % (profile['guid'],profile['hostname'], profile['port']))
         
     def loggerEventFired(self, msg, exchange, key, ctag):
-        state.iface.callRemote('getPSCProfile', msg['sender_guid']).addCallback(self.foundProfile).addErrback(lambda x: 0)
+        if not self.profiles.has_key(msg['sender_guid']):
+            state.iface.callRemote('getPSCProfile', msg['sender_guid']).addCallback(self.foundProfile).addErrback(lambda x: 0)
         if state.mode == LOG_VIEWER:
             self._displayLogEvent(msg, exchange, key, ctag)
         else:
@@ -123,7 +131,20 @@ class MainWindow(QtGui.QMainWindow, Ui_MainWindow):
         except:
             msg['__color'] = '000000'
         try:
-            self.logTextEdit.append("""<span style='color:#%(__color)s'>%(levelname)s : %(asctime)s : %(message)s</span><br/>""" % msg)
+            if self.profiles.has_key(msg['sender_guid']):
+                p = self.profiles[msg['sender_guid']]
+                host = p['hostname']
+                dix = host.find('.')
+                if dix > 0:
+                    host = host[:dix]
+                msg['__source'] = "%s:%s" % (host, p['port'])
+            else:
+                msg['__source'] = '???'
+            created = float(msg['created'])
+            t = time.localtime(created)
+            millis = int(math.modf(created)[0]*1000.0)
+            msg['time'] = "%s.%03d" % (time.strftime('%H:%M:%S', t), millis)
+            self.logTextEdit.append("""<span style='color:#%(__color)s'>%(time)s %(__source)s  : %(levelname)s [%(name)s] %(message)s</span><br/>""" % msg)
         except Exception, ex:
             print "Error: " + str(ex)
 
@@ -174,7 +195,8 @@ def loggedIn(iface):
 def setProfile(profile):
     state.profile = eval(profile)
     s = state.profile
-    state.mainWindow.sbLabel.setText('Connected to %s:%s (%s)' % (s['hostname'], s['port'], s['guid']))
+    state.mainWindow.profiles[s['guid']] = s
+    state.mainWindow.sbLabel.setText('Connected to %s:%s' % (s['hostname'], s['port']))
     state.closedownHandler = ClosedownListener()
     state.iface.callRemote('register', 'psc.presence', state.closedownHandler, 'domain_control')
 

@@ -98,6 +98,7 @@ used. Returns a PelotonClientAdapter"""
         return PelotonClientAdapter(self.kernel, clientObj)
 
 class PelotonInternodeAdapter(pb.Referenceable):
+    """ Used to call between PSCs. """
     def __init__(self, kernel, peerGUID):
         self.requestInterface = PelotonInternodeInterface(kernel)
         self.logger = kernel.logger
@@ -105,6 +106,7 @@ class PelotonInternodeAdapter(pb.Referenceable):
         self.kernel = kernel
         
     def remote_relayCall(self, service, method, *args, **kwargs):
+        """ Relay a method call between PSCs. """
         return self.requestInterface.public_relayCall(self.peerGUID, service, method, *args, **kwargs)
    
     def remote_getInterface(self, name):
@@ -112,6 +114,7 @@ class PelotonInternodeAdapter(pb.Referenceable):
         return self.kernel.getCallable(name)
     
 class PelotonClientAdapter(pb.Referenceable):
+    """ Referenceable used by client to call methods on the PSC. """
     def __init__(self, kernel, clientObj):
         self.dispatcher = kernel.dispatcher
         self.profile = kernel.profile
@@ -122,15 +125,21 @@ class PelotonClientAdapter(pb.Referenceable):
         self.eventHandlers=[]
         
     def remote_call(self, service, method, *args, **kwargs):
+        """ Make a call to the specified service.method and return the result."""
         return self.requestInterface.public_call(self.clientObj, 'raw', service, method, args, kwargs)
    
     def remote_post(self, service, method, *args, **kwargs):
+        """ Put a call on the call queue for later execution. Do not
+return result to client; this call will execute regardless of what the
+client does subsequently. """
         raise NotImplementedError
     
     def remote_postLater(self, delay_seconds, service, method, *args, **kwargs):
+        """ Post call onto the call queue after a delay of delay_seconds. """
         raise NotImplementedError
 
     def remote_postAt(self, dateTime, service, method, *args, **kwargs):
+        """ Post call onto the call queue at some future time. """
         raise NotImplementedError
     
     def remote_fireEvent(self, key, exchange='events', **kwargs):
@@ -138,11 +147,14 @@ class PelotonClientAdapter(pb.Referenceable):
         self.dispatcher.fireEvent(key, exchange, **kwargs)
     
     def remote_register(self, key, handler, exchange='events'):
+        """ Register to receive events with the given handler. Handler
+must be a Referenceable providing remote_eventReceived."""
         handler = RemoteEventHandler(handler)
         self.eventHandlers.append(handler)
         self.dispatcher.register(key, handler, exchange)
     
     def remote_deregister(self, handler):
+        """ De-register handler as a listener. """
         for h in self.eventHandlers:
             if h.remoteHandler == handler:
                 handler = h
@@ -181,6 +193,7 @@ class PelotonWorkerAdapter(pb.Referenceable):
         self.heartBeat = 0
         self.kernel = kernel
         self.pscRef = pscRef
+        self.eventHandlers = []
         
     def remote_notifyClosedown(self):
         """ Called when the worker is closing down. """
@@ -191,12 +204,28 @@ class PelotonWorkerAdapter(pb.Referenceable):
         self.kernel.dispatcher.fireEvent(key, exchange, **kwargs)
     
     def remote_register(self, key, handler, exchange='events'):
-        pass
+        """ Register to receive events with the given handler. Handler
+must be a Referenceable providing remote_eventReceived."""
+        handler = RemoteEventHandler(handler)
+        self.eventHandlers.append(handler)
+        self.kernel.dispatcher.register(key, handler, exchange)
     
     def remote_deregister(self, handler):
-        pass
+        """ De-register handler as a listener. """
+        for h in self.eventHandlers:
+            if h.remoteHandler == handler:
+                handler = h
+                break
+        else:
+            # no handler registered
+            self.logger.error("Attempt to de-register handler for event that is not registered.")
+            return
+
+        self.kernel.dispatcher.deregister(handler)
+        self.eventHandlers.remove(handler)
 
     def remote_heartBeat(self):
+        """ Called by the client to provide proof of life."""
         self.heartBeat = 0
 
     def checkBeat(self, threshold=5):
@@ -208,8 +237,10 @@ otherwise returns True. """
         return self.heartBeat <= threshold
 
     def remote_serviceStartOK(self, version):
+        """ Called to indicate safe start of service requested. """
         self.kernel.logger.info("Worker reports start OK for %s %s" % (self.name, version))
     
     def remote_serviceStartFailed(self, ex):
+        """ Called with exception if service failed to start. """
         self.kernel.logger.info("Worker reports start failed for %s : %s" % (self.name, ex))
     

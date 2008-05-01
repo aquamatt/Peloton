@@ -7,6 +7,22 @@ from peloton.svcdeco import *
 import time
 
 class TestService(PelotonService):
+    def start(self):
+        self.logger.info("Pelton test service is started. ")
+        self.register('testservice.test', self.eventTrap)
+        
+    def eventTrap(self, msg, exchange, key, ctag):
+        self.logger.info("Got message: %s" % msg['count'])
+        
+    def public_startCount(self):
+        """ Long-running call; sends 10 counts on the event bus. """
+        count = 5
+        while count:
+            self.fireEvent('testservice.test', 'events', count=count)
+            time.sleep(0.5)
+            count -= 1
+        return ("DONE")
+        
     def public_index(self):
         return "Hi! You've got the TestService!"
     

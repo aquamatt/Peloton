@@ -64,6 +64,7 @@ allow for other scenarios by passing the host through at this point.
         self.pscHost = pscHost
         self.pscPort = pscPort
         self.token = token
+        self.dispatcher = WorkerEventDispatcher(self)
     
     def start(self):
         """ Start this worker; returns an exit code when worker 
@@ -76,7 +77,7 @@ closes down. """
         """ Start the boot-strap process of connecting to the 
 master PSC,  starting the service and announcing ourselves ready to 
 rock. """
-     
+        
         self.kernelInterface = KernelInterface(self)
         factory = pb.PBClientFactory()
         try:
@@ -105,7 +106,9 @@ if not, let the PSC know we've failed and why, then initiate closedown. """
                             logdir=logdir,
                             logfile="worker_%s.log" % self.name,
                             logToConsole=False)
-
+        logging.setBusLogger(self)
+        self.logger = logging.getLogger()
+        
         # add any sevice directories to sys.path if not already there
         for sd in self.servicepath:
             if sd not in sys.path:
@@ -124,7 +127,7 @@ if not, let the PSC know we've failed and why, then initiate closedown. """
             self.pscReference.callRemote('serviceStartOK', self.__service.version)
         except Exception, ex:
             self.pscReference.callRemote('serviceStartFailed', str(ex))
-
+        self.logger.info("PWP Started for service %s " % self.name)
         reactor.callLater(3, self.heartBeat)
         
     def _clientConnectError(self, err):
@@ -165,7 +168,7 @@ Raises ServiceConfigurationError if the name is invalid.
         try:
             pqcn = "%s.%s.%s" % (self.name.lower(), self.name.lower(), self.name)
             cls = getClassFromString(pqcn)
-            self.__service = cls(self.name, self.gridMode)
+            self.__service = cls(self.name, self.gridMode, self.dispatcher, logging.getLogger(self.name))
             self.__service.initSupportServices()
             self.__service.loadConfig(self.servicepath)
         except Exception, ex:
@@ -218,4 +221,23 @@ is the means by which the kernel makes method requests etc."""
         """ Return the result of calling method(*args, **kwargs)
 on this service. """
         return self.worker.call(method, *args, **kwargs)
+    
+class WorkerEventDispatcher(object):
+    def __init__(self, worker):
+        self.worker = worker
+
+    def register(self, key, handler, exchange='events'):
+        self.worker.pscReference.callRemote('register', 
+                key, handler, exchange)
+
+    def deregister(self, handler):
+        self.worker.pscReference.callRemote('deregister', handler)
+    
+    def fireEvent(self, key, exchange='events', **kwargs):
+        self.worker.pscReference.callRemote('fireEvent', 
+                key, exchange, **kwargs)
+
+    def getRegisteredExchanges(self):
+        """Not relevent in this dispatcher. """
+        raise NotImplementedError()
     

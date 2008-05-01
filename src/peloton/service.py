@@ -3,6 +3,8 @@
 # Copyright (c) 2007-2008 ReThought Limited and Peloton Contributors
 # All Rights Reserved
 # See LICENSE for details
+from twisted.spread import pb
+from twisted.internet import reactor
 from peloton.utils.config import locateService
 from peloton.utils.config import findTemplateTargetsFor
 import peloton.utils.logging as logging
@@ -40,7 +42,7 @@ lower case) containing the class FooBar(PelotonService,...). Here FooBar retains
 it's original capitalisation and, indeed, it is a matter of convention
 that the service name should be camel case.            
 """
-    def __init__(self, name, gridmode):
+    def __init__(self, name, gridmode, dispatcher, logger):
         """ homePath passed in on construction because from this module
 cannot find where the concrete sub-class lives. Configurations are found relative to this
 homePath in homePath/config. 
@@ -49,6 +51,8 @@ If 'init'==True then initialise things like the logger. May wish to initialise
 with False if all we want is to load the config (as when launching a service)."""
         self.name = name
         self.gridmode = gridmode
+        self.dispatcher = dispatcher
+        self.logger = logger
 
     def initSupportServices(self):
         """ Start supporting services, such as the logger. Kept out of __init__
@@ -141,6 +145,40 @@ Can be used to setup database pools etc. Overide in actual services. """
 Can be used to cleanup database pools etc. Overide in actual services. """
         pass
     
+    def register(self, key, method, exchange='events', inThread=True):
+        """ Registers method (which must have signature msg, exchange,
+key, ctag) to be the target for events on exchange with key matching the 
+specified pattern. By default inThread is True which means the event
+handler will be called in a thread. If set False the event will be handled
+in the main event loop so care must be taken not to perform long-running
+operations in handlers that operate in this manner.
+
+The handler class is returned by this method; keeping a reference to it
+enables the service to de-register the handler subsequently."""
+        class ServiceMethodHandler(pb.Referenceable):
+            def __init__(self, handler, inThread=True):
+                self.handler = handler
+                self.inThread = inThread
+                
+            def remote_eventReceived(self, msg, exchange, key, ctag):
+                if self.inThread:
+                    reactor.callInThread(self.handler, msg, exchange, key, ctag)
+                else:
+                    self.handler(msg, exchange, key, ctag)
+
+        handler = ServiceMethodHandler(method, inThread)
+        reactor.callFromThread(self.dispatcher.register, key, handler, exchange)
+        return handler
+            
+    def deregister(self, handler):
+        """De-register this event handler. """
+        reactor.callFromThread(self.dispatcher.deregister,handler)
+            
+    def fireEvent(self, key, exchange='events', **kwargs):
+        """ Fire an event on the event bus. """
+        reactor.callFromThread(
+                self.dispatcher.fireEvent, key, exchange, **kwargs)
+            
     def public_index(self):
         """ Default index page for HTTP connections. """
         return "There is no index for this service!"

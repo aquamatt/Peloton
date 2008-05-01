@@ -70,6 +70,9 @@ matching rules; this is done with the matchKey method.
             raise ConfigurationError("Cannot connect pseudomq to port: %s" % port)
         
         self.exchanges={}
+        # initialise with the three key exchanges
+        for x in ['domain_control', 'events', 'logging']:
+            self.exchanges[x] = PseudoExchange(x)
         
     def start(self):
         if self.isServer:
@@ -133,7 +136,7 @@ server. """
                 self.eventFiringQueue.append((key, exchange, kwargs))
 
     def getRegisteredExchanges(self):
-        return [x.name for x in self.exchanges]
+        return self.exchanges.keys()
 
     def eventReceived(self, msg, exchange, key, ctag=''):
         """ Forward event received from server to locally registered

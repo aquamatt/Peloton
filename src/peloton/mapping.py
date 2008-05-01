@@ -62,7 +62,7 @@ the following steps:
         # 1. locate and load the profile
         pqcn = "%s.%s.%s" % (serviceName.lower(), serviceName.lower(), serviceName)
         cls = getClassFromString(pqcn, reload=True)
-        self.__service = cls(serviceName, self.kernel.config['grid.gridmode'])
+        self.__service = cls(serviceName, self.kernel.config['grid.gridmode'], None, None)
         self.__service.loadConfig(self.kernel.initOptions.servicepath)
         # 2. Start the sequencer
         ServiceLaunchSequencer(self.kernel, serviceName, self.__service.profile).start()

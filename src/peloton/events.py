@@ -199,7 +199,7 @@ This is the proxy for a remote handler. """
     def eventReceived(self, msg, exchange='', key='', ctag=''):
         self.remoteHandler.callRemote('eventReceived', msg, exchange, \
                                       key, ctag)
-        
+                
 from Queue import Queue        
 class QueueEventHandler(AbstractEventHandler, Queue):
     """Queue implementation that is a Peloton event handler;

@@ -73,12 +73,21 @@ class BusLogHandler(logging.Handler):
 
     def makeEvent(self, record):
         event={}
-        keys = ['asctime', 'filename', 'funcName', 'levelname', 
-                'lineno', 'message', 'module', 'name', 'pathname',  
+        keys = ['created', 'filename', 'funcName', 'levelname', 
+                'lineno', 'module', 'name', 'pathname',  
                 'process', 'threadName']
         for key in keys:
             event[key] = getattr(record, key)
-
+            
+        # sometimes record has key msg, others message... not
+        # sure why two versions of record exist. Same class 
+        # from same location (checked)
+        
+        if hasattr(record, 'message'):
+            event['message'] = record.message
+        else:
+            event['message'] = record.msg
+            
         return event
     
     def send(self, event):

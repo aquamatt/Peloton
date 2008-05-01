@@ -87,7 +87,7 @@ at an un-wholesome rate.
         self.channel = self.connection.channel(1)
         self.channel.channel_open()
         for x,t in exchanges:
-            self.channel.exchange_declare(exchange=x, type=t, auto_delete=True)
+            self.channel.exchange_declare(exchange=x, type=t, auto_delete=False)
             self.registeredExchanges.append(x)
             
     def stop(self):
