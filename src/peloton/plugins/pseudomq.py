@@ -324,7 +324,8 @@ class PseudoQueue(object):
         self.handlers = []
         
     def addHandler(self, handler):
-        self.handlers.append(handler)
+        if handler not in self.handlers:
+            self.handlers.append(handler)
         
     def removeHandler(self, handler):
         try:

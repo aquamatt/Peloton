@@ -5,6 +5,7 @@
 from peloton.service import PelotonService
 from peloton.svcdeco import *
 import time
+import os
 
 class TestService(PelotonService):
     def start(self):
@@ -12,7 +13,7 @@ class TestService(PelotonService):
         self.register('testservice.test', self.eventTrap)
         
     def eventTrap(self, msg, exchange, key, ctag):
-        self.logger.info("Got message: %s" % msg['count'])
+        self.logger.info("PID %d got message: %s" % (os.getpid(), msg['count']))
         
     def public_startCount(self):
         """ Long-running call; sends 10 counts on the event bus. """
@@ -31,7 +32,6 @@ class TestService(PelotonService):
         x=int(x)
         y=int(y)
         self.logger.info("Handling sum of %d and %d" % (x,y))
-#        print("Handling sum of %d and %d" % (x,y))
         return x+y
         
     def public_returnList(self, *args):
@@ -65,10 +65,10 @@ class TestService(PelotonService):
 # valueToDict automatically.
 #    @transform("xml", "valueToDict", "@template")
 #    @transform("html", "valueToDict", "@template")
-
+#
 # You can change mime type for a particular target output
 #    @mimeType('html','text/xhtml')
-
+#
 # And you can even add new target types for a method. So now,
 # as well as html, xml etc, you can also get the fakeml representation
 # of this method response.
