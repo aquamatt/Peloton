@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'evgui.ui'
 #
-# Created: Wed Apr 30 23:24:41 2008
+# Created: Fri May  2 15:56:45 2008
 #      by: PyQt4 UI code generator 4.3.3
 #
 # WARNING! All changes made in this file will be lost!

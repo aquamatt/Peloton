@@ -10,7 +10,7 @@ import os
 class TestService(PelotonService):
     def start(self):
         self.logger.info("Pelton test service is started. ")
-        self.register('testservice.test', self.eventTrap)
+        self.register('testservice.test', self.eventTrap, inThread=False)
         
     def eventTrap(self, msg, exchange, key, ctag):
         self.logger.info("PID %d got message: %s" % (os.getpid(), msg['count']))
