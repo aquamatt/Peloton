@@ -122,6 +122,17 @@ The method returns only when the reactor stops.
             self.profile.loadFromFile(self.initOptions.profile, 
                                       self.initOptions.configdirs)
 
+        # check for, and add if missing, parameters that help PSC work
+        # in a web container
+        if not self.profile.has_key('web'):
+            self.profile['web'] = {}
+        
+        webDict = self.profile['web']
+        if not webDict.has_key('webRoot'):
+            webDict['webRoot'] = ''
+        if not webDict.has_key('staticRoot'):
+            webDict['staticRoot'] = webDict['webRoot']
+
         # add flags from the command line to any flags that may be
         # in the profile from disk
         if self.profile.has_key('flags'):

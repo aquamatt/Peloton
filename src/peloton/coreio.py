@@ -68,7 +68,7 @@ or xml. """
                 txform = OutputTransform(profile['methods'][method]['properties'])
                 profile['methods'][method]['__outputTransform'] = txform
             
-            rv = txform.transform(target, rv)
+            rv = txform.transform(target, rv, {})
         d.callback(rv)
                 
     def __callError(self, err, proxy, d, sessionId, target, service, method, args, kwargs):
@@ -238,13 +238,13 @@ This adds the parantheses effectively.
             return "%s()" % method
         return method
 
-    def transform(self, target, value):
+    def transform(self, target, value, opts):
         """ Transform value through the transform chain for the specified
 target. """
         try:
             chain = self.transformChains[target]
             for fn in chain:
-                value = fn(value)
+                value = fn(value, opts)
             return value
         except KeyError:
             raise ServiceError("Invalid target (%s) to transform value %s" % (target, str(value)))

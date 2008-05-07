@@ -8,7 +8,8 @@ layer.
 
 Each method is a closure that must return a transform method, the 
 instance of the transform. 
-Each returned method take one argument, the data to transform, and output 
+Each returned method takes two arguments, the data to transform and a
+dictionary of additional data, and output 
 a single value, the transformed data. Optionally static arguments 
 may be passed in after the input data argument to control the transform
 """
@@ -28,7 +29,7 @@ def valueToDict():
 def stripKeys(*args):
     """ Data must be a dict; each arg is taken as a key which,
 if it exists in data, is removed. """
-    def _fn(data):
+    def _fn(data, opts):
         if not type(data) == types.DictType:
             return
         for k in args:
@@ -41,7 +42,7 @@ def upperKeys():
     """ A rather pointless transform, largely for testing purposes. 
 Transforms all keys in data (assuming it is a dictionary) to uppercase.
 """
-    def _fn(data):
+    def _fn(data, opts):
         if not type(data) == types.DictType:
             return
         for k,v in data.items():
@@ -53,7 +54,7 @@ Transforms all keys in data (assuming it is a dictionary) to uppercase.
 
 def string():
     """ Stringify output """
-    def _fn(data):
+    def _fn(data, opts):
         return str(data)
     return _fn
 
@@ -61,12 +62,12 @@ xmlFormatter = XMLFormatter()
 htmlFormatter = HTMLFormatter()
 
 def defaultXMLTransform():
-    def _fn(data):
+    def _fn(data, opts):
         return xmlFormatter.format(data)
     return _fn
 
 def defaultHTMLTransform():
-    def _fn(data):
+    def _fn(data, opts):
         return htmlFormatter.format(data)
     return _fn
 
@@ -85,7 +86,7 @@ class JSONFormatter(object):
 jsonFormatter = JSONFormatter()
 
 def jsonTransform():
-    def _fn(data):
+    def _fn(data, opts):
         return jsonFormatter.format(data)
     return _fn
 
@@ -130,7 +131,7 @@ in the DuckPond service one would reference::
         path=[]
     templateFile = "%s/%s" % ("/".join(path), file)
 
-    def _fn(data):
+    def _fn(data, opts):
         if not type(data) == types.DictType:
             data = _valueToDict(data)
         template = templateLoader.load(templateFile)

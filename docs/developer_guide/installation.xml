@@ -59,7 +59,7 @@
 							which is caught in another that tries to pass it  onto yet another deferred,
 							Twisted 8.0.1 raises an exception. The issue is with pb.py in the spread 
 							module and can be demonstrated with 
-							<filename>peloton/patches/test_patch_8_0_1.py<filename>. The same
+							<filename>peloton/patches/test_patch_8_0_1.py</filename>. The same
 							<filename>patches</filename> directory contains <filename>pb_r23300.py</filename>
 							which is the entirety of pb.py r23300 which resolves this issue (which 
 							was raised on Twisted Trac as issue 3174). Please use this file if installing

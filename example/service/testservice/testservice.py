@@ -47,11 +47,11 @@ class TestService(PelotonService):
                "@template")
     def public_returnMixed(self):
         return {'name': 
-                 {'first':'Matthew',
-                  'last' :'Pontefract'},
+                 {'first':'Jon',
+                  'last' :'Doe'},
                 'interests' : ['sailing', 'running', 'jam'],
-                'work' : [{'company':'RTL', 'position':'director'},
-                          {'company':'MPC', 'position':'Tower 5'}]
+                'work' : [{'company':'Big Balls', 'position':'bearings maker'},
+                          {'company':'Better Balls', 'position':'Junior inflator'}]
                 }
         
     def public_slowCall(self, x):
