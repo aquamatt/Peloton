@@ -22,8 +22,8 @@ from peloton.exceptions import PelotonError
 
 def valueToDict():
     """ Takes data and returns the dict {'d':data}. """
-    def _fn(data):
-        return {'d':data}
+    def _fn(data, opts={}):
+        return {'d':data, '_sys':opts}
     return _fn
 
 def stripKeys(*args):
@@ -134,6 +134,8 @@ in the DuckPond service one would reference::
     def _fn(data, opts):
         if not type(data) == types.DictType:
             data = _valueToDict(data)
+        else:
+            data['_sys'] = opts
         template = templateLoader.load(templateFile)
         return template.generate(**data).render()
     return _fn
