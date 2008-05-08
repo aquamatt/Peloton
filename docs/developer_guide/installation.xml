@@ -238,5 +238,31 @@
 			</table>
 	    </sect2>
     </sect1>
+	<sect1>
+		<title>Running behind Apache2</title>
+		<para>
+			We do not propose to describe in any depth the configuration of
+			Apache, a subject well covered across the web, but note that &peloton;
+			works well behind an Apache proxy; indeed it is recommended that &peloton;
+			never be exposed directly to the web if possible.
+		</para>
+		<para>
+			Both <code>mod_proxy</code> and <code>mod_rewrite</code> can be used
+			to re-direct calls into Peloton. <code>mod_rewrite</code> is particularly
+			useful for trapping requests to <code>/static</code> such that they
+			are delivered by Apache itself rather than by Peloton via the proxy (this
+			is faster).
+		</para>
+		<sect2>
+			<title>Debian/Ubuntu</title>
+			<para>
+				Ubuntu and Debian are popular platforms in the linux world and have
+				the relevant Apache modules ready to use. However, the <filename>proxy.conf</filename>
+				file is configured to <code>Deny from all</code> thus ensuring that
+				error 403 (forbidden) is returned when you start your proxy. Set this to
+				<code>Allow from all</code> to resolve this issue.
+			</para>
+		</sect2>
+	</sect1>
 </article>
 
