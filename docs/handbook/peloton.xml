@@ -3,7 +3,10 @@
             "http://www.oasis-open.org/docbook/xml/4.3/docbookx.dtd"
             [
             <!ENTITY peloton "Peloton">
+        <!ENTITY abstract SYSTEM "peloton_abstract.xml">
+        <!ENTITY overview SYSTEM "peloton_overview.xml">
         <!ENTITY env SYSTEM "peloton_env.xml">
+        <!ENTITY configuration SYSTEM "peloton_configuration.xml">
         <!ENTITY quickstart SYSTEM "peloton_quickstart.xml">
         <!ENTITY transforms SYSTEM "peloton_transforms.xml">
 	    ]>
@@ -32,26 +35,14 @@
 			$Id$
 		</releaseinfo>
 		<abstract>
-			<para>
-				The
-				&peloton;
-				service provision framework is presented with
-				instructions for programmers wishing to make use of its
-				services and event mechanisms.
-			</para>
+			&abstract;
 		</abstract>
 	</articleinfo>
 
-	<sect1 id='components'>
-		<title>
-			&peloton;: an overview
-		</title>
-		<para>
-		</para>
-	</sect1>
-
 <!-- THE CHAPTERS -->
+&overview;
 &env;
+&configuration;
 &quickstart;
 &transforms;
 <!-- END OF DOC   -->

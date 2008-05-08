@@ -1,0 +1,14 @@
+<!--
+# $Id: peloton.xml 31 2008-02-26 10:23:10Z as $
+#
+# Copyright (c) 2007-2008 ReThought Limited and Peloton Contributors
+# All Rights Reserved
+# See LICENSE for details
+-->
+<para>
+	The
+	&peloton;
+	service provision framework is presented with
+	instructions for programmers wishing to make use of its
+	services and event mechanisms.
+</para>
