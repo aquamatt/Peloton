@@ -75,3 +75,16 @@ contact this node on. As a result, something like this is handy."""
     except:
         ip = socket.gethostbyname(socket.gethostname())
     return ip
+
+def deCompound(l):
+    """ Takes l which is likely from configuration parsing and will be 
+a list of strings, some of which may be comma delimited. Expands the 
+comma delimited lists and returns a single, separated list. Thus, 
+a list transforms as follows::
+    
+    ["a", "b", "c,d,e", "f"] --> ["a","b","c","d","e","f"]
+"""
+    out = []
+    for i in l:
+        out.extend(i.split(','))
+    return out

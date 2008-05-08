@@ -8,6 +8,7 @@
 from unittest import TestCase
 from peloton.utils import chop
 from peloton.utils import getClassFromString
+from peloton.utils import deCompound
 
 class Test_littleUtils(TestCase):
     def setUp(self):
@@ -35,3 +36,13 @@ class Test_littleUtils(TestCase):
         from peloton.kernel import PelotonKernel as MatchClass
         self.assertEquals(cls, MatchClass)
         self.assertRaises(Exception, getClassFromString, 'peloton.kernel.Bogus')
+
+    def test_deCompound(self):
+        master = ['a','b','c','d','e','f']
+        testa = ['a','b','c,d,e','f']
+        testb = ['a','b,c','d,e','f']
+        testc = ['a','b','c','d','e','f']
+
+        for i in [testa, testb, testc]:
+            self.assertEquals(deCompound(i), master)
+            

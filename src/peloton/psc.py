@@ -41,6 +41,7 @@ from peloton.psc_platform import makeDaemon
 
 from peloton.kernel import PelotonKernel
 from peloton.utils.config import PelotonConfig
+from peloton.utils import deCompound
 
 def start(options, args):
     """ Start a PSC. By default the first step is to daemonise, either by 
@@ -124,12 +125,15 @@ such directories with multiple instances of this option [default: %default]""",
                       help="""Directory to which log files should be written. By setting this argument
 the logging-to-file system will be enabled.""")
     parser.add_option("--disable",
-                      help="""Comma delimited list of plugins to prevent starting even if configuration has them enabled""")
+                      help="""Comma delimited list of plugins to prevent starting even if configuration has them enabled""",
+                      action="append")
     parser.add_option("--enable",
-                      help="""Comma delimited list of plugins to start even if configuration has them disabled""")
+                      help="""Comma delimited list of plugins to start even if configuration has them disabled""",
+                      action="append")
     
     parser.add_option("--flags",
-                      help="""Comma delimited list of flags to add to this PSC.""")
+                      help="""Comma delimited list of flags to add to this PSC.""",
+                      action="append")
     
     
     options, args = parser.parse_args()
@@ -142,17 +146,23 @@ the logging-to-file system will be enabled.""")
         if sd not in sys.path:
             sys.path.append(sd)
 
+
+    # enable, disable and flags are all 'append' types, but allow
+    # comma delimited entries as well so we need to turn the list of
+    # n potentially compound entries into a single list
+    
     if options.enable:
-        options.enable = options.enable.split(',')
+        options.enable = deCompound(options.enable)
     else:
         options.enable=[]
+        
     if options.disable:
-        options.disable = options.disable.split(',')
+        options.disable = deCompound(options.disable)
     else:
         options.disable=[]
 
     if options.flags:
-        options.flags = options.flags.split(',')
+        options.flags = deCompound(options.flags)
     else:
         options.flags=[]
 
