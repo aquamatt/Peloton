@@ -1,0 +1,81 @@
+<!--
+# $Id: peloton.xml 31 2008-02-26 10:23:10Z as $
+#
+# Copyright (c) 2007-2008 ReThought Limited and Peloton Contributors
+# All Rights Reserved
+# See LICENSE for details
+-->
+<sect1>
+	<title>Overview</title>
+	<para>
+		&peloton; is a distributed, failure-tolerant, 
+		service platform that permits the rapid development and 
+		deployment of services to a grid of machines. Clients
+		may interact with the &peloton; grid by calling methods using
+		a variety of protocols, from traditional remote procedure calls 
+		(RPC) to HTTP requests. Though specificaly <emphasis>not</emphasis>
+		designed to be a web application server, &peloton; is able to 
+		deliver web pages when required and the way in which it does this
+		makes it very suitable for use in Web 2.0-type applications that 
+		use AJAX.
+	</para>
+	<para>
+		Taking some of those adjectives in turn, what do they mean when applied
+		to &peloton;?
+	</para>
+	<para>
+		<emphasis>"Distributed"</emphasis> : Many &peloton; nodes (or processes)
+		spread across one or more machines link together to form a 'mesh'. Thus
+		processing is distrubted across a number of machines in a network. In 
+		a larger corporation &peloton; meshes may themselves be distributed across
+		multiple sites. A single mesh on a single network is, in &peloton; speak, 
+		called a <emphasis>domain</emphasis>. A collection of domains is termed
+		a <emphasis>grid</emphasis>.
+	</para>
+	<para>
+		<emphasis>"Failure-tolerant"</emphasis> : why tolerant and not resistant?
+		Well, &peloton; is designed around the assumption that things break. Code
+		has bugs; operating systems can crash; disks, fans, power supplies... all
+		can fail; network and power cables can be pulled out of a machine. For any
+		number of reasons, including bugs in the application itself, things can break
+		so nodes will occasionaly fall off the mesh. 
+	</para>
+	<para>
+		To accomodate this, the &peloton; domain will generaly run one service on more
+		than one node on more than one host. Should one node or its host fail, the 
+		requests to that service will be routed to the alternatives. Should a failure
+		occur as a request is being processed, requests will be re-issued by
+		the mesh. The client should never know there was a problem and should see
+		no more than a slight delay in receiving the response.
+	</para>
+	<para>
+		Thus &peloton; is not resistant to failure, rather it accepts that failures
+		do and will occur and is tolerant of this.
+	</para>
+	<para>
+		<emphasis>"Serivce"</emphasis> : SOA and services are buzz words in vogue to
+		describe a somewhat simple concept. Clients ask questions of a server and get
+		a response. The question is in the form of some kind of function call to which
+		arguments are passed, and the response is data. In &peloton; speak, a service
+		is a class that provides a number of methods that the &peloton; system publishes
+		via any and all the protocols it knows about.
+	</para>
+	<para>
+		SOA is just another client-server model. It is likely slower than remote object
+		models of CORBA, ICE and indeed Twisted Spread (upon which &peloton; is built)
+		but it provides a nice de-coupled, straight forward way of delivering 
+		server features to a wide range of clients with minimal fuss. &peloton; and SOA
+		will not solve every problem, but it works very nicely in many areas. 
+	</para>
+	<para>
+		&peloton;'s overiding ambition is to ensure the service programer is left
+		to write code that does a job with no concern for how the requests and responses
+		are obtained from and passed to the client, nor of how that data is transformed
+		and used. &peloton; is about extremely fast time to publication: business
+		analyst has an idea, writes the code, pushes it to the grid and within minutes
+		all his colleagues are using it. By leveraging the strenghts of Python it is
+		hoped that more people will be drawn into this manageable, versionable, 
+		controlable and scalable world away from the unmanageable rampant undergrowth
+		that is, for example, VBA coding in Excel.
+	</para>
+</sect1>
