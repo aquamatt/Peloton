@@ -8,6 +8,58 @@
 <sect1>
 	<title>Configuration</title>
 	<para>
-		
+		There are three groups of configuration files in the &peloton; system:
 	</para>
+	<itemizedlist>
+		<listitem>
+			<para>
+				Configuration of the "grid", the collection of &peloton;
+				domains that may span many networks.
+			</para>
+		</listitem>
+		<listitem>
+			<para>
+				Configuration of the "domain", a group of nodes collectively
+				forming a closely connected mesh on a single network.
+			</para>
+		</listitem>
+		<listitem>
+			<para>
+				Configuration of individual services.
+			</para>
+		</listitem>
+	</itemizedlist>
+	<para>
+		Each configuration group consists of a collection of configurations,
+		generally a common configuration and then a number of overiding or additional
+		configuration files that are invoked based on runtime settings such as 
+		the grid's 'gridmode' (which is a value such as 'test', 'UAT', 'prod', etc.).
+	</para>
+	<para>
+		Services may be started with an additional run-time configuration file
+		that changes the way it works. For example, a service providing web output
+		may have a runtime configuration that re-assigns the location of the 'resource'
+		folder. Thus more than one instance of the same service could be run with
+		different run-time names pointing to different resource folders to support
+		different websites, for example.
+	</para>
+	<para>
+		Due to the confusion that could arise with so many configuration files
+		required to get a grid, domain and service running, the layout of configuration
+		folders and the names of files within is strictly regulated as follows:
+	</para>
+	<informalfigure>
+		<programlisting>    
+        $ROOT/grid.pcfg
+             /domain.pcfg    &lt;----- COMMON DOMAIN CONFIG
+             /psc.pcfg       &lt;----- COMMON PSC CONFIG
+             /domain/&lt;name>/common.pcfg
+                            &lt;gridmode>.pcfg
+                            ...
+             /domain/&lt;name>/psc/common.pcfg
+                                &lt;gridmode&gt;.pcfg
+                                ...
+		</programlisting>
+	</informalfigure>
+	
 </sect1>

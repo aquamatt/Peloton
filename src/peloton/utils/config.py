@@ -108,7 +108,6 @@ than would be ideal.
         if not self.configdirs:
             raise ConfigurationError("No valid configuration directories found!")
         
-        self.gridName = cmdLineOpts.grid
         self.domainName = cmdLineOpts.domain
         self.__parsers = {}
         self.runtimeOpts = cmdLineOpts
@@ -141,20 +140,43 @@ There are three levels of configuration:
     be read. Values read in subsquent files will overide those in previously read
     files. New values will be added to the configuration.
     
+    Under each configuration root the directories are structured as follows::
+    
+        $ROOT/grid.pcfg
+             /domain.pcfg    <----- COMMON DOMAIN CONFIG
+             /psc.pcfg       <----- COMMON PSC CONFIG
+             /domain/<name>/common.pcfg
+                            <gridmode>.pcfg
+                            ...
+             /domain/<name>/psc/common.pcfg
+                                <gridmode>.pcfg
+                                ...
+    
+    Beneath a given configuration root configuration files for many domains are found (one for each 
+    gridmode) and for many PSCs (again one per gridmode) but these are only for a single grid.
+    To describe another grid, a complete new set of configuration directories are made.
+    
     If there are two configuration directories: /etc/peloton and /usr/local/share/peloton
     and, the domain short name is 'foo' and the gridmode is 'uat', configuration 
-    files will be sought and read in the following order::
-            
-        /etc/peloton/foo_domain.pcfg
-        /etc/peloton/foo_uat_domain.pcfg
-        /usr/local/share/peloton/foo_domain.pcfg
-        /usr/local/share/peloton/foo_uat_domain.pcfg
+    files will be sought and read in the following order for the domain::
+        
+        # config common to all domains
+        /etc/peloton/domain.pcfg
+        /usr/local/share/peloton/domain.pcfg
+        /etc/peloton/psc.pcfg
+        /usr/local/share/peloton/psc.pcfg
+        # config for specific domains
+        /etc/peloton/domain/foo/common.pcfg
+        /etc/peloton/domain/foo/uat.pcfg
+        /usr/local/share/peloton/domain/foo/common.pcfg
+        /usr/local/share/peloton/domain/foo/uat.pcfg
                 
     - PSC level: This defines properties of the PSC. Configuration files are named
-        psc.pcfg and psc_<gridmode>.pcfg with the search order being the same as for 
-        domains. By grouping different behaviour into config files in different directories
+        common.pcfg and <gridmode>.pcfg with the search order being the same as for 
+        domains and the files stored in the folder as shown above. By grouping different 
+        behaviour into config files in different root directories
         you can switch in properties by adding directories to the search path. So if you 
-        had a configuration that switched on debug logging you could add that to a psc.pcfg
+        had a configuration that switched on debug logging you could add that to a psc pcfg file
         in /path/to/debug, for example.
     
 Only files matching the pattern '*.pcfg' will be loaded.
@@ -177,48 +199,46 @@ less privileged component) with::
 
     del pc['psc']    # remove the psc configuration
     del pc['domain'] # remove the domain configuration
-    
-@todo: Fix the directory sorting: sort() is fine but will no doubt allow for error
-to be introduced. Re-jig naming conventions I think.
 """
-        configFiles = [[os.sep.join([i,j]) for j in os.listdir(i) if fnmatch(j, "*.pcfg") ] for i in self.configdirs]
-        # sorting ensures that within a directory, files are processed in
-        # sort order.
-        configFiles[0].sort()
-        def aext(a,b):
-            b.sort()
-            a.extend(b)
-            return a
-        configFiles = reduce(aext, configFiles)
-        
-        # First load the grid configuration file
-        for cf in configFiles:
-            fn = cf.split(os.sep)[-1]
-            if fn == "%s.pcfg" % self.gridName:
-                self.__parsers['grid'] = PelotonConfigObj(cf)
-                break
-        else:
-            raise ConfigurationError("Could no find grid config file: %s.pcfg" % self.gridName)
+        def loadParsers(section, files):
+            for cf in files:
+                pco = PelotonConfigObj(cf)
+    
+                if self.__parsers.has_key(section):
+                    self.__parsers[section].merge(pco)
+                else:
+                    self.__parsers[section] = pco
+
+        # First load the grid configuration files
+        configFiles = [j for j in 
+                            ["%s/grid.pcfg"%i for i in self.configdirs]
+                           if (os.path.exists(j) and os.path.isfile(j))]
+        loadParsers('grid', configFiles)
 
         if not self.__parsers['grid']['gridmode']:
             raise ConfigurationError("gridmode is not assigned in the grid configuration file %s" % cf)
-
-        # Now load all domain config files
-        domainConfigs = [p for p in configFiles 
-                         if (p.split(os.sep)[-1]=="%s_domain.pcfg" % self.domainName)
-                             or p.split(os.sep)[-1]=="%s_%s_domain.pcfg" % (self.domainName, self.__parsers['grid']['gridmode'])]
+         
+        gridMode = self.__parsers['grid']['gridmode']
         
-        self.__parsers['domain'] = PelotonConfigObj(domainConfigs[0])
-        for conf in domainConfigs[1:]:
-            self.__parsers['domain'].merge(PelotonConfigObj(conf))
-
+        # Now load all domain config files
+        configFiles = [k for k in 
+                       ["%s/domain.pcfg" % i for i in self.configdirs]
+                      if (os.path.exists(k) and os.path.isfile(k))]
+        configFilesb = [k for k in 
+                       ["%s/domain/%s/%s.pcfg" % (i,self.domainName,j) for i in self.configdirs for j in ['common', gridMode]]
+                      if (os.path.exists(k) and os.path.isfile(k))]
+        configFiles.extend(configFilesb)
+        loadParsers('domain', configFiles)
+        
         # Now load all PSC config files
-        pscConfigs = [p for p in configFiles 
-                         if (p.split(os.sep)[-1]=="psc.pcfg")
-                             or p.split(os.sep)[-1]=="psc_%s.pcfg" % (self.__parsers['grid']['gridmode'])]
-        self.__parsers['psc'] = PelotonConfigObj(pscConfigs[0])
-        for conf in pscConfigs[1:]:
-            self.__parsers['psc'].merge(PelotonConfigObj(conf))
+        configFiles = [k for k in 
+                       ["%s/psc.pcfg" % i for i in self.configdirs]
+                      if (os.path.exists(k) and os.path.isfile(k))]
+        configFilesb = [k for k in 
+                       ["%s/domain/%s/psc/%s.pcfg" % (i,self.domainName,j) for i in self.configdirs for j in ['common', gridMode]]
+                      if (os.path.exists(k) and os.path.isfile(k))]
+        configFiles.extend(configFilesb)
+        loadParsers('psc', configFiles)
 
         # apply overrides
         for k,override in PelotonConfig.__CONFIG_OVERRIDES__.items():

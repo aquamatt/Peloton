@@ -87,9 +87,9 @@ def main():
                       dest="configdirs",
                       default=[peloton.getPlatformDefaultDir('config')])
     
-    parser.add_option("-g", "--grid",
-                      help="""Short name for the grid to join [default: %default]""",
-                      default="peligrid")
+#    parser.add_option("-g", "--grid",
+#                      help="""Short name for the grid to join [default: %default]""",
+#                      default="peligrid")
     
     parser.add_option("-d", "--domain",
                       help="""Short name for the domain to join [default: %default]""",

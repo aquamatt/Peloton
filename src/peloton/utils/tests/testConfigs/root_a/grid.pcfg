@@ -1,0 +1,17 @@
+# grid config
+  name=Megabank Peloton site
+  gridmode=test
+  
+  # absolute or relative path to location of
+  # license file
+  licenseFile=mp.license
+   
+  #options are any or registered
+  domainRegistrationPolicy=any
+
+  # absolute or relative to location of this config
+  keyfile=grid.key
+
+  # all domains in a site must use the same message bus
+  messagingAdapter=peloton.messaging.rabbitmq
+
