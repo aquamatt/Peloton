@@ -110,7 +110,7 @@ HTTP based adapters)."""
                     kwargs[k] = v
 
             try:
-                profile = self.kernel.serviceLibrary.getLastProfile(service)
+                profile, _ = self.kernel.serviceLibrary.getLastProfile(service)
                 mimeType = profile['methods'][method]['properties']['mimetype.%s'%target]
             except:
                 try:

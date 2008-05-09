@@ -320,7 +320,7 @@ The number of workers is determined from the profile but can be overridden with
 numWorkers if set.
 """
         tok = crypto.makeCookie(20)
-        profile = self.serviceLibrary.getProfile(serviceName, version, launchTime)
+        profile, _ = self.serviceLibrary.getProfile(serviceName, version, launchTime)
         if numWorkers == None:
             numWorkers = int( profile.getpath('launch.workersperpsc') )
         self.serviceLaunchTokens[tok] = [serviceName, version, launchTime, numWorkers, 0]

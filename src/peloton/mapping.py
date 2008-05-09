@@ -213,13 +213,19 @@ requirements of the service have been met."""
 class ServiceLibrary(PelotonConfigObj):
     """ Extension of PelotonProfile to be a service library with
 handy utility methods. """
+    def __init__(self, *args, **kwargs):
+        PelotonConfigObj.__init__(self, *args, **kwargs)
+        self.__transformCache = {}
+        
     def setProfile(self, name, version, launchTime, profile):
         """ Sets the profile into the tree. Version will have dots which
 need converting to underscore otherwise the tree will have branches
 for each of major, minor and patch number. This would be OK but I think
 it will be more convenient to have version stored at one level in its
 entirety."""
+        outputTransforms = {}
         self.setpath("lastversion.%s" % name, profile)
+        self.__transformCache["lastversion.%s" % name] = outputTransforms
         version = version.replace('.','_')
         
         # evaluate some of the stringified entries
@@ -227,17 +233,23 @@ entirety."""
             profile['methods'][method]['properties'] = \
                 eval(profile['methods'][method]['properties'])
 
-        self.setpath("%s.%s.%s" % (name, version, str(launchTime)), profile)
-
+        self.setpath("%s.%s.%s" % 
+                     (name, version, str(launchTime)), profile)
+        self.__transformCache["%s.%s.%s" % (name, version, str(launchTime))] = outputTransforms
+        
     def getLastProfile(self, name):
-        return self.getpath("lastversion.%s" % name)
+        """ Return latest version of this profile and any computed 
+output transforms as a tupple of (profile, transforms). """
+        transforms = self.__transformCache["lastversion.%s" % name]
+        return self.getpath("lastversion.%s" % name), transforms
 
     def getProfile(self, name, version, launchTime=None):
-        """ Return the specified profile; if launchTime is not specified
-return the last one entered. """
+        """ Return the specified profile and output transforms dict; if 
+launchTime is not specified return the last one entered. """
         version = version.replace('.','_')
+        transforms = "%s.%s.%s" % (name, version, str(launchTime))
         if launchTime:
-            return self.getpath("%s.%s.%s" % (name, version, str(launchTime)))
+            return self.getpath("%s.%s.%s" % (name, version, str(launchTime))), transforms
         else:
             times = self.getpath("%s.%s"%(name, version))
             lts = times.keys()

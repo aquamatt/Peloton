@@ -61,12 +61,12 @@ or xml. """
 
     def __callResponse(self, rv, target, service, method, d):
         if not target == 'raw':
-            profile = self.__kernel__.serviceLibrary.getLastProfile(service)
+            profile, transforms = self.__kernel__.serviceLibrary.getLastProfile(service)
             try:
-                txform = profile['methods'][method]['__outputTransform']
+                txform = transforms[method]
             except KeyError:
                 txform = OutputTransform(profile['methods'][method]['properties'])
-                profile['methods'][method]['__outputTransform'] = txform
+                transforms[method] = txform
             
             rv = txform.transform(target, rv, {})
         d.callback(rv)
