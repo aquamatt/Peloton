@@ -295,9 +295,9 @@ hooks into the reactor. It is passed the entire config stack
         for adapter in self.adapters.values():
             adapter.stop()
 
-    def launchService(self, serviceName):
+    def launchService(self, serviceName, runconfig=None):
         """ Initiate the process of launching a service. """
-        self.serviceLoader.launchService(serviceName)
+        self.serviceLoader.launchService(serviceName, runconfig)
 
     def stopService(self, serviceName):
         """ Signal the gride to stop the named service on this domain. """

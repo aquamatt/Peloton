@@ -51,7 +51,7 @@ a worker (or workers) to startup via the kernel.
         self.callBackChannel = 'psc.service.loader.%s%s' % (kernel.guid, crypto.makeCookie(10))
         self.dispatcher.register(self.callBackChannel, self, 'domain_control')
         
-    def launchService(self, serviceName):
+    def launchService(self, serviceName, runconfig=None):
         """ Start the process of launching a service which will require
 the following steps:
     
@@ -63,7 +63,7 @@ the following steps:
         pqcn = "%s.%s.%s" % (serviceName.lower(), serviceName.lower(), serviceName)
         cls = getClassFromString(pqcn, reload=True)
         self.__service = cls(serviceName, self.kernel.config['grid.gridmode'], None, None)
-        self.__service.loadConfig(self.kernel.initOptions.servicepath)
+        self.__service.loadConfig(self.kernel.initOptions.servicepath, runconfig)
         # 2. Start the sequencer
         ServiceLaunchSequencer(self.kernel, serviceName, self.__service.profile).start()
 

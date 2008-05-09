@@ -59,7 +59,7 @@ with False if all we want is to load the config (as when launching a service).""
 so that we can instantiate very lightly (as required by the launch sequencer.)"""
         self.logger = logging.getLogger(self.name)
         
-    def loadConfig(self, servicePath):
+    def loadConfig(self, servicePath, runconfig=None):
         """ Load service configuration file and then augment with details
 of all the methods in this service classed as 'public'. 
 
@@ -69,9 +69,14 @@ to, for example. HTML and XML output keys if none has been specified, standard
 templates are sought out on the filesystem and attached if required and
 the @template keyword is substituted for in the transform chain.
 
+runconfig is the name of a run-time configuration file specified at the time of launching
+(either relative to the service config dir or an absolute path). This can specify
+many things including, for example, the name under which to publish this service
+and the location of the resource folder.
+
 Developers should not use the logger here: loadConfig should be useable prior
 to initSupportServices having been called."""
-        servicePath, self.profile = locateService(self.name, servicePath, self.gridmode)
+        servicePath, self.profile = locateService(self.name, servicePath, self.gridmode, runconfig=runconfig)
 
         publicMethods = [m for m in dir(self) if m.startswith('public_') and callable(getattr(self, m))]
         

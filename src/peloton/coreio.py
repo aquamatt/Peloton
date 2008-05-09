@@ -200,8 +200,8 @@ for use in such tools."""
     def public_showProfile(self):
         return self.__kernel__.profile
     
-    def public_start(self, serviceName):
-        self.__kernel__.launchService(serviceName)
+    def public_start(self, serviceName, runconfig=None):
+        self.__kernel__.launchService(serviceName, runconfig)
     
     def public_stop(self, serviceName):
         self.__kernel__.stopService(serviceName)

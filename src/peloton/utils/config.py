@@ -302,7 +302,7 @@ that whole configuration. """
         
 from peloton.exceptions import ServiceNotFoundError    
 import peloton.profile
-def locateService(serviceName, servicePath, gridMode='test', returnProfile=True):
+def locateService(serviceName, servicePath, gridMode='test', returnProfile=True, runconfig=None):
     """ Searches for the service named serviceName in the service path
 and loads the profile. Returns (serviceDirectory, profile) unless 
 returnProfile is False in which case (serviceDirectory, None) returned.
@@ -325,12 +325,12 @@ Raises ServiceNotFoundError if the service is not found (surprise)."""
     
     servicePath = locations[0]
     if returnProfile:
-        serviceProfile = loadServiceProfile(servicePath, gridMode)
+        serviceProfile = loadServiceProfile(servicePath, gridMode, runconfig)
     else:
         serviceProfile = None
     return (servicePath, serviceProfile)
 
-def loadServiceProfile(servicePath, gridMode):
+def loadServiceProfile(servicePath, gridMode, runconfig=None):
     """Return the profile for this service"""
     configDir = os.sep.join([servicePath, 'config'])
     serviceProfile = peloton.profile.PelotonProfile()
@@ -340,6 +340,12 @@ def loadServiceProfile(servicePath, gridMode):
     except ConfigurationError:
         # if there is no gridmode-specific config that's no big deal.
         pass
+    if runconfig:
+        if runconfig[0]=="/":
+            serviceProfile.loadFromFile(runconfig)
+        else:
+            serviceProfile.loadFromFile("%s/%s" % (configDir, runconfig))
+            
     return serviceProfile
 
 def findTemplateTargetsFor(servicePath, serviceName, method):
