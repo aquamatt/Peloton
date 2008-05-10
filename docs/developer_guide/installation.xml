@@ -302,7 +302,7 @@
 		<para>
 			If you're still here, the following should get you going just about.
 		</para>
-		<itemizedlist>
+		<orderedlist>
 			<listitem>
 				<para>
 					Install all the dependencies listed in this document.
@@ -325,7 +325,7 @@
 				<para>
 					Add the following to your PYTHONPATH:
 				</para>
-				<orderedlist>
+				<itemizedlist>
 					<listitem>
 						<para>
 							<filename>$PYTHON/peloton/src</filename>
@@ -341,7 +341,7 @@
 							<filename>$PYTHON/peloton/lib</filename>
 						</para>
 					</listitem>
-				</orderedlist>
+				</itemizedlist>
 			</listitem>
 			<listitem>
 				<para>
@@ -361,7 +361,7 @@
 					<programlisting>
 > cd $PELOTON/src/peloton
 > python psc.py -c $PELOTON/example/config -s $PELOTON/example/service \
-						--nodetach --loglevel=debug --flags=BAMBI
+    --nodetach --loglevel=debug --flags=BAMBI
 					</programlisting>
 				</informalexample>
 				<para>
@@ -372,12 +372,12 @@
 					run <filename>psc.py</filename> with the <code>-h</code>
 					argument.
 				</para>
-			</listitem>
 				<para>
 					Now the PSC is listening to web-based protocol requests
 					on port 8080, Twisted RPC request on 9100 and SSH console
 					requests on 9110.
 				</para>
+			</listitem>
 			<listitem>
 				<para>
 					Let's start a service. Open a new console and run:
@@ -428,9 +428,9 @@
 					<programlisting>
 > cd $PELOTON/src/peloton
 > python psc.py -c $PELOTON/example/config -s $PELOTON/example/service \
-						--nodetach --loglevel=debug --flags=BAMBI
-						--disable=shell # ONLY IF ANOTHER PSC IS RUNNING
-						--anyport       # ONLY IF ANOTHER PSC IS RUNNING
+    --nodetach --loglevel=debug --flags=BAMBI
+    --disable=shell # ONLY IF ANOTHER PSC IS RUNNING
+    --anyport       # ONLY IF ANOTHER PSC IS RUNNING
 					</programlisting>
 				</informalexample>
 			</listitem>
@@ -463,7 +463,7 @@
 					start the service from the console with <code>start('MyService')</code>.
 				</para>
 			</listitem>
-		</itemizedlist>
+		</orderedlist>
 		<para>
 			These are extraordinarily brief instructions but hopefuly the very keen
 			will find them useful pending complete documentation.
