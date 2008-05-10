@@ -65,24 +65,43 @@
 							was raised on Twisted Trac as issue 3174). Please use this file if installing
 							from the 8.0.1 tarball.
 						</para>
-	             </listitem>
-	             <listitem>
-                       <para>
-                           Client-side libraries for AMQP. &peloton; has chosen to use the
-                           <classname>py-amqplib</classname> library obtained from <ulink url='http://barryp.org/software/py-amqplib/'/>
-                            and announced on <ulink url='http://www.nabble.com/Alternative-Python-AMQP-client-library-td14139740.html'>this page</ulink>.
-                       </para>
-	             </listitem>
+				 </listitem>
 				 <listitem>
-					<para>
-						Unzip and copy the <filename>python/qpid</filename> directory into the Python path (potentially your <filename>site-packages</filename> 
-						directory).
-					</para>
-					<para>
-						Now, in the directory to which you copied <filename>qpid</filename> make a directory called <filename>amqp_specs</filename>
-						into which you must place the spec file downloaded from <ulink url='https://jira.amqp.org/confluence/download/attachments/720900/amqp0-8.xml'>here</ulink>.
-					</para>
-				 </listitem>						
+					 <para>
+						 <filename>ZopeInterface</filename> is a requirement of Twisted; if you've installed from
+						 the above Twisted tarball you'll need to get the latest Zope interface egg from: 
+						 <ulink url='http://www.zope.org/Products/ZopeInterface'/>.
+					 </para>
+				 </listitem>
+					<listitem>
+						<para> Client-side libraries for AMQP. There are few choices in
+							this domain at the moment, but the AMQP spec is compelling and
+							has a growing backing of heavy-weight sponsors and good
+							implementations. Pending the development of a Twisted AMQP
+							protocol suite (which is on the todo list for this project) the
+							Apache QPID Python libraries are used. Installation requires
+							a manual step to install the AMQP specification files; curiously
+							the spec that comes with the download is not the correct version.
+							Install as follows: </para>
+						<itemizedlist>
+							<listitem>
+								<para> Download and install the Python QPID library (tar file is
+									<ulink url='http://archive.apache.org/dist/incubator/qpid/M2-incubating/Python/qpid-1.0-incubating-M2-python-src.tar.gz'/>.
+								</para>
+							</listitem>
+							<listitem>
+								<para> Now, in the directory to which 
+									<filename>qpid</filename> was installed make a directory
+									called <filename>amqp_specs</filename> into
+									which you must place the spec file downloaded from
+										<ulink
+										url='https://jira.amqp.org/confluence/download/attachments/720900/amqp0-8.xml'>
+									here</ulink>. Thus if you have <filename>.../site-packages/qpid/</filename>
+									you must now also have <filename>.../site-packages/amqp_specs</filename>, for example.
+								</para>
+							</listitem>
+						</itemizedlist>
+					</listitem>
 				 <listitem>
 					 <para>
 						 Genshi is the templating library used for XML and HTML output and it is a
@@ -93,7 +112,7 @@
 				 <listitem>
 					 <para>
 						 PySQLite - the Python library for working with SQLlite which is used by the <code>Backpack</code>
-						 storage module. Naturally this also requires SQLite be installed.
+						 storage module.
 					 </para>
 				 </listitem>
 				<listitem>
@@ -186,6 +205,14 @@
 						<entry>MIT</entry>
                     </row>
                     <row>
+                        <entry>Zope Interface</entry>
+                        <entry>3.3</entry>
+                        <entry>P</entry>
+                        <entry>&tick;</entry>
+                        <entry>Zope Interface library</entry>
+						<entry>ZPL</entry>
+                    </row>
+                    <row>
                         <entry>RabbitMQ</entry>
                         <entry>1.2.0</entry>
                         <entry>A</entry>
@@ -263,6 +290,184 @@
 				<code>Allow from all</code> to resolve this issue.
 			</para>
 		</sect2>
+	</sect1>
+	<sect1>
+		<title>The bleedin' edge developer's super-quick start guide</title>
+		<para>
+			If you're not a bleedin' edge developer looking to hack and explore and
+			risk getting lost, move on and wait for the complete release of this
+			code which will include friendly documentation and more utility
+			scripts to get you up and running with little effort.
+		</para>
+		<para>
+			If you're still here, the following should get you going just about.
+		</para>
+		<itemizedlist>
+			<listitem>
+				<para>
+					Install all the dependencies listed in this document.
+				</para>
+			</listitem>
+			<listitem>
+				<para>
+					Checkout the trunk to a location we will hence forth refer to
+					as <filename>$PELOTON</filename>.
+				</para>
+			</listitem>
+			<listitem>
+				<para>
+					If using RabbitMQ, initialise by running the bash script
+					<filename>$PYTHON/bin/initrabbitmq</filename> which creates
+					some users, vhosts, realms and permissions.
+				</para>
+			</listitem>
+			<listitem>
+				<para>
+					Add the following to your PYTHONPATH:
+				</para>
+				<orderedlist>
+					<listitem>
+						<para>
+							<filename>$PYTHON/peloton/src</filename>
+						</para>
+					</listitem>
+					<listitem>
+						<para>
+							<filename>$PYTHON/peloton/src/thirdparty</filename>
+						</para>
+					</listitem>
+					<listitem>
+						<para>
+							<filename>$PYTHON/peloton/lib</filename>
+						</para>
+					</listitem>
+				</orderedlist>
+			</listitem>
+			<listitem>
+				<para>
+					We will now start one Peloton Service Controler (PSC). Many
+					PSCs form a domain and each PSC will start workers that actually
+					run services. This PSC will use configuration files in the 
+					<filename>$PELOTON/example/config</filename> directory and 
+					set a single service path pointing to <filename>$PELOTON/example/service</filename>
+					which contains the <filename>TestService</filename>. <code>TestService</code>
+					contains a few methods that demonstrate various points and provides a
+					handy place to put little test code of your own.
+				</para>
+				<para>
+					Start as follows:
+				</para>
+				<informalexample>
+					<programlisting>
+> cd $PELOTON/src/peloton
+> python psc.py -c $PELOTON/example/config -s $PELOTON/example/service \
+						--nodetach --loglevel=debug --flags=BAMBI
+					</programlisting>
+				</informalexample>
+				<para>
+					The arguments are self-explanatory except for the flags; the 
+					test service we will start in a moment will only start on nodes
+					with the BAMBI flag set (for demonstration purposes). 
+					For further arguments
+					run <filename>psc.py</filename> with the <code>-h</code>
+					argument.
+				</para>
+			</listitem>
+				<para>
+					Now the PSC is listening to web-based protocol requests
+					on port 8080, Twisted RPC request on 9100 and SSH console
+					requests on 9110.
+				</para>
+			<listitem>
+				<para>
+					Let's start a service. Open a new console and run:
+				</para>
+				<informalexample>
+					<programlisting>
+> ssh -l admin -p 9110 localhost
+ [ password is 'admin' ]
+>>> start('TestService')											
+					</programlisting>
+				</informalexample>
+				<para>
+					You will see log output scroll up the PSC console and the service
+					will start.
+				</para>
+			</listitem>
+			<listitem>
+				<para>
+					Now in the <filename>$PELOTON/example/service/testservice/scripts</filename>
+					folder you will find two scripts to test the service (all are noddy and
+					have the hostname to which to connect hard coded at the top of the file).
+				</para>
+				<para>
+					<filename>pecho.py</filename> takes one argument which is sent to the echo
+					method on <code>TestService</code> and returned to be displayed.
+				</para>
+				<para>
+					<filename>testpclient.py</filename> takes no arguments and makes n calls
+					to the <code>sumint</code> method where n is defined at the head of the
+					code. This can be used to test performance and to demonstrate robustness in
+					the face of failing nodes.
+				</para>
+			</listitem>
+			<listitem>
+				<para>
+					Now let's start another node. This is very alpha pre-release so some more
+					args required to get over things which will become automagical. You may
+					want to start this PSC on another host; if doing so you'll need to make sure
+					the <code>messagingHost</code> is set to the IP address of your messaging
+					host in <filename>$PELOTON/example/config/grid.pcfg</filename>.
+				</para>
+				<para>
+					Start the second and subsequent PSCs as follows (the extra
+					flags only required if this is the second PSC on a given host
+					otherwise you may use the same incantation as before):
+				</para>
+				<informalexample>
+					<programlisting>
+> cd $PELOTON/src/peloton
+> python psc.py -c $PELOTON/example/config -s $PELOTON/example/service \
+						--nodetach --loglevel=debug --flags=BAMBI
+						--disable=shell # ONLY IF ANOTHER PSC IS RUNNING
+						--anyport       # ONLY IF ANOTHER PSC IS RUNNING
+					</programlisting>
+				</informalexample>
+			</listitem>
+			<listitem>
+				<para>
+					Now from the SSH console you can again issue a
+					<code>start('TestService') </code> and you will see
+					the service start on all nodes that have the BAMBI flag set.
+					Experiment with starting some nodes with no BAMBI flag. You can
+					invert the behaviour by changing the service's configuration file
+					(exercise for the reader).
+				</para>
+			</listitem>
+			<listitem>
+				<para>
+					Finally, to create a new service all of your very own you
+					can use the handy <filename>newservice.py</filename> tool
+					found in <filename>$PELOTON/src/tools/</filename>. Change
+					to <filename>$PELOTON/example/service</filename> and run:
+				</para>
+				<informalexample>
+					<programlisting>
+> ../../src/tools/newservice.py -s MyService
+					</programlisting>
+				</informalexample>
+				<para>
+					A new directory called <filename>myservice</filename> is made
+					and populated with an empty service. Simply edit 
+					<filename>myservice.py</filename> to get started. You can immediately
+					start the service from the console with <code>start('MyService')</code>.
+				</para>
+			</listitem>
+		</itemizedlist>
+		<para>
+			These are extraordinarily brief instructions but hopefuly the very keen
+			will find them useful pending complete documentation.
+		</para>
 	</sect1>
 </article>
 
