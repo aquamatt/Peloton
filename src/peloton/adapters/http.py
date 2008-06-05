@@ -15,9 +15,7 @@ from peloton.coreio import PelotonRequestInterface
 from peloton.utils.config import locateService
 from peloton.exceptions import ServiceError
 
-from cStringIO import StringIO
 import os
-import types
 
 binaryFileMimeTypes = {'.png':'image/PNG','.jpg':'image/JPEG',
        '.jpeg':'image/JPEG','.gif':'image/GIF','.bmp':'image/BMP',
@@ -41,6 +39,7 @@ resources and session tracking is used. But... well...
     def __init__(self, kernel):
         AbstractPelotonAdapter.__init__(self, kernel, 'HTTP Adapter')
         resource.Resource.__init__(self)
+        self.logger = kernel.logger
         self.requestInterface = PelotonRequestInterface(kernel)
         self.xmlrpcHandler = PelotonXMLRPCHandler(kernel)
 
@@ -48,7 +47,7 @@ resources and session tracking is used. But... well...
         from peloton.utils.transforms import template
         source=os.path.split(__file__)[0].split(os.sep)
         source.extend(['templates','request_info.html.genshi'])
-        self.infoTemplate = template("/".join(source))
+        self.infoTemplate = template({}, "/".join(source))
         
     def start(self, configuration, options):
         """ Implement to initialise the adapter based on the 
@@ -74,10 +73,10 @@ HTTP based adapters)."""
             return self.xmlrpcHandler._resource.render(request)
         
         elif request.postpath and request.postpath[0] == "static":
-            servicePath, _ = locateService(request.postpath[1], 
-                                           self.kernel.initOptions.servicepath, 
-                                           returnProfile = False)
-            self.deliverStaticContent(servicePath+'/resource', request.postpath[2:], request)
+            profile = \
+                self.kernel.serviceLibrary.getLastProfile(request.postpath[1])[0]
+            resourceRoot = profile['resourceRoot']
+            self.deliverStaticContent(resourceRoot, request.postpath[2:], request)
             
         elif request.postpath and request.postpath[0] == "inspect":
             resp = self.infoTemplate({'rq':request})

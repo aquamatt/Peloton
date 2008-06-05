@@ -135,14 +135,14 @@ class Test_templateTools(TestCase):
 
     def test_findTemplateTargetsFor(self):
         cwd = os.getcwd()
-        templates = findTemplateTargetsFor(cwd, 'MyService', 'm1')
+        templates = findTemplateTargetsFor(cwd+'/resource','MyService', 'm1')
         self.assertEquals(len(templates), 3)
         targets = [i[0] for i in templates]
         self.assertTrue('xml' in targets)
         self.assertTrue('html' in targets)
         self.assertTrue('rss' in targets)
 
-        templates = findTemplateTargetsFor(cwd, 'MyService', 'm2')
+        templates = findTemplateTargetsFor(cwd+'/resource', 'MyService', 'm2')
         targets = [i[0] for i in templates]
         self.assertEquals(len(templates), 2)
         self.assertTrue('xml' in targets)

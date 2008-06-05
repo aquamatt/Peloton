@@ -299,32 +299,43 @@ hooks into the reactor. It is passed the entire config stack
         """ Initiate the process of launching a service. """
         self.serviceLoader.launchService(serviceName, runconfig)
 
-    def stopService(self, serviceName):
-        """ Signal the gride to stop the named service on this domain. """
-        self.domainManager.sendCommand('SERVICE_SHUTDOWN', serviceName=serviceName)
+    def stopService(self, publishedName):
+        """ Signal the grid to stop the named service on this domain. """
+        profile, _ = self.serviceLibrary.getLastProfile(publishedName)
+        serviceName = profile['name']
+        self.logger.debug("Instructed to stop %s (%s)" % (serviceName, publishedName))
+        self.domainManager.sendCommand('SERVICE_SHUTDOWN', serviceName=serviceName, 
+                                       publishedName=publishedName)
     
-    def _stopService(self, serviceName):
+    def _stopService(self, publishedName):
         """ Stop all workers running the named service. """
-        self.logger.info("Stopping service: %s" % serviceName)
+        self.logger.info("Stopping service: %s" % publishedName)
         try:
-            providers = self.workerStore[serviceName]
+            providers = self.workerStore[publishedName]
             providers.closeAll()
-            del(self.workerStore[serviceName])
+            del(self.workerStore[publishedName])
         except KeyError:
             # not running this service 
             pass
 
-    def startService(self, serviceName, version, launchTime, numWorkers=None):
+    def startService(self, serviceName, publishedName, version, launchTime, numWorkers=None):
         """ Instruct start of worker processes running service named serviceName. 
 The number of workers is determined from the profile but can be overridden with 
 numWorkers if set.
 """
         tok = crypto.makeCookie(20)
-        profile, _ = self.serviceLibrary.getProfile(serviceName, version, launchTime)
+        profile, _ = self.serviceLibrary.getProfile(publishedName, version, launchTime)
         if numWorkers == None:
             numWorkers = int( profile.getpath('launch.workersperpsc') )
-        self.serviceLaunchTokens[tok] = [serviceName, version, launchTime, numWorkers, 0]
-        d = deferToThread(self._startWorkerProcess, numWorkers, tok)
+            
+        self.serviceLaunchTokens[tok] = [serviceName, 
+                                         version, 
+                                         launchTime, 
+                                         profile,
+                                         0] # last int is number started
+        d = deferToThread(self._startWorkerProcess, 
+                          numWorkers, 
+                          tok)
         d.addCallback(self._workerStarted, serviceName)
         
     def _startWorkerProcess(self, numWorkers, token):
@@ -351,13 +362,15 @@ Returns the name of the service referenced by this token"""
             raise WorkerError("Invalid start request.")
 
         launchRecord[-1]+=1
-        serviceName, version, launchTime = launchRecord[:3]
-        if not self.workerStore.has_key(serviceName):
-            self.workerStore[serviceName] = ServiceProvider(self, serviceName)
-        self.workerStore[serviceName].addProvider(ref, version, launchTime)
-        if launchRecord[-1] == launchRecord[-2]:
+        serviceName, version, launchTime, profile = launchRecord[:4]
+        publishedName = profile['publishedName']
+        runtimeConfig = profile['_sysRunConfig']
+        if not self.workerStore.has_key(publishedName):
+            self.workerStore[publishedName] = ServiceProvider(self, publishedName)
+        self.workerStore[publishedName].addProvider(ref, version, launchTime)
+        if launchRecord[-1] == int( profile.getpath('launch.workersperpsc') ):
             del self.serviceLaunchTokens[token]
-        return serviceName
+        return serviceName, publishedName, runtimeConfig
     
     def removeWorker(self, ref):
         """ Remove the worker referenced from the worker store. """
@@ -466,7 +479,7 @@ his own commands.
             reactor.callLater(0.01, self.kernel.closedown)
             
         if command['command'] == 'SERVICE_SHUTDOWN':
-            reactor.callLater(0.01, self.kernel._stopService, command['serviceName'])
+            reactor.callLater(0.01, self.kernel._stopService, command['publishedName'])
         
         elif command['command'] == 'NOOP':
             self.kernel.logger.debug("NOOP Called on domain_control")

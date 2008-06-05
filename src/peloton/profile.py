@@ -177,6 +177,7 @@ profile.
         if type(_file) == StringType:
             filesToSearch = [_file]
             filesToSearch.extend([os.sep.join(i, _file) for i in configDirs])
+            filesToSearch = [os.path.abspath(i) for i in filesToSearch]
             
             for f in filesToSearch:
                 if os.path.exists(f) and os.path.isfile(f):

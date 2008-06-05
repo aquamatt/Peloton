@@ -81,16 +81,21 @@ referenceable and a token. The token was passed to the worker
 generator and is used simply to verify that this is indeed a valid
 and wanted contact."""
         self.logger.info("Starting worker, token=%s NOT VALIDATED" % token)        
-        serviceName = self.kernel.addWorker(worker, token)
+        serviceName, publishedName, runtimeConfig = self.kernel.addWorker(worker, token)
         pwa = PelotonWorkerAdapter(self, serviceName, self.kernel)
         worker.checkBeat = pwa.checkBeat
         
-        return (pwa,
-                serviceName,
-                self.kernel.initOptions.loglevel,
-                self.kernel.initOptions.logdir,
-                self.kernel.initOptions.servicepath,
-                self.kernel.config['grid.gridmode'])
+        workerInfo = { 'pwa' : pwa,
+                      'serviceName' : serviceName,
+                      'publishedName' : publishedName,
+                      'runtimeConfig' : runtimeConfig,
+                      'loglevel' : self.kernel.initOptions.loglevel,
+                      'logdir' : self.kernel.initOptions.logdir,
+                      'servicePath' : self.kernel.initOptions.servicepath,
+                      'gridMode' : self.kernel.config['grid.gridmode'],
+                      }
+        
+        return workerInfo
     
     def remote_login(self, clientObj):
         """ Login to Peloton. The clientObj contains the credentials to be

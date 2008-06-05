@@ -38,6 +38,7 @@
 		has bugs; operating systems can crash; disks, fans, power supplies... all
 		can fail; network and power cables can be pulled out of a machine. For any
 		number of reasons, including bugs in the application itself, things can break
+		 - thus the system is not resistant to failure - 
 		so nodes will occasionaly fall off the mesh. 
 	</para>
 	<para>
@@ -46,11 +47,8 @@
 		requests to that service will be routed to the alternatives. Should a failure
 		occur as a request is being processed, requests will be re-issued by
 		the mesh. The client should never know there was a problem and should see
-		no more than a slight delay in receiving the response.
-	</para>
-	<para>
-		Thus &peloton; is not resistant to failure, rather it accepts that failures
-		do and will occur and is tolerant of this.
+		no more than a slight delay in receiving the response. The system is thus tollerant
+		of failure.
 	</para>
 	<para>
 		<emphasis>"Serivce"</emphasis> : SOA and services are buzz words in vogue to
@@ -73,7 +71,7 @@
 		are obtained from and passed to the client, nor of how that data is transformed
 		and used. &peloton; is about extremely fast time to publication: business
 		analyst has an idea, writes the code, pushes it to the grid and within minutes
-		all his colleagues are using it. By leveraging the strenghts of Python it is
+		all his colleagues are using it. By leveraging the strengths of Python it is
 		hoped that more people will be drawn into this manageable, versionable, 
 		controlable and scalable world away from the unmanageable rampant undergrowth
 		that is, for example, VBA coding in Excel.

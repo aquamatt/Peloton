@@ -24,7 +24,7 @@ class Test_Transforms(TestCase):
         
     def test_stripKeys(self):
         data = {'a':1, 'b':2, 'c':3, 'd':4}
-        stripKeys('b', 'c')(data, {})
+        stripKeys({}, 'b', 'c')(data, {})
         self.assertEquals(len(data), 2)
         self.assertTrue(data.has_key('a'))
         self.assertTrue(data.has_key('d'))

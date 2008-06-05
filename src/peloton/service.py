@@ -31,11 +31,11 @@ follows, where the service is called FooBar::
                               /<gridmode>_profile.pcfg
                        /foobar.py
                        /<supporting code>
-                       /resource/... to be defined later ...
+                       /resource/...
 
-Note that nomenclature is relatively simple; the service directory must be called
-the same as the service shortname (when lowercased). The configuration files 
-are named 'common.pcfg', 'test.pcfg' etc.
+Note that nomenclature is relatively simple; the service directory must be 
+named the same as the service shortname (when lowercased). The configuration
+files are named 'common.pcfg', 'test.pcfg' etc.
 
 The service directory must contain at the very least a file called foobar.py (note
 lower case) containing the class FooBar(PelotonService,...). Here FooBar retains
@@ -46,9 +46,7 @@ that the service name should be camel case.
         """ homePath passed in on construction because from this module
 cannot find where the concrete sub-class lives. Configurations are found relative to this
 homePath in homePath/config. 
-
-If 'init'==True then initialise things like the logger. May wish to initialise
-with False if all we want is to load the config (as when launching a service)."""
+"""
         self.name = name
         self.gridmode = gridmode
         self.dispatcher = dispatcher
@@ -65,8 +63,8 @@ of all the methods in this service classed as 'public'.
 
 In doing this the attributes assigned by any decorators on the public methods
 are checked out, especially the transform chain. Defaults are assigned
-to, for example. HTML and XML output keys if none has been specified, standard
-templates are sought out on the filesystem and attached if required and
+to, for example, HTML and XML output keys if none has been specified. Standard
+templates are sought out on the filesystem and attached where found and
 the @template keyword is substituted for in the transform chain.
 
 runconfig is the name of a run-time configuration file specified at the time of launching
@@ -77,6 +75,9 @@ and the location of the resource folder.
 Developers should not use the logger here: loadConfig should be useable prior
 to initSupportServices having been called."""
         servicePath, self.profile = locateService(self.name, servicePath, self.gridmode, runconfig=runconfig)
+        self.profile['_sysRunConfig'] = runconfig
+        if not self.profile.has_key('publishedName'):
+            self.profile['publishedName'] = self.name
 
         publicMethods = [m for m in dir(self) if m.startswith('public_') and callable(getattr(self, m))]
         
@@ -87,8 +88,8 @@ to initSupportServices having been called."""
         for nme in publicMethods:
             mthd = getattr(self, nme)
             shortname = nme[7:]
-            
-            templateTargets = findTemplateTargetsFor(servicePath, self.name, shortname)
+
+            templateTargets = findTemplateTargetsFor(self.profile['resourceRoot'], self.name, shortname)
             if hasattr(mthd, "_PELOTON_METHOD_PROPS"):
                 properties = mthd._PELOTON_METHOD_PROPS
             else:

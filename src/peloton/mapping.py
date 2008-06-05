@@ -73,12 +73,11 @@ by another node. """
         if msg['action'] == 'requestForLaunch':
             msg['serviceProfile'] = eval(msg['serviceProfile'])
             # store service profile in the library
-            self.kernel.serviceLibrary.setProfile(msg['serviceName'],
-                                                  msg['serviceProfile']['version'],
+            self.kernel.serviceLibrary.setProfile(msg['serviceProfile']['version'],
                                                   msg['launchTime'],
                                                   msg['serviceProfile'])
             
-            self.logger.debug("Request to consider ability to launch service: %s (%s)" % (msg['serviceProfile']['name'], msg['serviceProfile']['version']))
+            self.logger.debug("Request to consider ability to launch service: %s (%s) as %s" % (msg['serviceProfile']['name'], msg['serviceProfile']['version'], msg['serviceProfile']['publishedName']))
             if self.spComparator.eq(msg['serviceProfile']['psclimits'], self.kernel.profile, optimistic=True):
                 self.logger.debug("Profile OK - optimistic")
                 self.dispatcher.fireEvent(msg['callback'],
@@ -92,8 +91,8 @@ by another node. """
                                           action='SERVICE_PSC_NOMATCH')
                 
         elif msg['action'] == 'startService':
-            self.logger.debug("Instructed to start service %s" % (msg['serviceName']))
-            self.kernel.startService(msg['serviceName'], msg['version'], msg['launchTime'])
+            self.logger.debug("Instructed to start service %s as %s" % (msg['serviceName'], msg['publishedName']))
+            self.kernel.startService(msg['serviceName'],msg['publishedName'], msg['version'], msg['launchTime'])
 
 class ServiceLaunchSequencer(AbstractEventHandler):
     """ State object used to keep track of a particular request to launch 
@@ -121,6 +120,7 @@ in psc.service.loader.<key>. Both in the domain_control exchange.
         self.logger = kernel.logger
         self.dispatcher = kernel.dispatcher
         self.serviceName = serviceName
+        self.publishedName = profile['publishedName']
         self.profile = profile
         # launchTime is tagged to the service version in all the
         # node's routing tables so as to be able to differentiate
@@ -180,7 +180,9 @@ launch sequencer. Type of message is indicated by msg['action'] value. """
                 
         elif key == 'psc.service.notification':
             # event fired when a service has been started up
-            if msg['serviceName'] == self.serviceName and msg['state'] == 'running':
+            if msg['serviceName'] == self.serviceName and \
+                msg['state'] == 'running' and \
+                msg['publishedName'] == self.publishedName:
                 self.logger.debug("Launch sequencer notified of service start: %s - %s " % (self.serviceName, msg['token']))
                 self.launchPending -= 1
                 self.workersRequired -= 1
@@ -198,6 +200,7 @@ a service."""
                                       action='startService',
                                       launchTime=self.launchTime,
                                       serviceName=self.serviceName,
+                                      publishedName=self.publishedName,
                                       version=self.profile['version'])
         
         if self.workersRequired == self.launchPending == 0:
@@ -206,7 +209,7 @@ a service."""
     def done(self):
         """ Close up the private callback channel; we're done. Called once the launch
 requirements of the service have been met."""
-        self.logger.info("Service %s successfuly launched. " % self.serviceName)
+        self.logger.info("Service %s successfuly launched. " % self.publishedName)
         self.dispatcher.deregister(self)
         
 
@@ -217,15 +220,17 @@ handy utility methods. """
         PelotonConfigObj.__init__(self, *args, **kwargs)
         self.__transformCache = {}
         
-    def setProfile(self, name, version, launchTime, profile):
+    def setProfile(self, version, launchTime, profile):
         """ Sets the profile into the tree. Version will have dots which
 need converting to underscore otherwise the tree will have branches
 for each of major, minor and patch number. This would be OK but I think
 it will be more convenient to have version stored at one level in its
-entirety."""
+entirety.
+"""
         outputTransforms = {}
-        self.setpath("lastversion.%s" % name, profile)
-        self.__transformCache["lastversion.%s" % name] = outputTransforms
+        self.setpath("lastversion.%s" % (profile['publishedName']), profile)
+        self.__transformCache["lastversion.%s" % profile['publishedName']] = outputTransforms
+        self.__transformCache["lastversion.%s" % profile['publishedName']] = outputTransforms
         version = version.replace('.','_')
         
         # evaluate some of the stringified entries
@@ -234,24 +239,24 @@ entirety."""
                 eval(profile['methods'][method]['properties'])
 
         self.setpath("%s.%s.%s" % 
-                     (name, version, str(launchTime)), profile)
-        self.__transformCache["%s.%s.%s" % (name, version, str(launchTime))] = outputTransforms
+                     (profile['publishedName'], version, str(launchTime)), profile)
+        self.__transformCache["%s.%s.%s" % (profile['publishedName'], version, str(launchTime))] = outputTransforms
         
-    def getLastProfile(self, name):
+    def getLastProfile(self, publishedName):
         """ Return latest version of this profile and any computed 
 output transforms as a tupple of (profile, transforms). """
-        transforms = self.__transformCache["lastversion.%s" % name]
-        return self.getpath("lastversion.%s" % name), transforms
+        transforms = self.__transformCache["lastversion.%s" % publishedName]
+        return self.getpath("lastversion.%s" % publishedName), transforms
 
-    def getProfile(self, name, version, launchTime=None):
+    def getProfile(self, publishedName, version, launchTime=None):
         """ Return the specified profile and output transforms dict; if 
 launchTime is not specified return the last one entered. """
         version = version.replace('.','_')
-        transforms = "%s.%s.%s" % (name, version, str(launchTime))
+        transforms = "%s.%s.%s" % (publishedName, version, str(launchTime))
         if launchTime:
-            return self.getpath("%s.%s.%s" % (name, version, str(launchTime))), transforms
+            return self.getpath("%s.%s.%s" % (publishedName, version, str(launchTime))), transforms
         else:
-            times = self.getpath("%s.%s"%(name, version))
+            times = self.getpath("%s.%s"%(publishedName, version))
             lts = times.keys()
             lts.sort()
             return times[lts[-1]]
@@ -376,13 +381,13 @@ to this node on its private channel psc.<guid>.init"""
         """ Service notifications are sent out when a service is started.
 We need to update the routing table. """
         if msg['state'] == 'running':
-            self.logger.info("Service %s started on %s" % (msg['serviceName'], msg['sender_guid']))
-            self.addHandlerForService(msg['serviceName'], 
+            self.logger.info("Service %s started on %s" % (msg['publishedName'], msg['sender_guid']))
+            self.addHandlerForService(msg['publishedName'], 
                                       guid=msg['sender_guid'])
         elif msg['state'] == 'stopped':
-            self.removeHandlerForService(msg['serviceName'], 
+            self.removeHandlerForService(msg['publishedName'], 
                                          guid=msg['sender_guid'])
-            self.logger.info("Service %s stopped on %s" % (msg['serviceName'], msg['sender_guid']))
+            self.logger.info("Service %s stopped on %s" % (msg['publishedName'], msg['sender_guid']))
             
     
     def _getProxyForProfile(self, profile):
@@ -543,3 +548,4 @@ routing we insert the new entries into a random point in the list.
         """ Return a list only of service names. """
         return self.kernel.workerStore.keys()
     shortServiceList = property(_getShortServiceList)
+            

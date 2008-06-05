@@ -12,9 +12,7 @@ from peloton.exceptions import NoProvidersError
 from peloton.exceptions import DeadProxyError
 from peloton.exceptions import ServiceError
 from twisted.internet.defer import Deferred
-from twisted.spread import pb
 
-from types import StringType
 from cStringIO import StringIO
 
 class PelotonInterface(object):
@@ -65,10 +63,13 @@ or xml. """
             try:
                 txform = transforms[method]
             except KeyError:
-                txform = OutputTransform(profile['methods'][method]['properties'])
+                instanceInfo = {"resourceRoot" : profile["resourceRoot"],
+                                "publishedName" : profile["publishedName"]}
+                txform = OutputTransform(instanceInfo, profile['methods'][method]['properties'])
                 transforms[method] = txform
-            
-            rv = txform.transform(target, rv, {})
+
+            systemInfo = {'publishedName' : profile['publishedName']}
+            rv = txform.transform(target, rv, systemInfo)
         d.callback(rv)
                 
     def __callError(self, err, proxy, d, sessionId, target, service, method, args, kwargs):
@@ -205,10 +206,6 @@ for use in such tools."""
     
     def public_stop(self, serviceName):
         self.__kernel__.stopService(serviceName)
-    
-    def public_st(self):
-        " Start the test service "
-        self.__kernel__.launchService('TestService')
         
     def public_noop(self):
         self.__kernel__.domainManager.sendCommand('NOOP')
@@ -217,7 +214,7 @@ from peloton.utils.transforms import *
 class OutputTransform(object):
     """ Initialises, manages and processes the transformation
 of results from source to target. """
-    def __init__(self, methodProperties):
+    def __init__(self, overrideOpts, methodProperties):
         self.transformChains = {}
         # pull out all transforms, get instances 
         for k,v in methodProperties.items():
@@ -234,9 +231,13 @@ service. If no arguments are passed you may write this as, for example,
 
 This adds the parantheses effectively.
 """
-        if method.find("(") == -1:
-            return "%s()" % method
-        return method
+        ix = method.find("(")
+        if ix == -1:
+            return "%s(overrideOpts)" % method
+        else:
+            # insert '__opts' as first argument
+            ix+=1
+            return "%soverrideOpts, %s" % (method[:ix], method[ix:])
 
     def transform(self, target, value, opts):
         """ Transform value through the transform chain for the specified

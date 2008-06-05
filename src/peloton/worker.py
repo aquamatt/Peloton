@@ -96,14 +96,19 @@ were given to start with to validate our presence. """
         d.addCallback(self._pscOK)
         d.addErrback(self._clientConnectError)
 
-    def _pscOK(self, details):
+    def _pscOK(self, startupInfo):
         """ Now start the service. If OK, message the PSC accordingly;
 if not, let the PSC know we've failed and why, then initiate closedown. """
-        rref, self.name, loglevel, logdir, self.servicepath, self.gridMode = details
+
+        self.name = startupInfo['serviceName']
+        self.publishedName = startupInfo['publishedName']
+        self.servicepath = startupInfo['servicePath']
+        self.gridMode = startupInfo['gridMode']
+        
         logging.closeHandlers()
         logging.initLogging(rootLoggerName='WORKER: %s' % self.name, 
-                            logLevel=getattr(logging, loglevel),
-                            logdir=logdir,
+                            logLevel=getattr(logging, startupInfo['loglevel']),
+                            logdir=startupInfo['logdir'],
                             logfile="worker_%s.log" % self.name,
                             logToConsole=False)
         logging.setBusLogger(self)
@@ -114,14 +119,18 @@ if not, let the PSC know we've failed and why, then initiate closedown. """
             if sd not in sys.path:
                 sys.path.append(sd)
 
-        self.loadService()
-        self.pscReference = rref
+        self.loadService(startupInfo['runtimeConfig'])
+        try:
+            self.pscReference = startupInfo['pwa']
+        except Exception,ex:
+            self.logger.exception('[1]')
         try:
             self.startService()
             self.pscReference.callRemote('fireEvent', 
                                   'psc.service.notification',
                                   'domain_control',
                                   serviceName=self.name,
+                                  publishedName=self.publishedName,
                                   state='running',
                                   token=self.token)
             self.pscReference.callRemote('serviceStartOK', self.__service.version)
@@ -150,11 +159,13 @@ if not, let the PSC know we've failed and why, then initiate closedown. """
             reactor.callLater(3, self.heartBeat)
         except pb.DeadReferenceError, ex:
             self._heartBeatFailed(ex)
+        except Exception,ex:
+            self.logger.exception('[2]')
         
     def _heartBeatFailed(self, err):
         self.closedown()
         
-    def loadService(self):
+    def loadService(self, runtimeConfig = None):
         """ Loading a service happens as follows:
     - Load service class
     - Validate its signature cookie ???
@@ -170,7 +181,7 @@ Raises ServiceConfigurationError if the name is invalid.
             cls = getClassFromString(pqcn)
             self.__service = cls(self.name, self.gridMode, self.dispatcher, logging.getLogger(self.name))
             self.__service.initSupportServices()
-            self.__service.loadConfig(self.servicepath)
+            self.__service.loadConfig(self.servicepath, runtimeConfig)
         except Exception, ex:
             raise ServiceConfigurationError("Could not find class for service %s" % self.name, ex)
     
@@ -191,6 +202,7 @@ the service might require.
                                   'psc.service.notification',
                                   'domain_control',
                                   serviceName=self.name,
+                                  publishedName=self.publishedName,
                                   state='stopped',
                                   token=self.token)
             self.__service.stop()
@@ -227,17 +239,27 @@ class WorkerEventDispatcher(object):
         self.worker = worker
 
     def register(self, key, handler, exchange='events'):
-        self.worker.pscReference.callRemote('register', 
+        try:
+            self.worker.pscReference.callRemote('register', 
                 key, handler, exchange)
+        except Exception,ex:
+            print(ex)
 
     def deregister(self, handler):
-        self.worker.pscReference.callRemote('deregister', handler)
-    
+        try:
+            self.worker.pscReference.callRemote('deregister', handler)
+        except Exception,ex:
+            print(ex)
+
     def fireEvent(self, key, exchange='events', **kwargs):
-        self.worker.pscReference.callRemote('fireEvent', 
+        try:
+            self.worker.pscReference.callRemote('fireEvent', 
                 key, exchange, **kwargs)
+        except Exception,ex:
+            print("Error firing worker event (%s) %s: %s" % (str(ex), key, str(kwargs)))
 
     def getRegisteredExchanges(self):
         """Not relevent in this dispatcher. """
         raise NotImplementedError()
+    
     

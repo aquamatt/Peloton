@@ -334,6 +334,10 @@ def loadServiceProfile(servicePath, gridMode, runconfig=None):
     """Return the profile for this service"""
     configDir = os.sep.join([servicePath, 'config'])
     serviceProfile = peloton.profile.PelotonProfile()
+    # set some defaults that are needed throughout the system so that
+    # they do not need to be written into every configuration.
+    serviceProfile['resourceRoot'] = servicePath+'/resource'
+    
     serviceProfile.loadFromFile("%s/profile.pcfg" % configDir)
     try:
         serviceProfile.loadFromFile("%s/%s_profile.pcfg" % (configDir, gridMode))
@@ -345,15 +349,20 @@ def loadServiceProfile(servicePath, gridMode, runconfig=None):
             serviceProfile.loadFromFile(runconfig)
         else:
             serviceProfile.loadFromFile("%s/%s" % (configDir, runconfig))
-            
+    
+    # validate
+    logging.getLogger().warn("IMPLEMENT PROFILE VALIDATION")
+    # -- confirm that resource root is in a valid location (allows restrictions
+    #    to ensure that you can't accidentally publish /
+    
     return serviceProfile
 
-def findTemplateTargetsFor(servicePath, serviceName, method):
+def findTemplateTargetsFor(resourceRoot, serviceName, method):
     """ A template will automatically be found for service methods
 called over a given protocol if the file is placed in the right folder
 and named as follows::
 
-  <service path>/resource/templates/<serviceName>/<method>.<transform key>.genshi
+  $RESOURCEROOT/templates/<serviceName>/<method>.<transform key>.genshi
   
 So, for example, a template to make HTML for MyService.getUserNames when
 called over http might be as follows::
@@ -364,7 +373,8 @@ This method looks for all templates for a method and returns a list of
 transform targets for which templates exist.
 """
     try:
-        rootDir = "%s/resource/templates/%s" % (servicePath, serviceName)
+        rootDir = "%s/templates/%s" % (resourceRoot, serviceName)
+        rootDir = os.path.abspath(rootDir)
         files = [ (i[i.find('.')+1:-7], "%s/%s"%(rootDir,i)) for i in 
                  os.listdir(rootDir)
                  if fnmatchcase(i, "%s.*.genshi" % method)]
