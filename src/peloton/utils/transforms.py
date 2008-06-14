@@ -94,6 +94,23 @@ def jsonTransform(conf={}):
 from genshi.template import TemplateLoader
 templateLoader = TemplateLoader([])
 templateLoader.auto_reload = True
+
+try:
+    from django.template import Template, Context
+    import django.template.loader
+    os.environ["DJANGO_SETTINGS_MODULE"] = "__main__"
+    from django.conf import settings
+    settings.TEMPLATE_LOADERS = (
+    'django.template.loaders.filesystem.load_template_source',
+    'django.template.loaders.app_directories.load_template_source',
+#     'django.template.loaders.eggs.load_template_source',
+)
+    # list not tupple so that it can be appended to
+    settings.TEMPLATE_DIRS = []
+    DJANGO_ENABLED = True
+except:
+    DJANGO_ENABLED = False
+
 def _expand(conf, f):
     """ If f is ~ return the full path to it. If $NAME is found, substitute
 for the published name of the service."""
@@ -118,12 +135,17 @@ may be referenced as::
 If the path contains the published name of the service, this may be written as
 @NAME and will be substituted at runtime. Thus::
 
-  ~/templates/@NAME/foo.html.genshi 
+  ~/templates/@NAME/foo.html.genshi
   
 will translate, when run in a service published as AirforceOne, to::
 
   ~/templates/AirforceOne/foo.html.genshi
   
+Genshi is not the only fruit; if the Django libraries are on the python 
+path you may also use Django templating. A Django template is indicated
+by the suffix '.django', e.g::
+  
+  ~/templates/AirforceOne/foo.html.django
 """
     _valueToDict = valueToDict()
     # expand any ~ entries
@@ -132,13 +154,25 @@ will translate, when run in a service published as AirforceOne, to::
         path = [_expand(conf, i) for i in path.split('/')]
     except:
         path=[]
-    templateFile = os.path.abspath("%s/%s" % ("/".join(path), file))
-
+    path = os.path.abspath("/".join(path))
+    templateFile = "%s/%s" % (path, file)
+    if DJANGO_ENABLED and path not in settings.TEMPLATE_DIRS:
+        settings.TEMPLATE_DIRS.append(path)
+        
     def _fn(data, opts):
         if not type(data) == types.DictType:
             data = _valueToDict(data)
         data['_sys'] = opts
         data['_sys']['templateFile'] = templateFile
-        template = templateLoader.load(templateFile)
-        return template.generate(**data).render()
+        if templateFile[-6:] == 'django':
+            if not DJANGO_ENABLED:
+                raise PelotonError("DJANGO templates not supported: Django libraries not in path")
+            fp = open(templateFile)
+            template = Template(fp.read())
+            fp.close()
+            context = Context(data)
+            return template.render(context)
+        else:
+            template = templateLoader.load(templateFile)
+            return template.generate(**data).render()
     return _fn

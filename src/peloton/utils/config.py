@@ -363,11 +363,18 @@ called over a given protocol if the file is placed in the right folder
 and named as follows::
 
   $RESOURCEROOT/templates/<serviceName>/<method>.<transform key>.genshi
+  OR
+  $RESOURCEROOT/templates/<serviceName>/<method>.<transform key>.django
   
 So, for example, a template to make HTML for MyService.getUserNames when
 called over http might be as follows::
 
   /var/services/myservice/resource/templates/MyService/getUserNames.html.genshi
+  OR
+  /var/services/myservice/resource/templates/MyService/getUserNames.html.django
+
+As can be seen from these examples either django or genshi templating may 
+be used.
   
 This method looks for all templates for a method and returns a list of 
 transform targets for which templates exist.
@@ -377,7 +384,13 @@ transform targets for which templates exist.
         rootDir = os.path.abspath(rootDir)
         files = [ (i[i.find('.')+1:-7], "%s/%s"%(rootDir,i)) for i in 
                  os.listdir(rootDir)
-                 if fnmatchcase(i, "%s.*.genshi" % method)]
+                 if (fnmatchcase(i, "%s.*.genshi" % method) or fnmatchcase(i, "%s.*.django" % method))]
+        try:
+            import django
+        except:
+            # remove all django templates from the files list as 
+            # django is not in this installation
+            files = [f for f in files if not fnmatchcase(f[1], "*.django")]
         return files
     except OSError, ex:
         # path doesn't exist

@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+<html>
+<head> <title>DJANGO Echo response</title> </head>
+<body>
+<h1> The world of PelotonEcho </h1>
+{% block bodycontent %}{% endblock %}
+</body>
+</html>

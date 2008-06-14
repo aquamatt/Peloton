@@ -51,7 +51,7 @@
 		of failure.
 	</para>
 	<para>
-		<emphasis>"Serivce"</emphasis> : SOA and services are buzz words in vogue to
+		<emphasis>"Service"</emphasis> : SOA and services are buzz words in vogue to
 		describe a somewhat simple concept. Clients ask questions of a server and get
 		a response. The question is in the form of some kind of function call to which
 		arguments are passed, and the response is data. In &peloton; speak, a service

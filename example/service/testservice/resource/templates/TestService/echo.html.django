@@ -1,0 +1,6 @@
+{% extends "base.html.django" %}
+{% block bodycontent %}
+ <p>
+You said {{ d }}!
+ </p>
+{% endblock %}

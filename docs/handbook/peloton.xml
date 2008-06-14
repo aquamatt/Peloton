@@ -9,6 +9,8 @@
         <!ENTITY configuration SYSTEM "peloton_configuration.xml">
         <!ENTITY quickstart SYSTEM "peloton_quickstart.xml">
         <!ENTITY transforms SYSTEM "peloton_transforms.xml">
+        <!ENTITY events SYSTEM "peloton_events.xml">
+        <!ENTITY firstservice SYSTEM "peloton_firstservice.xml">
 	    ]>
 
 <!--
@@ -43,8 +45,10 @@
 &overview;
 &env;
 &configuration;
-&quickstart;
+<!-- &quickstart; -->
+&firstservice;
 &transforms;
+&events;
 <!-- END OF DOC   -->
 
 </article>

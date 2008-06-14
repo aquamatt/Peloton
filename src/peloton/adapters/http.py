@@ -79,7 +79,7 @@ HTTP based adapters)."""
             self.deliverStaticContent(resourceRoot, request.postpath[2:], request)
             
         elif request.postpath and request.postpath[0] == "inspect":
-            resp = self.infoTemplate({'rq':request})
+            resp = self.infoTemplate({'rq':request}, {})
             self.deferredResponse(resp, 'text/html',request)
         
         else:

@@ -1,0 +1,313 @@
+<sect1>
+	<title>Writing your first service</title>
+	<para>
+		In this section we will write a service and discover how to
+		publish methods with &peloton;. It is assumed that you have installed
+		&peloton; as per the instructions in the Installation Guide and followed
+		the Quickstart chapter therein to establish a functioning system.
+	</para>
+	<para>
+		Create a folder to contain your services; we will call this
+		<filename>$SERVICE_HOME</filename> and this is passed to
+		<filename>psc.py</filename> as <filename>-s $SERVICE_HOME</filename>
+		so that services therein can be found (alternatively, add this to the
+		<code>PYTHONPATH</code> environment label [INVALID PRIOR TO NEW CONFIGURATION
+		SETUP]). 
+	</para>
+	<sect2>
+		<title>Writing the service</title>
+		<para>
+			Creating a new service is very straight forward as there is a script
+			called <filename>newservice.py</filename> to do the work for you:
+		</para>
+		<informalexample>
+			<programlisting> > cd $SERVICE_HOME
+ > python $PELOTON_HOME/src/tools/newservice.py -s Tutorial			
+			</programlisting>
+		</informalexample>
+		<para>
+			This will create a folder named <filename>tutorial</filename> under which
+			there are templates for service code, configuration and support files. To
+			start with, look at tutorial/tutorial which is as follows:
+		</para>
+		<informalexample>
+			<programlisting># $Id$
+from peloton.service import PelotonService
+from peloton.svcdeco import *
+	
+class Tutorial(PelotonService):
+	def public_sum(self, x, y):
+		"Example service method."
+		x = int(x)
+		y = int(y)
+		return x+y</programlisting>
+		</informalexample>
+		<para>
+			First we import the base class from which all services derive, 
+			<code>PelotonService</code> and then we import all the decorators
+			from <code>svcdeco</code> the use of which will shortly be discussed.
+		</para>
+		<para>
+			One service method is defined here and it is called <code>public_sum</code>
+			and will be published to the outside world as <code>sum</code>. It 
+			performs the very simple task of returning the sum of two values 
+			that are expected to be integers.
+		</para>
+		<para>
+			All service methods should check their input. In this case we cast
+			both input values to integers, because this is what we have defined
+			the logic of the service to require. Given that you cannot know
+			what protocol is being used to call this method, you must cast the
+			value - if it is an HTTP request then <emphasis>all</emphasis> arguments
+			will be <code>String</code>.
+		</para>
+		<para>
+			Now we'll work with this simple method but please experiment and add some
+			methods of your own if you're itching to get going!
+		</para>
+	</sect2>
+	<sect2>
+		<title>Calling your service</title>
+		<para>
+			First start a server:
+		</para>
+		<informalexample>
+			<programlisting> > cd $PELOTON_HOME/src/peloton
+ > python psc.py -c $PELOTON_HOME/example/config -s $SERVICE_HOME \
+ 	             --nodetach --loglevel=debug				
+			</programlisting>
+		</informalexample>
+		<note>
+			<para>
+				The <code>PELOTON_HOME</code> and <code>SERVICE_HOME</code>
+				variables must either be defined in your shell or substituted
+				as you type in this line! <code>SERVICE_HOME</code> is the path
+				to the folder containing your <code>tutorial</code>  service
+				folder.
+			</para>
+		</note>
+		<para>
+			Now from another shell connect to your new node and start the 
+			tutorial service (it is assumed that all this is happening
+			on the same machine; substitute hostnames/addresses as appropriate
+			if this is not the case):
+		</para>
+		<informalexample>
+			<programlisting> > ssh -l admin -p 9110 localon
+ admin@localhost's password: [password is "admin"]
+ >>> start('Tutorial')			
+ >>>			</programlisting>
+		</informalexample>
+		<para>
+			In the console running the node you should see much output (we've set 
+			the debugging level to <code>DEBUG</code> which ensures that a great
+			deal is sent to the logs).
+		</para>
+		<para>
+			Now we can make requests of our new service which, out of the box, means
+			we can try all sorts of things. For example, in a web browser open
+			the url:
+		</para>
+		<informalexample>
+			<programlisting> http://localhost:8080/Tutorial/sum/1/2</programlisting>
+		</informalexample>
+		<para>
+  		    Immediately a page is returned with the result surrounded by some default
+			&peloton; formatting as in figure <xref linkend='firstservice_1'/>
+		</para>
+		<example  id='firstservice_1'>
+			<title>HTTP request to a service</title>
+			<mediaobject>
+				<imageobject>
+					<imagedata fileref='images/firstservice_1.png' format='PNG'/>
+				</imageobject>
+			</mediaobject>			
+		</example>
+		<para>
+			The same result is also obtained by:
+		</para>
+		<informalexample>
+			<programlisting> http://localhost:8080/Tutorial/sum.html/1/2</programlisting>
+		</informalexample>
+		<para>
+			The <code>.html</code> suffix is assumed if no suffix is supplied. The suffix
+			indicates to &peloton; that the result should be transformed into an HTML page.
+			If no template is provided by the developer, &peloton; uses a default one
+			which renders the structure in an intelligible manner. 
+			We will add templates to this method in a later chapter.
+		</para>
+		<para>
+			Other suffixes may be used however; for example try making the same call but
+			to <filename>sum.xml</filename> instead of <filename>sum.html</filename>.
+			The result is a very simple default &peloton; serialization of the
+			result into XML. 
+		</para>
+		<para>
+			How about if you want a JSON formatted string? Well, just call
+			<filename>sum.json</filename>; the raw, Python stringified result?
+			Call <filename>sum.raw</filename>. 
+		</para>
+		<para>
+			Now an integer is a fairly dull data type to serialise. Let's change
+			the code to add a new method. Edit <filename>tutorial.py</filename>
+			and add something that returns a dictionary, for example:
+		</para>
+		<informalexample>
+			<programlisting>def public_returnDict(self):
+    return {'name':'Matthew', 'food':'Apples', 
+				'pets':['dog', 'cat', 'python']}</programlisting>
+		</informalexample>
+		<para>
+			Hopefuly you have not stopped your service node because now you can see
+			how to deploy your new method. Simply connect to the SSH console and type:
+		</para>
+        <informalexample>
+			<programlisting> >>> start('Tutorial')
+Purging tutorial 
+Purging tutorial.tutorial 
+ >>> 
+			</programlisting>
+		</informalexample>
+		<para>
+			The <code>Tutorial</code> service has now been restarted on-the-fly.
+			Now you can call the new <code>returnDict</code> method and explore
+			the result for all the different target types (XML, HTML etc). For
+			example, calling <code>http://localhost:8080/Tutorial/returnDict.xml</code>
+			returns the result in <xref linkend='firstservice_2'/>.
+		</para>
+		<example  id='firstservice_2'>
+			<title>Request to a service for XML result</title>
+			<mediaobject>
+				<imageobject>
+					<imagedata fileref='images/firstservice_2.png' format='PNG'/>
+				</imageobject>
+			</mediaobject>			
+		</example>
+		<para>
+			This is all very well, but what of real programming languages? How would
+			I call it from a Python script, or a shell script? Well, the systems
+			guys may well enjoy:
+  	    </para>
+        <informalexample>
+			<programlisting> > curl http://localhost:8080/Tutorial/returnDict.xml
+&lt;?xml version="1.0"?&gt;
+&lt;result&gt;
+&lt;dict&gt;
+&lt;item id="food"&gt;"Apples"&lt;/item&gt;
+&lt;item id="name"&gt;"Matthew"&lt;/item&gt;
+&lt;item id="pets"&gt;&lt;list&gt;
+&lt;item&gt;"dog"&lt;/item&gt;
+&lt;item&gt;"cat"&lt;/item&gt;
+&lt;item&gt;"python"&lt;/item&gt;
+&lt;/list&gt;&lt;/item&gt;
+&lt;/dict&gt;
+&lt;/result&gt;				
+			</programlisting>
+		</informalexample>
+		<para>
+			Whilst a Python programmer might wish to make an XMLRPC call; try
+			the following script:
+		</para>
+        <informalexample>
+			<programlisting>#!/usr/bin/env python
+import xmlrpclib
+import os
+
+server = xmlrpclib.Server('http://localhost:8080/RPC2')
+# the field for which we provied '0' is a cookie field - 
+# to be used for authenticated requests.								
+result = server.request(0, "Tutorial","sum", 25, 35)
+print result
+			</programlisting>
+		</informalexample>
+	<para>
+		Python programmers may also make a direct connection with Twisted:
+	</para>
+        <informalexample>
+			<programlisting>#!/usr/bin/env python
+from twisted.internet import reactor
+from twisted.spread import pb
+import sys
+
+HOST='localhost'
+
+def clientConnect(svr, x, y):
+    d = svr.callRemote('login', 'blah')
+    d.addCallback(gotIface, x, y)
+    d.addErrback(error)
+
+def gotIface(iface, x, y):
+    d = iface.callRemote('call', 'Tutorial', 'sum', x, y)
+    d.addCallback(done, x, y)
+    d.addErrback(error)
+
+def done(result, x, y):
+    print("Sum of %d + %d = %d" % (x,y,result))
+    reactor.stop()
+
+def error(err):
+    print("Ooooh - error:%s " % err.value)
+    reactor.stop()
+
+def main(x, y):
+    factory = pb.PBClientFactory()
+    reactor.connectTCP(HOST, 9100, factory)
+    d = factory.getRootObject()
+    d.addCallback(clientConnect, int(x), int(y))
+    d.addErrback(error)
+    reactor.run()
+    return 0
+
+if __name__ == '__main__':
+    sys.exit(main(*sys.argv[1:3]))			</programlisting>
+		</informalexample>
+	<para>
+		From the shell, this script can be called with two integer arguments:
+	</para>
+	<informalexample>
+		<programlisting> > ./psum.py 34 35
+ Sum of 34 + 35 = 69
+</programlisting>
+	</informalexample>
+	</sect2>
+	<sect2>
+		<title>Special case one: Inspecting a request</title>
+		<para>
+			Sometimes when debugging you may wish to see the innards of an HTTP 
+			request. To do so, make a call to your method in the browser, inserting
+			<code>inspect</code> before the service name. For example:
+		</para>
+		<informalexample>
+			<programlisting> http://localhost:8080/inspect/Tutorial/getDictionary.xml</programlisting>
+		</informalexample>
+		<para>
+			This returns a page with details of the request, which host the 
+			request came from etc.
+		</para>
+	</sect2>
+	<sect2>
+		<title>Special case two: <code>index</code> page</title>
+		<para>
+			If an <code>http</code> request is made to a service with no
+			method specified, &peloton; forwards this to the <code>index</code>
+			method (<code>public_index(self)</code>) which has a default defined
+			in the <code>PelotonService</code> class that you should override if you
+			wish this URL format to return a meaningful result.
+		</para>
+	</sect2>
+	<sect2>
+		<title>Summary</title>
+	<para>
+		So any method simply takes Python arguments and returns a Python structure.
+		&peloton; takes care of translating the data input into an appropriate
+		call and serializes the result into a form suitable for the client. The service
+		writer is at no point bothered by the niceties of this process. Within seconds
+		one can have written and published a method that is consumable by pretty much
+		any shell script or program written in any language. 
+	</para>
+		<para>
+			We've also seen how services may be edited and re-started on-the-fly
+			very easily.
+ 	    </para>
+	</sect2>
+</sect1>

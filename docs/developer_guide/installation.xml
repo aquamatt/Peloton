@@ -104,9 +104,15 @@
 					</listitem>
 				 <listitem>
 					 <para>
-						 Genshi is the templating library used for XML and HTML output and it is a
+						 Genshi is the default templating library used for XML and HTML output and it is a
 						 requirement to have it. Obtained from <ulink url='http://genshi.edgewall.org/'/> or <filename>easy_intall</filename>able.
 						 Ubuntu also have a <filename>python-genshi</filename> package.
+					 </para>
+				 </listitem>
+				 <listitem>
+					 <para>
+						 &peloton; also supports the Django templating library as an option; simply installing Django into your
+						 Python path will enable django templates.
 					 </para>
 				 </listitem>
 				 <listitem>
@@ -148,6 +154,15 @@
                            Debian/Ubuntu and Windows -
 						   these include or will cause to be installed the Erlang language libraries.
 					   </para>
+					   <note>
+						   <para>
+							   Debian/Ubuntu users installing RabbitMQ via the <code>.deb</code> packages
+							   are strongly advised to start the server using the <code>init.d</code> script
+							   initially. Starting manually requires the appropriate user be set as well as other
+							   conditions and can cause confusion. Once familiar with RabbitMQ it's easier
+							   to negotiate its setup.
+						   </para>
+					   </note>
                        <para>
                            Documentation for setting up RabbitMQ can be found on the site: in particular the instructions
                             for clustering must be followed carefully - do not forget to copy the cookie to all hosts; without
@@ -466,7 +481,7 @@
 		</orderedlist>
 		<para>
 			These are extraordinarily brief instructions but hopefuly the very keen
-			will find them useful pending complete documentation.
+			will find them useful pending more complete documentation.
 		</para>
 	</sect1>
 </article>

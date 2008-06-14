@@ -7,6 +7,12 @@
 -->
 <sect1>
 	<title>Configuration</title>
+	<warning>
+		<para>
+			THE CONFIGURATION SYSTEM IS UNDERGOING A COMPLETE OVERHAUL
+			AS IT IS SEEN AS OVERLY COMPLEX BOTH IN USE AND IN IMPLEMENTATION.
+		</para>
+	</warning>
 	<para>
 		There are three groups of configuration files in the &peloton; system:
 	</para>
@@ -50,16 +56,39 @@
 	</para>
 	<informalfigure>
 		<programlisting>    
-        $ROOT/grid.pcfg
-             /domain.pcfg    &lt;----- COMMON DOMAIN CONFIG
-             /psc.pcfg       &lt;----- COMMON PSC CONFIG
-             /domain/&lt;name>/common.pcfg
-                            &lt;gridmode>.pcfg
-                            ...
-             /domain/&lt;name>/psc/common.pcfg
-                                &lt;gridmode&gt;.pcfg
-                                ...
+$ROOT/grid.pcfg
+     /domain.pcfg    &lt;----- COMMON DOMAIN CONFIG
+     /psc.pcfg       &lt;----- COMMON PSC CONFIG
+     /domain/&lt;name>/common.pcfg
+                    &lt;gridmode>.pcfg
+                    ...
+     /domain/&lt;name>/psc/common.pcfg
+                        &lt;gridmode&gt;.pcfg
+                        ...
 		</programlisting>
 	</informalfigure>
-	
+	<sect2>
+		<title>Accessing configuration</title>
+		<note>
+			<para>
+				The contents of this section will most likely remain valid through
+				the change in configuration system planned subsequent to the initial
+				public release.
+			</para>
+		</note>
+		<para>
+			The service's configuration or <firstterm>profile</firstterm> is made available
+			to the service in the <code>profile</code> attribute (<code>self.profile</code>).
+			Thus if in configuration you set a <code>DATABASE_NAME</code> you will find it
+			in <code>self.profile.DATABASE_NAME</code>.
+		</para>
+		<title>
+			Often you will want a service to perform some high-level initialisation
+			upon startup. This is placed in methods
+			<code>start()</code> and <code>stop()</code>. For example, in <code>start()</code>
+			you could create a database pool, and in <code>stop()</code> you could clean up and
+			close it.
+		</title>
+	</sect2>
+			
 </sect1>

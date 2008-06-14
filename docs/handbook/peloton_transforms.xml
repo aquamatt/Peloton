@@ -53,4 +53,182 @@
 		to be picked up and automatically associated with a method and target. Others are 
 		explicit. In the following sections we'll look at the various ways to transform data.
 	</para>
+	<warning>
+		<para>
+			The transform system is in early stages and only a limited number of transform options
+			exist; user-definable transforms are to be implemented shortly.
+		</para>
+	</warning>
+	<sect2>
+		<title>Using transforms</title>
+		<para>A transform is specified using a decorator. The following
+example is a public method that has a transform for XML targets. What it
+does is, admittedly, not hugely useful: the 'interests' key is stripped 
+			from the dictionary, all keys are uppercased and then it is
+			passed on to whatever the default template is for this target.
+        </para>
+		<informalexample>
+			<programlisting>@transform("xml", 
+           'stripKeys("interests")', 
+           "upperKeys()", 
+           "@template")
+def public_returnMixed(self):
+    return {'name': 
+             {'first':'Jon',
+              'last' :'Doe'},
+            'interests' : ['sailing', 'running', 'jam'],
+            'work' : [{'company':'Big Balls', 'position':'bearings maker'},
+                      {'company':'Better Balls', 'position':'Junior inflator'}]
+            }
+		</programlisting>
+		</informalexample>
+		<para>
+			The default template is either (a) the template <filename>returnMixed.xml.genshi</filename>
+			or <filename>returnMixed.xml.django</filename>
+			in the service's templates resource folder if found or (b) the default &peloton;
+			rendering of a dictionary into XML.
+		</para>
+		<para>
+			Many <code>@transform</code> decorators may be added to a method
+			to specify transform requirements for different targets. In this way
+			you can ensure that <code>http://mysite.com/myservice/foobar.xml</code>
+			returns a nice machine readable result whilst
+			<code>http://mysite.com/myservice/foobar.html</code> returns a snippet
+			useable in a webpage and <code>http://mysite.com/myservice/foobar.rss</code>
+			returns an RSS representation of the same data.
+		</para>
+		<para>
+   		    In the above example the <code>@template</code> notation was
+  		    used to specify the default template. One could instead specify 
+		    a template with <code>template('othertemplate.xml.genshi')</code>
+		    - note the lack of <code>@</code>.
+		</para>
+	</sect2>
+	<sect2>
+		<title>Implict transforms</title>
+		<para>
+			Some transforms, notably the <code>template</code> transform, require
+			that the input be in the form of a dictionary. This is not so convenient
+			for any method that returns any other data type and it would be ugly to
+			force these to return dictionaries simply because one adapter needs it.
+		</para>
+		<para>
+			One can explicitly specify the transform as follows:
+		</para>
+		<informalexample>
+			<programlisting>@transform('html','valueToDict')
+def public_getAge(self, name):
+    return self.ages[name]				
+			</programlisting>
+		</informalexample>
+		<para>
+			... but this is not required. <code>template</code> will
+			<emphasis>always</emphasis> need a dictionary, so if the input
+			is not one already it will pass the data first through
+			<code>valueToDict</code> first.
+		</para>
+	</sect2>
+	<sect2>
+		<title>Transform library</title>
+		<para>
+			This library is currently extraordinarily limited but will be 
+			extended in time. The provision for user-supplied templates will
+			also be made. In the following list, <code>value</code> refers
+			to the return value from the service method, or the previous 
+			transform, provided as input to the transform.
+		</para>
+		<orderedlist>
+			<listitem>
+				<para>
+					<emphasis>valueToDict</emphasis> :
+					returns <code>{'d':value, '_sys': sysinfo}</code> where
+					<code>sysinfo</code> is a dict containing the keys 
+					<code>['resourceRoot', 'publishedName']</code>
+				</para>
+			</listitem>	
+			<listitem>
+				<para>
+					<emphasis>stripKeys(*args)</emphasis> :
+					returns the input dictionary with the specified keys
+					removed. e.g. <code>stripKeys("test", "magic")</code>
+					removes the keys 'test' and 'magic', if they are present,
+					from the provided dictionary.
+				</para>
+			</listitem>	
+			<listitem>
+				<para>
+					<emphasis>string</emphasis> : stringify the input.
+				</para>
+			</listitem>	
+			<listitem>
+				<para>
+					<emphasis>template(templateFile)</emphasis> :
+					pass data to the specified template. The special
+					exception <code>@template</code> expands to 
+					use the default template found in the default
+					location.
+				</para>
+			</listitem>	
+		</orderedlist>
+	</sect2>
+	<sect2>
+		<title>Custom templates and arbitrary targets</title>
+		<para>
+			The target is the intended rendering target, e.g. <code>html</code>
+			or <code>xml</code>. Custom templates may be attached to a target
+			for HTML and XML targets simply by putting it in the right file,
+			namely in the 
+			<filename>resource/templates/&lt;ServiceClass&gt;/</filename> folder in a file
+			named <filename>&lt;methodName&gt;.&lt;target&gt;.[genshi|django]</filename>.
+			So, if service <code>Tutorial</code> has a method <code>public_sum</code>,
+			the HTML template can be written into 
+			<filename>resource/templates/Tutorial/sum.html.genshi</filename> or, if 
+			the Django templating is to be used, 
+			<filename>resource/templates/Tutorial/sum.html.django</filename>.
+		</para>
+		<para>
+			In this way arbitrary targets may also be defined. So, for example,
+			if you wish the result to be formatted in csv you could define
+			the template <filename>resource/templates/Tutorial/addresses.csv.django</filename>
+			for a method named <code>public_address</code>. 
+		</para>
+		<para>
+			For arbitrary targets you must specify the transform. As the transform is in 
+			standard location and following standard naming conventions one
+			can simply write as follows:
+		</para>
+		<informalexample>
+			<programlisting> @transform("csv", "@template")
+ dev public_addresses(self, ...)</programlisting>
+		</informalexample>
+		<para>
+			Occasionaly you may wish too set the mime type for the data returned
+			by a particular target. This is also specified with a decorator, so the
+			above might become:
+		</para>
+		<informalexample>
+			<programlisting> @transform("csv", "@template")
+ @mimeType("csv", "text/csv")
+ def public_addresses(self, ...)</programlisting>
+		</informalexample>
+		<para>
+			You may specify explicitly the name of the template also, for example:
+		</para>
+		<informalexample>
+			<programlisting> @transform("csv", "template('/var/templates/address.csv.genshi')")
+ @mimeType("csv", "text/csv")
+ def public_addresses(self, ...)</programlisting>
+		</informalexample>
+		<para>
+			The suffix must, however, <emphasis>always</emphasis> be the name
+			of the template engine to be used, i.e. either <code>.genshi</code>
+			or <code>.django</code>.
+		</para>
+		<note>
+			<para>
+				To use the Django templating engine you must have the Django libraries
+				installed and present on the Python path.
+			</para>
+		</note>
+	</sect2>
 </sect1>
