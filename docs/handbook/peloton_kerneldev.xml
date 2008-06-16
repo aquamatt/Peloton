@@ -1,0 +1,19 @@
+<sect1>
+  <title>Kernel plugins</title>
+  <para>
+    Much functionality in &peloton; is provided via kernel plugins; the 
+    message bus interface is one example of such a plugin. Plugins
+    may be written quite easily to add novel core functionality to 
+    the &peloton; PSC. Kernel plugins run in the main event thread
+    of a PSC and are 'risky' in that they have the capacity seriously
+    to impede the functioning of a mesh. They should not be used to
+    provide what is really 'service' functionality, but when well
+    chosen, kernel plugins should allow developers to push 
+    the &peloton; system in interesting and novel directions.
+  </para>
+  <para>
+    Documentation will follow regarding the writing of plugins... please 
+    see the <filename>plugins</filename> package for examples of core plugins
+    that form part of the default &peloton; distribution.
+  </para>
+</sect1>

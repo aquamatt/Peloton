@@ -9,6 +9,16 @@
 <sect1>
 	<title>The Peloton Environment</title>
 	<para>
-		blah
+		&peloton; is intended to be a cross-platform product, working anywhere
+		that Python and the &peloton; dependencies will run. In principle this
+		certainly covers both Microsoft Windows&trade; and Linux. 
+	</para>
+	<para>
+		Development thus far has been on Linux however, so the operational state on
+		other platforms has yet to be determined. Notes, comments and observations
+		from the community will be most welcome in this regard.
+	</para>
+	<para>
+		For installation instructions, please see the Installation Guide.
 	</para>
 </sect1>

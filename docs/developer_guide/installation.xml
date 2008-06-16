@@ -112,7 +112,7 @@
 				 <listitem>
 					 <para>
 						 &peloton; also supports the Django templating library as an option; simply installing Django into your
-						 Python path will enable django templates.
+						 Python path will enable django templates. This is NOT a required dependency.
 					 </para>
 				 </listitem>
 				 <listitem>
@@ -479,9 +479,42 @@
 				</para>
 			</listitem>
 		</orderedlist>
+	</sect1>
+	<sect1>
+		<title>Running without RabbitMQ</title>
 		<para>
-			These are extraordinarily brief instructions but hopefuly the very keen
-			will find them useful pending more complete documentation.
+			Strictly for the purpose of evaluation and quick testing there is a &peloton;
+			kernel plugin named PseudoMQ which provides a message bus implemented entirely
+			within &peloton;. It is suitable for most testing but does not always behave exactly
+			as its grown-up counterpart; for example, messages may not be received in the
+			order they were sent. 
+		</para>
+		<para>
+			Within these limits, PseudoMQ is a practical way to test &peloton; without installing
+			RabbitMQ. It is not a completely de-centralised system, there is one node named the master
+			and the system will not recover from the death of a master (remember: this is quick'n'dirty,
+			not production code, node even development environment code!) To start the master:
+		</para>
+		<informalexample>
+			<programlisting>
+> cd $PELOTON/src/peloton
+> python psc.py --disable=amqp-qpid --enable=pseudomq 
+				--flags=mqserver 
+				[... plus remaining args]</programlisting>
+		</informalexample>
+		<para>
+			All non-server nodes must be started
+		</para>
+		<informalexample>
+			<programlisting>
+> cd $PELOTON/src/peloton
+> python psc.py --disable=amqp-qpid --enable=pseudomq 
+				[... plus remaining args]</programlisting>
+		</informalexample>
+		<para>
+			For interest, the configuration of plugins is set in 
+			<filename>config/domain/pelotonica/psc/common.pcfg</filename> under
+			the <filename>example</filename> folder.
 		</para>
 	</sect1>
 </article>

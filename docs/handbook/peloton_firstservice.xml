@@ -295,7 +295,7 @@ if __name__ == '__main__':
 			wish this URL format to return a meaningful result.
 		</para>
 	</sect2>
-	<sect2>
+		<sect2>
 		<title>Summary</title>
 	<para>
 		So any method simply takes Python arguments and returns a Python structure.
@@ -310,4 +310,16 @@ if __name__ == '__main__':
 			very easily.
  	    </para>
 	</sect2>
+</sect1>
+<sect1>
+	<title>Resilience</title>
+	<para>
+		The example services in the <filename>example/service</filename> folder and
+		the scripts in the <filename>scripts</filename> sub-folder provide a starting
+		point for some simple testing. You will be able to use <filename>testpclient.py</filename>
+		to perform a long running operation with many, many calls. During this time you
+		will be able to kill worker nodes and see them bounce back; kill PSC nodes (excluding
+		the one to which the client connects) and see no change in the result returned
+		to the client. 
+	</para>
 </sect1>

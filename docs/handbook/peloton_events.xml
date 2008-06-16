@@ -1,6 +1,152 @@
 <sect1>
 	<title>Events</title>
 	<para>
-		firing, capturing, etc...
+		At the heart of &peloton; is the concept of an event-driven
+                architecture. De-coupling modules to the point where 
+                direct communication is avoided and communication by 
+                messages, or events, simplifies an architecture that
+                consists of many code modules and which is distributed
+                across many hosts.
 	</para>
+	<para>
+			Events may both be fired and acted upon from within 
+			service code or client code. Thus, for example, a trading
+			system may have a service that fires an event when a trade
+			is booked. This event may be listened to by logging systems,
+			trade blotters on the trader's and middle office 
+			managers screens and any other application or module
+			for which this information may be relevant.
+	</para>
+	<para>
+			Client code may only register for events if the language
+			supports the Twisted Spread RPC mechanism (currently 
+			limited to Python and Java). Events may be fired by any
+			clients.
+	</para>
+    <sect2>
+		<title>Client events</title>
+		<para>
+			Clients connected to &peloton; using Twisted Spread can register
+			for events as follows:
+		</para>
+		<informalexample>
+			<programlisting> iface.callRemote("register", key, handler, exchange)</programlisting>
+		</informalexample>
+		<para>
+			Where:
+		</para>
+		<orderedlist>
+			<listitem>
+				<para>
+					<code>iface</code> is the remote callable server reference
+				</para>
+			</listitem>
+			<listitem>
+				<para>
+					<code>key</code> is the routing key for this message, e.g. <code>myservice.foo</code>
+				</para>
+			</listitem>
+			<listitem>
+				<para>
+					<code>exchange</code> is the exchange to which this event is posted, e.g. <code>events</code>
+				</para>
+			</listitem>
+			<listitem>
+				<para>
+					<code>handler</code> is an instance of a referenceable that will
+					handle this event. The instance must implement one method must be of the form 
+					<code>remote_eventReceived(msg, exchange, key, ctag)</code>. <code>msg</code> is the
+					main point of interest and is a dictionary containing all the event keys
+					including standard entries such as <code>sender_guid</code>.
+				</para>
+			</listitem>
+		</orderedlist>
+		<note>
+			<para>
+				Three exchanges are setup by default by &peloton;: <code>events</code>, 
+				<code>logging</code> and <code>domain_control</code>. This terminology
+				stems from the use of an <code>AMQP</code> provider as the inter-node
+				message bus for &peloton;. See <ulink url='http://www.amqp.org'/> 
+				for detail.
+			</para>
+		</note>
+		<para>
+			As an example, a handler class that can be used to set any arbitrary
+			function or method to get event notification could be written as follows:
+		</para>
+		<informalexample>
+			<programlisting> class EventHandler(pb.Referenceable):
+     def __init__(self, callback):
+         self.callback = callback
+        
+     def remote_eventReceived(self, msg, exchange, key, ctag):
+         self.callback(msg, exchange, key, ctag)</programlisting>			
+		</informalexample>
+		<para>
+			Your handler function or method will get called each time an event 
+			appears on the specified exchange with the specified routing key. Logging
+			messages are all put on to the <code>logging</code> exchange in messages
+			with routing key <code>psc.logging</code>, for example. See 
+			<filename>tools/ptap/evtap.py</filename> for a demonstration of this.
+			<code>evtap</code> is a very useful network logger that scrolls all events
+			from a bus; it can inspect any event and has custom formatting specific
+			to logging events if the logger channel is selected.
+		</para>
+		<para>
+			Firing an event is as simple as calling:
+		</para>
+		<informalexample>
+			<programlisting> iface.callRemote("fireEvent", key, exchange, **kwargs)</programlisting>
+		</informalexample>
+		<para>
+			The keyword arguments are collected together to form the event message.
+		</para>
+		<para>
+			De-registering a handler is done with:
+		</para>
+		<informalexample>
+			<programlisting> iface.callRemote("deregister", handler)</programlisting>
+		</informalexample>
+	</sect2>
+	<sect2>
+		<title>Events in services</title>
+		<para>
+			Using events in services is very similar. All service classes have
+			a <code>register</code> method, the signature for which is:
+		</para>
+		<informalexample>
+			<programlisting>register(self, key, method, exchange='events', inThread=True)</programlisting>
+		</informalexample>
+		<para>
+			Unlike the client, the handler (passed in as <code>method</code>) is not an instance, it
+			is just a method with the same signature as handler methods on the client side.
+		</para>
+		<para>
+			By default, handlers will be invoked in a thread all of their own so they can do long 
+			tasks, blocking tasks... anything they like. By setting <code>inThread=False</code> the handler
+			will be invoked in the main Twisted event loop. This is fine as long as the developer understands 
+			the need for speed: event handlers should NEVER block nor take to long doing their work as this will
+			block the event loop and prevent further requests being handled in a timely manner. Use with care!
+		</para>
+		<para>
+			The service <code>fireEvent</code> and <code>deregister</code> methods operate as on the
+			client side.
+		</para>
+	</sect2>
+	<sect2>
+		<title>A note on working with GUIs</title>
+		<para>
+			Writing GUIs involves a lot of event handling. There is a GUI thread and this is much
+			like the Twisted event thread. If you want to write a Python GUI that works with 
+			&peloton; then it is a good idea to choose one for which there is a combined
+			GUI/Twisted event loop such as are available for QT and WxWindows. By doing this all 
+			&peloton; events are processed in the GUI loop thus handlers can directly manipulate and alter
+			GUI widgets without the need to invoke special methods to do this from a non-GUI thread.
+			Writing GUIs for &peloton; in this way is extremely simple and great tools can be
+			written very simply by making full use of &peloton; events.
+		</para>
+		<para>
+			As an exercise for the reader, try to write a GUI version of evtap, the event logger.
+		</para>
+	</sect2>
 </sect1>

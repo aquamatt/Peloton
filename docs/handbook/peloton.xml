@@ -11,6 +11,7 @@
         <!ENTITY transforms SYSTEM "peloton_transforms.xml">
         <!ENTITY events SYSTEM "peloton_events.xml">
         <!ENTITY firstservice SYSTEM "peloton_firstservice.xml">
+        <!ENTITY kerneldev SYSTEM "peloton_kerneldev.xml">
 	    ]>
 
 <!--
@@ -49,6 +50,7 @@
 &firstservice;
 &transforms;
 &events;
+&kerneldev;
 <!-- END OF DOC   -->
 
 </article>
