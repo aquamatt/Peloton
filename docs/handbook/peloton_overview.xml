@@ -13,7 +13,7 @@
 		deployment of services to a grid of machines. Clients
 		may interact with the &peloton; grid by calling methods using
 		a variety of protocols, from traditional remote procedure calls 
-		(RPC) to HTTP requests. Though specificaly <emphasis>not</emphasis>
+		(RPC) to HTTP requests. Though specifically <emphasis>not</emphasis>
 		designed to be a web application server, &peloton; is able to 
 		deliver web pages when required and the way in which it does this
 		makes it very suitable for use in Web 2.0-type applications that 
@@ -26,7 +26,7 @@
 	<para>
 		<emphasis>"Distributed"</emphasis> : Many &peloton; nodes (or processes)
 		spread across one or more machines link together to form a 'mesh'. Thus
-		processing is distrubted across a number of machines in a network. In 
+		processing is distributed across a number of machines in a network. In 
 		a larger corporation &peloton; meshes may themselves be distributed across
 		multiple sites. A single mesh on a single network is, in &peloton; speak, 
 		called a <emphasis>domain</emphasis>. A collection of domains is termed
@@ -39,15 +39,15 @@
 		can fail; network and power cables can be pulled out of a machine. For any
 		number of reasons, including bugs in the application itself, things can break
 		 - thus the system is not resistant to failure - 
-		so nodes will occasionaly fall off the mesh. 
+		so nodes will occasionally fall off the mesh. 
 	</para>
 	<para>
-		To accomodate this, the &peloton; domain will generaly run one service on more
+		To accommodate this, the &peloton; domain will generally run one service on more
 		than one node on more than one host. Should one node or its host fail, the 
 		requests to that service will be routed to the alternatives. Should a failure
 		occur as a request is being processed, requests will be re-issued by
 		the mesh. The client should never know there was a problem and should see
-		no more than a slight delay in receiving the response. The system is thus tollerant
+		no more than a slight delay in receiving the response. The system is thus tolerant
 		of failure.
 	</para>
 	<para>
@@ -66,16 +66,61 @@
 		will not solve every problem, but it works very nicely in many areas. 
 	</para>
 	<para>
-		&peloton;'s overiding ambition is to ensure the service programer is left
+		&peloton;'s overriding ambition is to ensure the service programmer is left
 		to write code that does a job with no concern for how the requests and responses
 		are obtained from and passed to the client, nor of how that data is transformed
 		and used. &peloton; is about extremely fast time to publication: business
 		analyst has an idea, writes the code, pushes it to the grid and within minutes
 		all his colleagues are using it. By leveraging the strengths of Python it is
 		hoped that more people will be drawn into this manageable, versionable, 
-		controlable and scalable world away from the unmanageable rampant undergrowth
+		controllable and scalable world away from the unmanageable rampant undergrowth
 		that is, for example, VBA coding in Excel.
 	</para>
+	<sect2>
+		<title>Motivation</title>
+		<para>
+			The motivation for writing &peloton; arises from having developed trading systems
+			and commercial banking systems with more conventional technologies and frameworks
+			in Java and C#. 
+		</para>
+		<para>
+			These languages and the many frameworks written for them are excellent in many ways
+			but for many of the business problems I had to solve they did not make life as easy
+			as it should be. I wanted clustering out of the box, for example. In a small investment
+			institution of maybe thirty people there are many computers under desks: I wanted an easy
+			way of linking these into a computing grid to process models, process and clean data and
+			respond to the many real-time events driving the business. I also wanted an environment
+			that made it easy and compelling for business users, such as quants and risk analysts, 
+			to write for so that code they produced was manageable, versionable, sharable and usable in
+			core systems (such as pricing and risk systems) from the start - all things that are
+			difficult or impossible when the code is written in Excel, the natural home of such
+			programmers.
+		</para>
+		<para>
+			For me, business needs IT to adapt rapidly, to make use of hardware efficiently and 
+			not get in the way. The traditional model in 'city' IT is one where the IT group spend
+			a lot of time and money producing systems that just about fit the brief but which are
+			often ignored either because by the time they arrive the brief has changed or because
+			the users get more out of their Excel scripts. Providing a component that can help in
+			breaking this cycle is part of what the &peloton; model seeks to provide.
+		</para>
+		<para>
+			An early implementation of a system built upon the concepts employed in &peloton; has
+			helped a large supercomputing facility decouple its  many disparate scripts, tools and 
+			applications. The distributed service layer provides high availability and robust
+			tolerance of failures in the cluster and has become the logical choice of middle layer, 
+			the universal API layer linking tools together and providing a simple way of parallelising
+			embarrassingly parallel algorithms.
+		</para>
+		<para>
+			Where implemented, this model has proved to be a powerful and flexible application platform
+			that slots into existing installations easily and adapts to the requirements of the facility.
+			From the very small to the very large, the distributed service model provides distributed,
+			fault tollerant processing and service provision in a simple to use package. Specific
+			point solutions may be faster for certain problems, but out of the box &peloton; gives a
+			great deal in a light-weight and powerful package.
+		</para>
+	</sect2>
 	<sect2>
 		<title>A &peloton; mesh</title>
 		<example  id='mesh_overview'>
@@ -89,8 +134,9 @@
 		<para>
 			A &peloton; installation will typically comprise a number of 
 			<firstterm>nodes</firstterm> or <firstterm>PSC</firstterm>s. A PSC (Peloton
-			Serivce Controller) is responsible for the following:
+			Service Controller) is responsible for the following:
 		</para>
+		
 		<itemizedlist>
 			<listitem>
 				<para>Interfacing with the message bus</para>
@@ -101,31 +147,87 @@
 				(e.g. XMLRPC, Twisted Spread etc.)</para>
 			</listitem>
 			<listitem>
-				<para>Launching worker processes (PWPs) to manage services, pass
-				service requesets to them and route responses from them to the requestor</para>
+				<para>Launching worker processes (PWPs) to manage services, passing
+				service requests to them and routing responses from them to the requester</para>
 			</listitem>
 		</itemizedlist>
 		<para>
 			General communications are always sent over the message bus. Such messaging includes
 			broadcast presence notification, the exchange of service tables (itemising which nodes 
 			manage which services) requests for starting services, user events, mesh control
-			commands etc. PSC-PSC communications may pass over the message bus but would
-			normally be sent directly over Twisted Spread. Almost all such communications are sent
-			via <firstterm>proxies</firstterm> however.
+			commands etc. PSC to PSC communications may pass over the message bus but would
+			normally be sent directly over Twisted Spread. Almost all such communications are managed
+			by <firstterm>proxies</firstterm> however.
 		</para>
 		<para>
-			A proxy in a PSC is simply a reference to another PSC that abstractts the
+			A proxy in a PSC is a reference to another PSC that abstracts the
 			RPC protocol from the rest of the code. Thus proxies exist to communicate via
-			Twisted Spread and to communicate with the local service manager but in future
-			at least one other will be made, a proxy to perform RPC calls over the message bus.
+			Twisted Spread and to communicate with the local service manager directly and both are
+			expose an identical API. In future
+			at least one other will be made, a proxy to perform RPC calls over the message bus. 
 		</para>	
 		<para>
 			The proxy mechanism allows for different ways of linking a mesh together and provides
 			room to experiment with different technologies in the future. Bizarre suggestions 
-			have already been made to accomodate certain corner cases, such as the 
+			have already been made to accommodate certain corner cases, such as the 
 			<code>HumanProxy</code>, a proxy that does RPC via email to a remote 'node' which
 			is really a human. More realistically, linking nodes by RPC over message bus 
 			facilitates linking meshes across a WAN.
+		</para>
+	</sect2>
+	<sect2>
+		<title>Request management</title>
+		<para>
+			When a client makes a request it calls a method on a PSC adapter. For example this may be 
+			an XMLRPC request. The method called is always the <code>call</code> method which takes
+			as arguments the name of the service to call, the method in that service, and the arguments
+			for the call. 
+		</para>
+		<para>
+			The PSC looks into its service table and retrieves the list of all proxies that reference
+			nodes that manage the requested service. Picking one from the list, either in round-robin
+			fashion or at random, the proxy <code>call</code> method is invoked.
+		</para>
+		<para>
+			At this point the request is passed over whatever mechanism the proxy manages. It may be a
+			<code>LocalProxy</code> which passes the request to a worker managed by the local PSC, or it
+			may be a proxy that makes an RPC call to a remote node. Either way the request is executed and
+			the result returned.
+		</para>
+		<para>
+			Should the remote node fail for any reason the originating PSC will simply re-issue the call
+			to another node. The client remains unaware that a problem ever occurred. Should a worker fail,
+			the managing node will re-issue requests to another worker and start up a replacement. 
+		</para>
+		<para>
+			Failure of any component is spotted and worked around with the client receiving an error
+			only in two cases: if no nodes remain to handle a service or if the PSC to which the client
+			connected initially fails catastrophically itself (a client, if furnished with a list of 'access
+			points' would easily be able to manage this failure by re-issuing the call to another PSC).
+		</para>
+	</sect2>
+	<sect2>
+		<title>Service management and profiles</title>
+		<para>
+			One of the key design goals of &peloton; is to have a mesh that when requested to deploy
+			a service deals with the problem of allocating resources appropriately. It does this with
+			a system of profiles: nodes and services both have profiles which consist of a number of 
+			parameters which may be compared to determine whether one can support the other.
+		</para>
+		<para> 
+			For example,
+			a service may have a profile that requires it to be run on a host with a certain minimum
+			amount of memory and to run on at least two such hosts. The mesh, when instructed to start a 
+			service, finds the nodes that match the criteria and instructs as many as required to match
+			the so-called 'launch profile'.
+		</para>
+		<para>
+			If the load on a particular service is such that more nodes are required, the mesh can be 
+			instructed to start them and immediately requests will be routed to the newly started nodes.
+		</para>
+		<para>
+			The development road map includes significant work on this mechanism to provide more advanced
+			load balancing and automatic management options.
 		</para>
 	</sect2>
 </sect1>
