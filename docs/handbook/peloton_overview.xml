@@ -76,4 +76,56 @@
 		controlable and scalable world away from the unmanageable rampant undergrowth
 		that is, for example, VBA coding in Excel.
 	</para>
+	<sect2>
+		<title>A &peloton; mesh</title>
+		<example  id='mesh_overview'>
+			<title>Anatomy of a mesh</title>
+			<mediaobject>
+				<imageobject>
+					<imagedata fileref='images/mesh_layout.png' format='PNG'/>
+				</imageobject>
+			</mediaobject>			
+		</example>
+		<para>
+			A &peloton; installation will typically comprise a number of 
+			<firstterm>nodes</firstterm> or <firstterm>PSC</firstterm>s. A PSC (Peloton
+			Serivce Controller) is responsible for the following:
+		</para>
+		<itemizedlist>
+			<listitem>
+				<para>Interfacing with the message bus</para>
+			</listitem>
+			<listitem>
+				<para>Receiving requests from clients and other nodes via 
+				<firstterm>adapters</firstterm> for the protocols it understands
+				(e.g. XMLRPC, Twisted Spread etc.)</para>
+			</listitem>
+			<listitem>
+				<para>Launching worker processes (PWPs) to manage services, pass
+				service requesets to them and route responses from them to the requestor</para>
+			</listitem>
+		</itemizedlist>
+		<para>
+			General communications are always sent over the message bus. Such messaging includes
+			broadcast presence notification, the exchange of service tables (itemising which nodes 
+			manage which services) requests for starting services, user events, mesh control
+			commands etc. PSC-PSC communications may pass over the message bus but would
+			normally be sent directly over Twisted Spread. Almost all such communications are sent
+			via <firstterm>proxies</firstterm> however.
+		</para>
+		<para>
+			A proxy in a PSC is simply a reference to another PSC that abstractts the
+			RPC protocol from the rest of the code. Thus proxies exist to communicate via
+			Twisted Spread and to communicate with the local service manager but in future
+			at least one other will be made, a proxy to perform RPC calls over the message bus.
+		</para>	
+		<para>
+			The proxy mechanism allows for different ways of linking a mesh together and provides
+			room to experiment with different technologies in the future. Bizarre suggestions 
+			have already been made to accomodate certain corner cases, such as the 
+			<code>HumanProxy</code>, a proxy that does RPC via email to a remote 'node' which
+			is really a human. More realistically, linking nodes by RPC over message bus 
+			facilitates linking meshes across a WAN.
+		</para>
+	</sect2>
 </sect1>

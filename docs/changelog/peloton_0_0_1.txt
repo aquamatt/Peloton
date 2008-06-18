@@ -1,0 +1,6 @@
+Changes to Version 0.0.1
+------------------------
+
+Everything! This is the innaugural project release. See documentation
+included within the packages or available at http://www.peloton-grid.net
+for details.
