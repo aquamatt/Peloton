@@ -122,6 +122,121 @@
 		</para>
 	</sect2>
 	<sect2>
+		<title>Summary of features</title>
+		<para>
+			&peloton; provides, or will provide the following features:
+		</para>
+		<note>
+			Features on the roadmap but not currently implemented are marked  with [F],
+			those partially implemented are marked [P].
+		</note>
+		<itemizedlist>
+			<listitem>
+				<para>
+					Distributed infrastructure for running and managing
+					service modules
+				</para>
+			</listitem>
+			<listitem>
+				<para>
+					Easy coding of  service modules as straight-forward Python classes
+				</para>
+			</listitem>
+			<listitem>
+				<para>
+					Chainable transform layer for conditional transformation of service method
+					results according to type of request. De-coupled from the method code itself.
+				</para>
+			</listitem>
+			<listitem>
+				<para>
+					Multiple and extendible protocol adapters for receiving client requests. Currently
+					supported: Twisted Spread, XMLRPC, HTTP. HTTP responses can be serialised as web
+					pages (templated in Genshi or Django templating languages), XML, JSON or user-defined
+					formats. SOAP to be added.
+				</para>
+			</listitem>
+			<listitem>
+				<para>
+					Automatic distribution of requests across available hosts
+				</para>
+			</listitem>
+			<listitem>
+				<para>
+					Hot deployment and update of services with no loss of requests
+				</para>
+			</listitem>
+			<listitem>
+				<para>
+					Integrated watchdog keeps service nodes alive
+				</para>
+			</listitem>
+			<listitem>
+				<para>
+					Automatic re-distribution of requests upon node or host failure - client oblivious to 
+					the failure
+				</para>
+			</listitem>
+			<listitem>
+				<para>
+					Command and control via SSH console
+				</para>
+			</listitem>
+			<listitem>
+				<para>
+					[F] Web interface to the mesh
+				</para>
+			</listitem>
+			<listitem>
+				<para>
+					Integrated event bus spanning client and server
+				</para>
+			</listitem>
+			<listitem>
+				<para>
+					Potential to interface with nodes written in other languages
+				</para>
+			</listitem>
+			<listitem>
+				<para>
+					[F] Integrated scheduler (cron for &peloton;)
+				</para>
+			</listitem>
+			<listitem>
+				<para>
+					Easy integration with GUI clients, console applications, scripts and other processes
+				</para>
+			</listitem>
+			<listitem>
+				<para>
+					Can be used as a web application server or integrated with existing web apps - very 
+					capable in AJAX environments
+				</para>
+			</listitem>
+			<listitem>
+				<para>
+					Security layer manages nodes to prevent unauthorised nodes joining mesh
+				</para>
+			</listitem>
+			<listitem>
+				<para>
+					[P] Distributed session layer
+				</para>
+			</listitem>
+			<listitem>
+				<para>
+					[P] Security infrastructure; permits developer to restrict access to methods 
+					according to privileges
+				</para>
+			</listitem>
+		</itemizedlist>
+		<para>
+			Other applications in the pipeline to be built upon this infrastructure include ReFlex, the
+			<ulink url='http://www.rethought-solutions.com'>ReThought Solutions</ulink> distributed workflow
+			and job scheduling system running process flow and dependency driven jobs.
+		</para>
+	</sect2>
+	<sect2>
 		<title>A &peloton; mesh</title>
 		<example  id='mesh_overview'>
 			<title>Anatomy of a mesh</title>
