@@ -73,8 +73,8 @@ HTTP based adapters)."""
             return self.xmlrpcHandler._resource.render(request)
         
         elif request.postpath and request.postpath[0] == "static":
-            profile = \
-                self.kernel.serviceLibrary.getLastProfile(request.postpath[1])[0]
+            profile, _ = \
+                self.kernel.serviceLibrary.getProfile(request.postpath[1])
             resourceRoot = profile['resourceRoot']
             self.deliverStaticContent(resourceRoot, request.postpath[2:], request)
             
@@ -109,7 +109,7 @@ HTTP based adapters)."""
                     kwargs[k] = v
 
             try:
-                profile, _ = self.kernel.serviceLibrary.getLastProfile(service)
+                profile, _ = self.kernel.serviceLibrary.getProfile(service)
                 mimeType = profile['methods'][method]['properties']['mimetype.%s'%target]
             except:
                 try:

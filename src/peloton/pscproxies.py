@@ -53,7 +53,7 @@ class LocalPSCProxy(PSCProxy):
     - if error, reset and try again.
     - if no error, put result onto return deferred.
     
-The coreio call method will receive a deferred OR a NoProvidersError
+The coreio call method will receive a deferred OR a NoWorkersError
 will be raised.
 """
         rd = Deferred()
@@ -64,15 +64,15 @@ will be raised.
     def _call(self, rd, service, method, args, kwargs):
         while True:
             try:
-    #            p = self.kernel.workerStore[service].getRandomProvider()
-                p = self.kernel.workerStore[service].getNextProvider()
+    #            p = self.kernel.workerStore[service].getRandomWorker()
+                p = self.kernel.workerStore[service].getNextWorker()
                 d = p.callRemote('call',method, *args, **kwargs)
                 d.addCallback(rd.callback)
                 d.addErrback(self.__callError, rd, p, service, method, args, kwargs)
                 break
             except pb.DeadReferenceError:
-                self.logger.error("Dead reference for %s provider" % service)
-                self.kernel.workerStore[service].notifyDeadProvider(p)
+                self.logger.error("Dead reference for %s worker" % service)
+                self.kernel.workerStore[service].notifyDeadWorker(p)
                 
             except NoWorkersError:
                 # Clearly we expect to be able to provide this service
@@ -94,7 +94,7 @@ to be one of:
 
     - An application error raised in the service - this must pass through. It
       will be characterised by err.value being a string
-    - A connection was broken whilst the call was being made; flag the provider
+    - A connection was broken whilst the call was being made; flag the worker
       as dead and start again. This is signified by err.value being a 
       pb.PBConnectionLost error.
     - The connection was closed cleanly whilst performing the operation; likely
@@ -106,7 +106,7 @@ to be one of:
         if isinstance(err.value, pb.PBConnectionLost) or \
              isinstance(err.value, ConnectionDone):
             if self.RUNNING:
-                self.kernel.workerStore[service].notifyDeadProvider(p)
+                self.kernel.workerStore[service].notifyDeadWorker(p)
                 self._call(rd, service, method, args, kwargs)
             else:
                 rd.errback(NoWorkersError("No workers for service %s" % service))

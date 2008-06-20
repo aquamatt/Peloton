@@ -8,7 +8,7 @@ adapter provides services that are other than published interfaces
 to methods in these classes."""
 
 import peloton.utils.logging as logging
-from peloton.exceptions import NoProvidersError
+from peloton.exceptions import NoWorkersError
 from peloton.exceptions import DeadProxyError
 from peloton.exceptions import ServiceError
 from twisted.internet.defer import Deferred
@@ -49,8 +49,8 @@ or xml. """
                 rd.addErrback(self.__callError, p, d, sessionId, target, service, method, args, kwargs)
                 break
 
-            except NoProvidersError, npe:
-                self.logger.error("No providers: %s" % str(npe))
+            except NoWorkersError, npe:
+                self.logger.error("No workers: %s" % str(npe))
                 d.errback(npe)
                 break
             
@@ -59,7 +59,7 @@ or xml. """
 
     def __callResponse(self, rv, target, service, method, d):
         if not target == 'raw':
-            profile, transforms = self.__kernel__.serviceLibrary.getLastProfile(service)
+            profile, transforms = self.__kernel__.serviceLibrary.getProfile(service)
             try:
                 txform = transforms[method]
             except KeyError:

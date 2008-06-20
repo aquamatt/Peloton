@@ -25,7 +25,7 @@ from peloton.utils.structs import RoundRobinList
 from peloton.profile import PelotonProfile # needed for eval
 from peloton.profile import ServicePSCComparator
 from peloton.utils import getClassFromString
-from peloton.exceptions import NoProvidersError
+from peloton.exceptions import NoWorkersError
 from peloton.pscproxies import LocalPSCProxy
 from peloton.pscproxies import PSC_PROXIES
 
@@ -73,9 +73,7 @@ by another node. """
         if msg['action'] == 'requestForLaunch':
             msg['serviceProfile'] = eval(msg['serviceProfile'])
             # store service profile in the library
-            self.kernel.serviceLibrary.setProfile(msg['serviceProfile']['version'],
-                                                  msg['launchTime'],
-                                                  msg['serviceProfile'])
+            self.kernel.serviceLibrary.setProfile(msg['serviceProfile'])
             
             self.logger.debug("Request to consider ability to launch service: %s (%s) as %s" % (msg['serviceProfile']['name'], msg['serviceProfile']['version'], msg['serviceProfile']['publishedName']))
             if self.spComparator.eq(msg['serviceProfile']['psclimits'], self.kernel.profile, optimistic=True):
@@ -92,7 +90,7 @@ by another node. """
                 
         elif msg['action'] == 'startService':
             self.logger.debug("Instructed to start service %s as %s" % (msg['serviceName'], msg['publishedName']))
-            self.kernel.startService(msg['serviceName'],msg['publishedName'], msg['version'], msg['launchTime'])
+            self.kernel.startServiceGroup(msg['serviceName'],msg['publishedName'])
 
 class ServiceLaunchSequencer(AbstractEventHandler):
     """ State object used to keep track of a particular request to launch 
@@ -122,10 +120,6 @@ in psc.service.loader.<key>. Both in the domain_control exchange.
         self.serviceName = serviceName
         self.publishedName = profile['publishedName']
         self.profile = profile
-        # launchTime is tagged to the service version in all the
-        # node's routing tables so as to be able to differentiate
-        # between different launches of the same versioned service.
-        self.launchTime = long(time.time()*1000.0)
         self.callBackChannel = 'psc.service.loader.%s%s' % (kernel.guid, crypto.makeCookie(10))
         self.dispatcher.register(self.callBackChannel, self, 'domain_control')
         
@@ -167,7 +161,6 @@ making ourselves special."""
                                   action='requestForLaunch',
                                   callback=self.callBackChannel,
                                   serviceName=self.serviceName,
-                                  launchTime = self.launchTime,
                                   serviceProfile=repr(self.profile))
         
     def eventReceived(self, msg, exchange='', key='', ctag=''):
@@ -198,10 +191,8 @@ a service."""
             self.dispatcher.fireEvent(msg['callback'],
                                       'domain_control',
                                       action='startService',
-                                      launchTime=self.launchTime,
                                       serviceName=self.serviceName,
-                                      publishedName=self.publishedName,
-                                      version=self.profile['version'])
+                                      publishedName=self.publishedName)
         
         if self.workersRequired == self.launchPending == 0:
             self.done()
@@ -218,48 +209,26 @@ class ServiceLibrary(PelotonConfigObj):
 handy utility methods. """
     def __init__(self, *args, **kwargs):
         PelotonConfigObj.__init__(self, *args, **kwargs)
-        self.__transformCache = {}
+        self.__profiles = {}
         
-    def setProfile(self, version, launchTime, profile):
-        """ Sets the profile into the tree. Version will have dots which
-need converting to underscore otherwise the tree will have branches
-for each of major, minor and patch number. This would be OK but I think
-it will be more convenient to have version stored at one level in its
-entirety.
-"""
-        outputTransforms = {}
-        self.setpath("lastversion.%s" % (profile['publishedName']), profile)
-        self.__transformCache["lastversion.%s" % profile['publishedName']] = outputTransforms
-        self.__transformCache["lastversion.%s" % profile['publishedName']] = outputTransforms
-        version = version.replace('.','_')
+        # holds transform chains as evaluated on the fly in coreio
+        self.__outputTransforms = {}
+        
+    def setProfile(self, profile):
+        """ Sets the profile into the tree."""
+        self.__profiles[profile['publishedName']] = profile
+        self.__outputTransforms[profile['publishedName']] = {}
         
         # evaluate some of the stringified entries
         for method in profile['methods'].keys():
             profile['methods'][method]['properties'] = \
                 eval(profile['methods'][method]['properties'])
 
-        self.setpath("%s.%s.%s" % 
-                     (profile['publishedName'], version, str(launchTime)), profile)
-        self.__transformCache["%s.%s.%s" % (profile['publishedName'], version, str(launchTime))] = outputTransforms
-        
-    def getLastProfile(self, publishedName):
-        """ Return latest version of this profile and any computed 
-output transforms as a tupple of (profile, transforms). """
-        transforms = self.__transformCache["lastversion.%s" % publishedName]
-        return self.getpath("lastversion.%s" % publishedName), transforms
-
-    def getProfile(self, publishedName, version, launchTime=None):
-        """ Return the specified profile and output transforms dict; if 
-launchTime is not specified return the last one entered. """
-        version = version.replace('.','_')
-        transforms = "%s.%s.%s" % (publishedName, version, str(launchTime))
-        if launchTime:
-            return self.getpath("%s.%s.%s" % (publishedName, version, str(launchTime))), transforms
-        else:
-            times = self.getpath("%s.%s"%(publishedName, version))
-            lts = times.keys()
-            lts.sort()
-            return times[lts[-1]]
+    def getProfile(self, publishedName):
+        """ Return the specified profile and transform cache."""
+        profile = self.__profiles[publishedName]
+        transforms = self.__outputTransforms[publishedName]
+        return profile, transforms
 
     def __repr__(self):
         return("ServiceLibrary(%s)" % str(self) )
@@ -492,7 +461,7 @@ list of available proxies. """
             ix = random.randrange(np)
             return proxies[ix]
         except KeyError:
-            raise NoProvidersError("No Proxy for service %s" % service)
+            raise NoWorkersError("No Proxy for service %s" % service)
 
     def removeHandlerForService(self, service, guid=None, proxy=None, removeAll=False):
         """ Remove proxy from the list of proxies available for this 

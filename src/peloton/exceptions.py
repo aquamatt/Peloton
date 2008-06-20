@@ -54,7 +54,7 @@ process. """
 class PelotonConnectionError(PelotonError):
     pass
 
-class NoProvidersError(PelotonError):
+class NoWorkersError(PelotonError):
     pass
 
 class NoWorkersError(PelotonError):

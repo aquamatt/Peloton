@@ -301,7 +301,7 @@ hooks into the reactor. It is passed the entire config stack
 
     def stopService(self, publishedName):
         """ Signal the grid to stop the named service on this domain. """
-        profile, _ = self.serviceLibrary.getLastProfile(publishedName)
+        profile, _ = self.serviceLibrary.getProfile(publishedName)
         serviceName = profile['name']
         self.logger.debug("Instructed to stop %s (%s)" % (serviceName, publishedName))
         self.domainManager.sendCommand('SERVICE_SHUTDOWN', serviceName=serviceName, 
@@ -311,75 +311,68 @@ hooks into the reactor. It is passed the entire config stack
         """ Stop all workers running the named service. """
         self.logger.info("Stopping service: %s" % publishedName)
         try:
-            providers = self.workerStore[publishedName]
-            providers.closeAll()
+            workers = self.workerStore[publishedName]
+            workers.closeAll()
             del(self.workerStore[publishedName])
         except KeyError:
             # not running this service 
             pass
 
-    def startService(self, serviceName, publishedName, version, launchTime, numWorkers=None):
-        """ Instruct start of worker processes running service named serviceName. 
+    def startServiceGroup(self, serviceName, publishedName, numWorkers=None):
+        """ Instruct start of a new group of worker processes running service named serviceName. 
 The number of workers is determined from the profile but can be overridden with 
-numWorkers if set.
+numWorkers if set. The previous service group for this service, if one was running,  is
+stopped by the process started here.
 """
-        tok = crypto.makeCookie(20)
-        profile, _ = self.serviceLibrary.getProfile(publishedName, version, launchTime)
+        profile, _ = self.serviceLibrary.getProfile(publishedName)
         if numWorkers == None:
             numWorkers = int( profile.getpath('launch.workersperpsc') )
             
-        self.serviceLaunchTokens[tok] = [serviceName, 
-                                         version, 
-                                         launchTime, 
-                                         profile,
-                                         0] # last int is number started
-        d = deferToThread(self._startWorkerProcess, 
-                          numWorkers, 
-                          tok)
-        d.addCallback(self._workerStarted, serviceName)
+        self.workerStore[publishedName] = \
+            ServiceWorkerGroup(self, serviceName, publishedName)
+            
+        for i in xrange(numWorkers):
+            self.startService(serviceName, publishedName, profile)
         
-    def _startWorkerProcess(self, numWorkers, token):
+    def startService(self, serviceName, publishedName, profile=None):
+        """ Instruct start of a single worker process running service 
+named serviceName. """
+        tok = crypto.makeCookie(20)
+        if not profile:
+            profile, _ = self.serviceLibrary.getProfile(publishedName)
+        self.serviceLaunchTokens[tok] = [serviceName, 
+                                         profile]
+        
+        d = deferToThread(self._startWorkerProcess, tok)
+        d.addCallback(self._workerStarted, serviceName)
+
+    def _startWorkerProcess(self, token):
         """ Run in a thread by startService to spawn the 
-worker processes and initialise them. """
-        for _ in range(numWorkers):
-            pipe= subprocess.Popen(['python', self.pwp, 
-                              self.profile['ipaddress'], 
-                              str(self.profile['port'])],
-                              stdin=subprocess.PIPE).stdin
-            pipe.write("%s\n" % token)
+worker process and initialise. """
+        pipe= subprocess.Popen(['python', self.pwp, 
+                          self.profile['ipaddress'], 
+                          str(self.profile['port'])],
+                          stdin=subprocess.PIPE).stdin
+        pipe.write("%s\n" % token)
 
     def _workerStarted(self, _, service):
         self.logger.info("Workers spawned for %s" % service)
 
     def addWorker(self, ref, token):
-        """ Store a reference to a worker keyed on tuple of 
-(name, version, launchTime). 
-
+        """ Store a reference to a worker keyed on name.
 Returns the name of the service referenced by this token"""
         try:
             launchRecord = self.serviceLaunchTokens[token]
         except KeyError:
             raise WorkerError("Invalid start request.")
 
-        launchRecord[-1]+=1
-        serviceName, version, launchTime, profile = launchRecord[:4]
+        serviceName, profile = launchRecord
         publishedName = profile['publishedName']
         runtimeConfig = profile['_sysRunConfig']
-        if not self.workerStore.has_key(publishedName):
-            self.workerStore[publishedName] = ServiceProvider(self, publishedName)
-        self.workerStore[publishedName].addProvider(ref, version, launchTime)
-        if launchRecord[-1] == int( profile.getpath('launch.workersperpsc') ):
-            del self.serviceLaunchTokens[token]
+        self.workerStore[publishedName].addWorker(ref)
+        del self.serviceLaunchTokens[token]
         return serviceName, publishedName, runtimeConfig
     
-    def removeWorker(self, ref):
-        """ Remove the worker referenced from the worker store. """
-        self.logger.debug("Worker being removed but NOT stopped, kernel.py removeWorker")
-        for k,v in self.workerStore:
-            if v == ref:
-                del(self.workerStore[k])
-                break
-
     def getCallable(self, name):
         """ Return the callable as named"""
         if not self.callables.has_key(name):
@@ -540,141 +533,93 @@ cookie jar of cookies > 30 seconds old. """
                 MethodEventHandler(self.respond_commandRequest),
                 "domain_control" )
         
-class ServiceProvider(object):
-    """ Manages providers for a service - keeps records of what
-versions are available and the PSC 'providers' running the service. """
+class ServiceWorkerGroup(object):
+    """ Manages workers for a service - keeps records of 
+all the PWP workers running a given service. """
     
-    def __init__(self, kernel, name):
-        """ Initialise a providers store with the name of the service."""
+    def __init__(self, kernel, serviceName, publishedName):
+        """ Initialise a workers store with the name of the service."""
         self.kernel = kernel
-        self.name = name
-        self.versions = {}
-        self.allProviders = []
-        LoopingCall(self._checkHeartBeat).start(3, False)
-            
-    def addProvider(self, provider, version, launchTime, closeOldProviders=True):
-        """ Add a provider. By default and unless closeOldProviders is set False,
-if there are providers for an older launchTime they will be closed down once
-a new launchTime provider for that version is added."""
-        if not self.versions.has_key(version):
-            self.versions[version]={}
-        vrec = self.versions[version]
-        if not vrec.has_key(launchTime):
-            self.versions[version][launchTime] = RoundRobinList()
-        vrec[launchTime].append(provider)
-        self.allProviders.append(provider)
-        
-        # close down all providers with older launchTime stamps
-        if closeOldProviders:
-            oldLaunchTimes = [i for i in vrec.keys() if i!=launchTime]
-            for olt in oldLaunchTimes:
-                for provider in vrec[olt]:
-                    try:
-                        try:
-                            self.allProviders.remove(provider)
-                        except:
-                            pass
-                        provider.callRemote('stop').addBoth(self._removeClosed, version, olt, provider)
-                    except pb.DeadReferenceError:
-                        pass
-                
-    def _removeClosed(self, _, version, launchTime, ref):
-        try:
-            if ref in self.versions[version][launchTime]:
-                self.versions[version][launchTime].remove(ref)
-                try:
-                    self.allProviders.remove(ref)
-                except:
-                    pass
-                if not self.versions[version][launchTime]:
-                    del( self.versions[version][launchTime] )
-        except KeyError:
-            # launchTime no longer there
-            pass
+        self.serviceName = serviceName
+        self.publishedName = publishedName
+        self.workers = RoundRobinList()
+        self.started = time.time()
+        self.__CLOSING = False
+        self.__eventHandlerInstance = MethodEventHandler(self._workerLaunchedHandler)
+        self.kernel.dispatcher.registerInternal("kernel.workerlaunch", \
+                                self.__eventHandlerInstance)
+        self.loopTimer = LoopingCall(self._checkHeartBeat)
+        self.loopTimer.start(3, False)
 
-    def getProviders(self):
-        """ Return all providers of the latest version."""
-        versions = self.versions.keys()
-        versions.sort()
-        try:
-            vrecs = self.versions[versions[-1]]
-        except IndexError:
-            # all the providers are gone but we're still listed
+    def _workerLaunchedHandler(self, msg, _, key, __):
+        """ Receives events on kernel.workerlaunch; if the msg indicates
+launch of a worker for the same named service as this instance, but different
+start time, indicates a re-start and this group should closedown. """
+        if self.__CLOSING:
+            return
+
+        if msg['serviceName'] == self.serviceName \
+            and msg['publishedName'] == self.publishedName \
+            and msg['startTime'] != self.started:
+            self.closeAll()
+            self.kernel.logger.info("Service Worker Group closing for %s [%f]" \
+                                    % (self.publishedName, self.started))
+            
+    def addWorker(self, worker):
+        """ Add a worker to the list."""
+        self.workers.append(worker)
+        self.kernel.dispatcher.fireInternalEvent("kernel.workerlaunch", 
+                                                 serviceName = self.serviceName, 
+                                                 publishedName = self.publishedName,
+                                                 startTime = self.started)
+        
+    def getWorkers(self):
+        """ Return all workers in this group."""
+        if not self.workers:
+            # all the workers are gone but we're still listed
             # as supplying this service.... for now just wash over
             raise NoWorkersError("Service no longer available.")
-        lts = vrecs.keys()
-        lts.sort()
-       
-        return vrecs[lts[-1]]
+        return self.workers
         
-    def getRandomProvider(self):
-        """ Return a single provider at random from the pool for the latest
+    def getRandomWorker(self):
+        """ Return a single worker at random from the pool for the latest
 version """
-        providers = self.getProviders()
-        np = len(providers)
-        if np == 0:
-            raise NoWorkersError("No workers for service!")
-        ix = random.randrange(np)
-        return providers[ix]
+        workers = self.getWorkers() # raises error if no workers
+        ix = random.randrange( len(workers) )
+        return workers[ix]
     
-    def getNextProvider(self):
-        """ Return a single provider from the pool for the latest
+    def getNextWorker(self):
+        """ Return a single worker from the pool for the latest
 version (picks in round-robin fashion from pool)."""
-        providers = self.getProviders()
-        v = providers.rrnext()
+        workers = self.getWorkers()
+        v = workers.rrnext()
         if v==None:
             raise NoWorkersError("No workers for service!")
         return v
 
-    def removeProvider(self, provider):
-        """ Remove the provider from this mapping, calling stop() on it
-as we go. Returns the number of occurences removed."""
-        emptyVersions=[] 
-        n = 0
-        for v, lts in self.versions.items():
-            keysToRemove = []
-            for k, p in lts.items():
-                if provider in p:
-                    p.remove(provider)
-                    n+=1
-                if not p:
-                    keysToRemove.append(k)
-            for k in keysToRemove:
-                del(lts[k])
-            if not lts:
-                emptyVersions.append(v)
-        for k in emptyVersions:
-            del(self.versions[k])
+    def removeWorker(self, worker):
+        """ Remove the worker from this mapping, calling stop() on it
+as we go. Return True if worker was found and removed; False if not"""
         try:
-            provider.callRemote('stop')
-        except pb.DeadReferenceError:
-            pass
-
-        try:
-            self.allProviders.remove(provider)
+            worker.callRemote('stop')
         except:
             pass
 
-        return n
-
-    def getLatestVersion(self):
-        """ Return a (version, launchTime) tuple. """
-        vnums = self.versions.keys()
-        if not vnums:
-            raise NoWorkersError("No workers currently for %s" % self.name)
-        vnums.sort()
-        vrec = self.versions[vnums[-1]]
-        lts = vrec.keys()
-        lts.sort()
-        return vnums[-1], lts[-1]
-        
-    def notifyDeadProvider(self, provider):
-        """ Remove this dead provider and trigger its replacement. """
+        if worker in self.workers:
+            try:
+                self.workers.remove(worker)
+            except:
+                pass
+            return True
+        else:
+            return False
+    
+    def notifyDeadWorker(self, worker):
+        """ Remove this dead worker and trigger its replacement. """
         try:
-            version, launchTime = self.getLatestVersion()
-            n = self.removeProvider(provider)
-            if n:
-                self.kernel.startService(self.name, version, launchTime, 1)
+            if self.removeWorker(worker):
+                # replaces only if worker was still in the pool
+                self.kernel.startService(self.serviceName, self.publishedName)
             # else there were no occurences removed so this is likely already 
             # being re-stated.
         except NoWorkersError:
@@ -682,27 +627,22 @@ as we go. Returns the number of occurences removed."""
             pass
                 
     def _checkHeartBeat(self):
-        """ Iterate over all providers, calling check heart beat. """
-        deadProviders = [p for p in self.allProviders if not p.checkBeat()]
-        for p in deadProviders:
-            self.notifyDeadProvider(p)
-                
-    def setCurrent(self, version):
-        """ Re-set the 'current' version. """
-        pass
+        """ Iterate over all workers, calling check heart beat. """
+        try:
+            deadWorkers = [p for p in self.workers if not p.checkBeat(threshold=2)]
+            for p in deadWorkers:
+                self.notifyDeadWorker(p)
+        except AttributeError:
+            # checkBeat not yet in place...
+            self.kernel.logger.debug("Check heart beat skipped... workers not initialised")
 
     def closeAll(self):
-        """ Close down ALL providers. """
-        for version in self.versions.values():
-            # version is dict keyed on launchTime
-            for providerList in version.values():
-                # providerList is list of providers
-                for p in providerList:
-                    try:
-                        self.allProviders.remove(p)
-                    except:
-                        pass
-                    p.callRemote('stop').addErrback(lambda _: None)
-                    
-    
-        
+        """ Close down ALL workers. """
+        self.__CLOSING = True
+        try:
+            self.loopTimer.stop()
+        except:
+            self.kernel.logger.debug("loopTimer.stop() called twice!")
+        self.kernel.dispatcher.deregisterInternal(self.__eventHandlerInstance)
+        for worker in self.workers:
+            worker.callRemote('stop').addErrback(lambda _: None)        

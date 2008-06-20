@@ -103,11 +103,14 @@ Handler must be an instance of AbstractEventHandler"""
                 keys.append(key)
         except KeyError:
             self.handlers[handler] = [key]
-        
             
     def deregisterInternal(self, handler):
         """ De-register this handler for internal events. """
-        eventKeys = self.handlers[handler]
+        try:
+            eventKeys = self.handlers[handler]
+        except Exception, e:
+            self.kernel.logger.debug("Attempt to remove unregistered internal handler!")
+            return
         
         for key in eventKeys:
             self.eventKeys[key].remove(handler)
