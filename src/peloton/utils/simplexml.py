@@ -5,15 +5,25 @@
 """ Some trivial classes for testing to serialize structures out
 to different forms of XML. """
 import types
-from peloton.utils.json import JSONSerializer
 
-class XMLLanguageSerializer(JSONSerializer):
-    """ Translates into similarly structure XML or HTML given
-tags at init time. Simple extension of the JSON code"""
+class XMLLanguageSerializer(object):
+    """ Translates into similarly structured XML or HTML given
+tags at init time."""
     def __init__(self, header, footer, listStart, listEnd, 
                  listItem, dictStart, dictEnd, dictItem, 
                  dataItemStart, dataItemEnd):
-        JSONSerializer.__init__(self)
+
+        self.TR_FUNCS = {types.ListType: self._tr_list,
+                    types.TupleType: self._tr_list,
+                    types.DictType: self._tr_dict,
+                    types.StringType: self._tr_string,
+                    types.UnicodeType: self._tr_unicode,
+                    types.FloatType: self._tr_float,
+                    types.IntType: self._tr_int,
+                    types.LongType: self._tr_int,
+                    types.BooleanType: self._tr_boolean,
+                    types.NoneType: self._tr_none}
+
         self.header = header
         self.footer = footer
         self.listStart = listStart
@@ -62,6 +72,38 @@ dataItemEnd tags."""
                     {'key': key, 'value': val})
         return "%s\n%s\n%s" % (self.dictStart, "\n".join(tokens), self.dictEnd)
     
+    def _tr_string(self, o):
+        substitutions = [('/', r'\/'),
+                         ('\\', r'\\'),
+                         ('"', r'\"'),
+                         ('\b', r'\b'),
+                         ('\f', r'\f'),
+                         ('\n', r'\n'),
+                         ('\r', r'\r'),
+                         ('\t', r'\t'),
+                         ]
+        for s, r in substitutions:
+            o = o.replace(s, r)
+        return u'"%s"' % o
+    
+    def _tr_unicode(self, o):
+        return self._tr_string(o)
+    
+    def _tr_float(self, o):
+        return u"%f" % o
+    
+    def _tr_int(self, o):
+        return u"%d" % o
+        
+    def _tr_boolean(self, o):
+        if o:
+            return u"true"
+        else:
+            return u"false"
+    
+    def _tr_none(self, o):
+        return u"null"
+
 class XMLFormatter(XMLLanguageSerializer):
     """ Noddy serialiser takes Python struct and makes XML. 
 Returns tupple of (content-type, value)"""

@@ -27,9 +27,9 @@ stop services as well as make other hot-changes.
         for m in publicMethods:
             namespace[m[7:]] = getattr(psc, m)
 
-        self.pmh = PasswordManhole(int(self.config['port']),
-                                   self.config['username'],
-                                   self.config['password'],
+        self.pmh = PasswordManhole(int(self.config.port),
+                                   self.config.username,
+                                   self.config.password,
                                    namespace)        
         
     def start(self):
@@ -37,7 +37,7 @@ stop services as well as make other hot-changes.
             self.pmh.startService()
             self.logger.info("SSH shell plugin initialised")
         except CannotListenError:
-            raise Exception("SSH Shell cannot listen on port %d" % self.config['port'])
+            raise Exception("SSH Shell cannot listen on port %d" % self.config.port)
         
     def _stopped(self, *args, **kargs):
         self.logger.info("SSH shell plugin stopped")

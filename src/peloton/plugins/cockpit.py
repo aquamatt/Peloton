@@ -33,14 +33,14 @@ Definitely work in progress... this is just at the demo level."""
         for m in publicMethods:
             self.namespace[m[7:]] = getattr(psc, m)
         
-        self.cockpit = PasswordCockpit(int(self.config['port']),
-                                   **{self.config['username']:self.config['password']})
+        self.cockpit = PasswordCockpit(int(self.config.port),
+                                   **{self.config.username:self.config.password})
     def start(self):
         try:
             self.cockpit.startService()
             self.logger.info("Cockpit plugin initialised")
         except CannotListenError:
-            raise PluginError("Cockpit cannot listen on port %d" % self.config['port'])
+            raise PluginError("Cockpit cannot listen on port %d" % self.config.port)
         
     def _stopped(self, *args, **kargs):
         self.logger.info("Cockpit plugin stopped")

@@ -40,8 +40,8 @@ at an un-wholesome rate.
 @todo - purging of threads with no real listeners behind them?
 """
     def initialise(self):
-        self.vhost = self.kernel.config['grid.messagingVHost']
-        self.host = self.kernel.config['grid.messagingHost']
+        self.vhost = self.kernel.settings.messagingVHost
+        self.host = self.kernel.settings.messagingHost
         hp = self.host.split(':')
         if len(hp) == 1:
             self.port = 5672
@@ -53,10 +53,10 @@ at an un-wholesome rate.
                 raise ConfigurationError("Invalid port number for AMQP host: %s " % hp[1])
    
         # NB: THIS HANDLER DOES NOT SUPPORT REALM
-        self.realm = self.kernel.config['grid.messagingRealm']
+        self.realm = self.kernel.settings.messagingRealm
         
-        self.domain = self.kernel.initOptions.domain
-        self.node_guid = self.kernel.guid
+        self.domain = self.kernel.settings.domain
+        self.node_guid = self.kernel.profile.guid
         
         # key is ctag; value is handler object
         self.handlersByCtag = {}
@@ -71,8 +71,8 @@ at an un-wholesome rate.
                         spec=qpid.spec.load('file://%s/amqp0-8.xml' % specDir), 
                         vhost=self.vhost)
 
-        self.connection.start({ 'LOGIN': self.config['username'], 
-                      'PASSWORD': self.config['password']}) 
+        self.connection.start({ 'LOGIN': self.config.username, 
+                      'PASSWORD': self.config.password}) 
 
 
         exchanges = [('domain_control','topic'),

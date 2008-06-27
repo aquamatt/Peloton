@@ -1,0 +1,335 @@
+<appendix id='appendix_config_params'>
+	<title>Configuration parameters</title>
+	<para>
+		The following is a list of parameters that are used by the core &peloton;
+		system in configuration files and profiles.
+	</para>
+	<sect2>
+		<title>Service Profile</title>
+		<para>
+			Service configuration files contain arbitrary settings for the service itself and
+			one obligatory <code>profile</code> <code>PelotonSettings</code> instance for
+			which the following names have assigned meanings:
+		</para>
+		<sect3>
+			<title><code>profile</code></title>
+			<variablelist>
+			   <varlistentry>
+			   <term>name</term>
+			   <listitem><para>Long name for this service</para></listitem>
+			   </varlistentry>
+			   <varlistentry>
+				  <term>comment</term>
+				  <listitem><para>Short description re this service</para></listitem>
+			   </varlistentry>
+			   <varlistentry>
+				  <term>author</term>
+				  <listitem><para>Self-explanatory</para></listitem>
+			   </varlistentry>
+			   <varlistentry>
+				  <term>buildversion</term>
+				  <listitem><para>Project-specific buildversion number</para></listitem>
+			   </varlistentry>
+			   <varlistentry>
+				  <term>version</term>
+				  <listitem><para>major.minor.patch version number (string)</para></listitem>
+			   </varlistentry>
+			</variablelist> 		
+		</sect3>
+		<sect3>
+			<title><code>profile.psclimits</code></title>
+			<para>
+				Any requirements to be demanded of a PSC running this service.
+			</para>
+			<variablelist>
+			   <varlistentry>
+			   <term>[min|max]cpus</term>
+			   <listitem><para>Minimum/maximum number of CPUs in host</para></listitem>
+			   </varlistentry>
+			   <varlistentry>
+				  <term>[min|max]ram</term>
+				  <listitem><para>Limits on RAM in the host</para></listitem>
+			   </varlistentry>
+			   <varlistentry>
+				  <term>hostname</term>
+				  <listitem><para>Self-explanatory</para></listitem>
+			   </varlistentry>
+			   <varlistentry>
+				  <term>platform</term>
+				  <listitem><para>Required platform, e.g. <code>linux</code>, 
+					  <code>windows</code> etc.</para></listitem>
+			   </varlistentry>
+			   <varlistentry>
+				  <term>flags</term>
+				  <listitem><para>List of flags that MUST be specified on the target PSC</para></listitem>
+			   </varlistentry>
+			   <varlistentry>
+				  <term>excludeFlags</term>
+				  <listitem><para>List of flags that MUST NOT be specified on the target PSC</para></listitem>
+			   </varlistentry>
+			</variablelist> 		
+		</sect3>
+	</sect2>
+	<sect2>
+		<title>PSC</title>
+		<variablelist>
+		   <varlistentry>
+			  <term>grid</term>
+			  <listitem><para>The long name of the grid</para></listitem>
+		   </varlistentry>
+		   <varlistentry>
+			  <term>domainRegistrationPolicy</term>
+			  <listitem><para>values [any|registered] determines
+			  whether domains joining the grid must be validated or not.</para></listitem>
+		   </varlistentry>
+		   <varlistentry>
+			  <term>gridKeyfile</term>
+			  <listitem><para>name, or full path to, the keyfile for the grid. File system
+			  permissions keep this secure.</para></listitem>
+		   </varlistentry>
+		   <varlistentry>
+			  <term>messagingVHost</term>
+			  <listitem><para>Name of VHost in AMQP message bus</para></listitem>
+		   </varlistentry>
+		   <varlistentry>
+			  <term>messagingRealm</term>
+			  <listitem><para>Realm to use in the AMQP bus</para></listitem>
+		   </varlistentry>
+		   <varlistentry>
+			  <term>messagingHost</term>
+			  <listitem><para>Address of the form <code>address:port</code> for 
+				  an AMQP provider</para></listitem>
+		   </varlistentry>
+		   <varlistentry>
+			  <term>domain</term>
+			  <listitem><para>The long name of the domain</para></listitem>
+		   </varlistentry>
+		   <varlistentry>
+			  <term>serviceStartupPolicy</term>
+			  <listitem><para>values [any|registered] determines 
+			  whether PSCs joining the domain must be validated or not.</para></listitem>
+		   </varlistentry>
+		   <varlistentry>
+			  <term>domainKeyfile</term>
+			  <listitem><para>nam, or full path to, the keyfile for the domain.</para></listitem>
+		   </varlistentry>
+		   <varlistentry>
+			  <term>administrators</term>
+			  <listitem><para>list of email addresses of those who are administrators 
+			  of the domain.</para></listitem>
+		   </varlistentry>
+		   <varlistentry>
+			   <term>
+				   psc_user
+			   </term>
+			   <listitem>
+				   <para>
+						Username to run the PSC as (UNIX)
+				   </para>
+			   </listitem>
+		   </varlistentry>
+		   <varlistentry>
+			   <term>
+				   psc_group
+			   </term>
+			   <listitem>
+				   <para>
+					   Group to run the PSC as (UNIX)
+				   </para>
+			   </listitem>
+		   </varlistentry>
+		   <varlistentry>
+			   <term>
+				   worker_user
+			   </term>
+			   <listitem>
+				   <para>
+						Username to run the PWP as (UNIX)
+				   </para>
+			   </listitem>
+		   </varlistentry>
+		   <varlistentry>
+			   <term>
+				   worker_group
+			   </term>
+			   <listitem>
+				   <para>
+					   Group to run the PWP as (UNIX)
+				   </para>
+			   </listitem>
+		   </varlistentry>
+		   <varlistentry>
+			   <term>
+				   bind
+			   </term>
+			   <listitem>
+				   <para>
+					   Of the form <code>address:port</code>, the interface
+					   to which to bind the primary adapter with the option 
+					   of <code>0.0.0.0:9100</code> to bind to all interfaces.
+				   </para>
+			   </listitem>
+		   </varlistentry>
+		   <varlistentry>
+			   <term>
+				   httpPort
+			   </term>
+			   <listitem>
+				   <para>
+					   Port on which to receive HTTP requests
+				   </para>
+			   </listitem>
+		   </varlistentry>
+		   <varlistentry>
+			   <term>
+				   adapters
+			   </term>
+			   <listitem>
+				   <para>
+					   list of fully-qualified class names of adapters to run
+					   <emphasis>excluding</emphasis> the primary 
+					   adapter, <code>PelotonPBAdapter</code>.
+				   </para>
+			   </listitem>
+		   </varlistentry>
+		</variablelist> 		
+	</sect2>
+	<sect2>
+		<title>PSC Profile</title>
+		<para>
+			The PSC profile is defined in a <code>PelotonSettings</code>
+			instance called <code>profile</code> with the following defined
+			names:
+		</para>
+		<variablelist> 		
+		   <varlistentry>
+			   <term>
+				   cpus
+			   </term>
+			   <listitem>
+				   <para>
+					   Number of CPUs in this PSC
+				   </para>
+			   </listitem>
+		   </varlistentry>
+		   <varlistentry>
+			   <term>
+				   ram
+			   </term>
+			   <listitem>
+				   <para>
+					  Size of ram in megabytes 
+				   </para>
+			   </listitem>
+		   </varlistentry>
+		   <varlistentry>
+			   <term>
+				   rpc
+			   </term>
+			   <listitem>
+				   <para>
+					  list of RPC methods understood, e.g. 
+					  <code>['pb', 'bus']</code> implies this PSC
+					   responds to Twisted Spread (as all should do)
+					   and RPC over the message bus (not yet implemented
+					   as at time of writing, 23rd June 2008).
+				   </para>
+			   </listitem>
+		   </varlistentry>
+		</variablelist>
+	</sect2>
+	<sect2>
+		<title>PSC Plugins</title>
+		<para>
+			Kernel plugins to be started are listed and configured in 
+			the <code>plugins</code> <code>PelotonSettings</code> instance.
+			Each plugin configuration is itself a <code>PelotonSettings</code>
+			instance. The overall structure is thus of the form:
+		</para>
+		<informalexample>
+			<programlisting> plugins = PelotonSettings()
+ plugins.amqp_qpid = PelotonSettings()
+ plugins.amqp_qpid.name = "eventbus"
+ plugins.amqp_qpid.classname = "peloton.plugins.amqpQpid.AMQPEventBus"
+ ...
+				
+ plugins.shell = PelotonSettings()
+ plugins.shell.classname="peloton.plugins.shell.PelotonShell"
+ plugins.shell.enabled=True
+ ...</programlisting>
+		</informalexample>
+		<para>
+			Plugin profiles have the following common names:
+		</para>
+		<variablelist> 		
+		   <varlistentry>
+			   <term>
+				   name
+			   </term>
+			   <listitem>
+				   <para>
+					   The name by which the plugin is refered in the kernel;
+					   by default it is the name of the profile but there
+					   are reasons to override this. For example, all 
+					   message bus plugins must publish themselves as 
+					   <code>eventbus</code> but it you may have entries
+					   for <code>amqp_qpid</code> and <code>pseudomq</code>,
+					   both of which provide the same functionality. The one
+					   to use can be specified in config (by disabling one) or
+					   from the command line (using a combination of 
+					   <code>--enable</code> and <code>--disable</code>
+					   switches).
+				   </para>
+			   </listitem>
+		   </varlistentry>
+		   <varlistentry>
+			   <term>
+				   comment
+			   </term>
+			   <listitem>
+				   <para>
+					   Short description of the plugin
+				   </para>
+			   </listitem>
+		   </varlistentry>
+		   <varlistentry>
+			   <term>
+				   classname
+			   </term>
+			   <listitem>
+				   <para>
+					   Fully qualified classname for this plugin
+				   </para>
+			   </listitem>
+		   </varlistentry>
+		   <varlistentry>
+			   <term>
+				   enabled
+			   </term>
+			   <listitem>
+				   <para>
+					   [<code>True</code>|<code>False</code>]; explicitly
+					   enables or disables this plugin.
+				   </para>
+			   </listitem>
+		   </varlistentry>
+		   <varlistentry>
+			   <term>
+				   order
+			   </term>
+			   <listitem>
+				   <para>
+					   Optional argument that controls the order in 
+					   which plugins are loaded. Can be used to ensure
+					   dependencies are met. The message bus, for example,
+					   must start first.
+				   </para>
+			   </listitem>
+		   </varlistentry>
+		</variablelist> 		
+		<para>
+			All other settings in a kernel plugin profile are relevant to 
+			the plugin itself.
+		</para>
+	</sect2>
+</appendix>

@@ -1,0 +1,5 @@
+# test configuration
+
+a=10
+b=[20,30,40,a]
+c=PelotonSettings({'value':'mango'})

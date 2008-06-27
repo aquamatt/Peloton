@@ -7,6 +7,7 @@ from twisted.spread import pb
 from twisted.internet import reactor
 from peloton.utils.config import locateService
 from peloton.utils.config import findTemplateTargetsFor
+from peloton.utils.config import PelotonSettings
 import peloton.utils.logging as logging
 
 class PelotonService(object):
@@ -19,36 +20,30 @@ Configuration
 Services live in a strictly regimented structure on the file system. This simplifies
 auto-generation of code and automated loading with minimal magic.
 
-The root path points to a http://news.bbc.co.uk/directory
-which contains the service directory. The service directory is laid out as 
-follows, where the service is called FooBar::
+The root path points to a directory which contains the service directory. 
+The service directory is laid out as follows, where the service is 
+called FooBar::
 
-    service_root/foobar/config/common.pcfg
-                              /<gridmode>.pcfg
-                              /<gridmode>.pcfg
-                              /<...>
-                              /profile.pcfg
-                              /<gridmode>_profile.pcfg
+    service_root/foobar/config/service.pcfg
                        /foobar.py
                        /<supporting code>
                        /resource/...
 
 Note that nomenclature is relatively simple; the service directory must be 
 named the same as the service shortname (when lowercased). The configuration
-files are named 'common.pcfg', 'test.pcfg' etc.
+files are named '*.pcfg'.
 
 The service directory must contain at the very least a file called foobar.py (note
 lower case) containing the class FooBar(PelotonService,...). Here FooBar retains
 it's original capitalisation and, indeed, it is a matter of convention
 that the service name should be camel case.            
 """
-    def __init__(self, name, gridmode, dispatcher, logger):
+    def __init__(self, name, dispatcher, logger):
         """ homePath passed in on construction because from this module
 cannot find where the concrete sub-class lives. Configurations are found relative to this
 homePath in homePath/config. 
 """
         self.name = name
-        self.gridmode = gridmode
         self.dispatcher = dispatcher
         self.logger = logger
 
@@ -74,7 +69,11 @@ and the location of the resource folder.
 
 Developers should not use the logger here: loadConfig should be useable prior
 to initSupportServices having been called."""
-        servicePath, self.profile = locateService(self.name, servicePath, self.gridmode, runconfig=runconfig)
+        servicePath, self.settings = locateService(self.name, servicePath, runconfig=runconfig)
+        if self.settings.has_key('profile'):
+            self.profile = self.settings.profile
+        else:
+            self.profile = PelotonSettings()
         self.profile['_sysRunConfig'] = runconfig
         if not self.profile.has_key('publishedName'):
             self.profile['publishedName'] = self.name
@@ -82,7 +81,7 @@ to initSupportServices having been called."""
         publicMethods = [m for m in dir(self) if m.startswith('public_') and callable(getattr(self, m))]
         
         if not self.profile.has_key('methods'):
-            self.profile['methods'] = {}
+            self.profile['methods'] = PelotonSettings()
 
         methods = self.profile['methods']
         for nme in publicMethods:
@@ -93,7 +92,7 @@ to initSupportServices having been called."""
             if hasattr(mthd, "_PELOTON_METHOD_PROPS"):
                 properties = mthd._PELOTON_METHOD_PROPS
             else:
-                properties = {}
+                properties = PelotonSettings()
 
             # step one, find all template files and insert
             # into transforms
@@ -134,7 +133,7 @@ to initSupportServices having been called."""
                         v[v.index('@template')] = ''
 
             if not methods.has_key(shortname):
-                methods[shortname] = {}
+                methods[shortname] = PelotonSettings()
             record = methods[shortname]
             record['doc'] = mthd.__doc__
             record['properties'] = str(properties)

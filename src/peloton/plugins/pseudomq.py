@@ -63,7 +63,7 @@ matching rules; this is done with the matchKey method.
 """
     def initialise(self):
         self.isServer = self.kernel.hasFlag('mqserver')
-        self.host, port = self.config['host'].split(':')
+        self.host, port = self.config.host.split(':')
         try:
             self.port = int(port)
         except ValueError:

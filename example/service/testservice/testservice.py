@@ -51,7 +51,8 @@ class TestService(PelotonService):
                   'last' :'Doe'},
                 'interests' : ['sailing', 'running', 'jam'],
                 'work' : [{'company':'Big Balls', 'position':'bearings maker'},
-                          {'company':'Better Balls', 'position':'Junior inflator'}]
+                          {'company':'Better Balls', 'position':'Junior inflator'}],
+                'poolId' : self.settings.poolId,
                 }
         
     def public_slowCall(self, x):

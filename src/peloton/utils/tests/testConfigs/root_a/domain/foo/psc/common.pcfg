@@ -1,7 +1,0 @@
-# Individual PSC configuration
-  bind=0.0.0.0:9100
-
-[special]
-  value=123  
-  subst=${bind}
-

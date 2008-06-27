@@ -1,8 +1,0 @@
-# domain configuration
-# there may be many domains in a site
-  name=UAT Front office
-  # absolute or relative to location of this config
-  keyfile=/etc/peloton/testdomain.key
-
-  administrators=testadmin@example.com
-

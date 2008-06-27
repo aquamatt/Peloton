@@ -5,19 +5,26 @@
 # See LICENSE for details
 """
 Every PSC and service has a profile used either declare the capabilities,
-requirements and restrictions of a component. The PelotonProfile class
-manages a profile and provides for comparing profiles.
+requirements and restrictions of a component. Classes here deal with comparing
+profiles so as to simplify finding a match between, for example, services
+and PSCs.
 """
 import re
 from fnmatch import fnmatchcase
 import os
 from types import StringType
-from peloton.utils.config import PelotonConfigObj
 from peloton.exceptions import ConfigurationError
 from cStringIO import StringIO
+                                                       
+class BaseProfileComparator(object):
+    """ Base class for all profile-comparing classes. In all methods,
+if optimistic is set True the test will be generous in the logic of 
+the particular implementation.
 
-class PelotonProfile(PelotonConfigObj):
-    """A profile enables a component to advertise its properties to others.
+What is a profile?
+==================
+
+A profile enables a component to advertise its properties to others.
 So a PSC will have a profile indicating, perhaps, what kind of host it is
 running on, how much memory is available to it and the maximum number of
 services it is permitted to manage. A service may have a profile describing
@@ -33,97 +40,6 @@ A profile may be built up from terms in a configuration file (in the [profile]
 section - all keys will be added to the profile) or at startup (so a PSC will
 put its details discovered at runtime into its own profile).
 
-Profiles are essentially dictionaries and may indeed be initialised from or
-serialised to such form.
-
-Structure of a profile
-======================
-
-A profile is a set of nested dictionaries that can be written also
-as an INI file. It fully describes a component via a set of keys, some
-of which are mandatory, some pre-defined in meaning and the rest 
-free-form
-
-Services include a description of methods and restrictions in them. 
-A service profile looks as follows::
-
-    name=<published name>
-    comment=<short comment>
-    author=<optional author(s)>
-    buildversion=1234
-    version=1.0.1
-    
-    [methods]
-      # would generally be auto-generated at run-time
-      [[method_a]]
-          # security names map to definitions in
-          # the authorisation system. Peloton imbues
-          # no name with specific meaning.
-          security=public
-        
-          # a transform (or sequence of transforms) is specified
-          # for a protocol. When the edge node receives the result
-          # it will apply the given transform(s) if the client request
-          # is on a protocol for which a transform is specified.
-          # For example, this line transforms the result into a dictionary
-          # (key='value', value= the value) and passes to a template if
-          # and only if the call was for an html response:
-          transform_html=peloton.transform.toDict,peloton.transform.genshi(tmplate)
-
-          # value is passed to the transform callable after any optional arguments
-          # specified in the transform clause (as in the genshi transform above).
-        
-          # the following might do some magic foo to make an FPML document from
-          # this data if that were requested (in some RESTful way, perhaps).
-          transform_fpml=my.transform.toFPML
-    
-          # we may allow for type-casting (useful with HTTP requests where
-          # everything comes in as a string):
-          type_0=int
-          type_1=float
-          type_income=float
-        
-      [[method_b]]
-          # describe method_b 
-          # ...
-
-    [psclimits]
-        # describe minimum requirements for a host PSC
-        minram=2048 # Mb
-        maxram=4096
-        mincpus=2
-        hostname=r:rc.* # regex the name of a host!
-        flags=list,of,flags,required
-        excludeFlags=list,of,bad,flags
-        
-    [launch]
-        # parameters describing configuration of service in the domain
-        # e.g. require that it run in two PSCs spread over two hosts
-        minpscs=2
-        minhosts=2
-        
-Note that many of the entries in, for example, a method section will be set
-from the code (the security setting may be determined by a decorator, for
-example, as also the type cast info).
-
-A PSC is configured with a different profile describing its characteristics::
-    id=<runtime UID on domain>
-    started=<timestamp>
-    hostname=<hostname>
-    ram=4096
-    cpus=4
-    platform=linux
-    # optional specification of the max number of 
-    # services to be managed by the PSC
-    maxservices=10 
-    
-    # weight is a dimensionless unit that quantifies the 
-    # administrators' idea of how powerful or 'big' this PSC
-    # is relative to the others. It's used in routing: if there
-    # are two PSCs, the one with weight 3 will get three times as
-    # many hits as one with weight 1 (in principle).
-    weight=2.0
-    
 Comparing profiles
 ==================
 
@@ -154,52 +70,6 @@ as follows:
     - <pattern> is also a string (the default)
     
 @todo: cast values for known keys as defined above
-"""
-    def loadFromConfig(self, conf):
-        """ Supply a config object with a [profile] section from which
-to pull key/value pairs. """
-        if not conf.has_key('profile'):
-            raise ConfigurationError("Config must have a [profile] section!")
-        self.merge(conf['profile'])
-            
-    def loadFromFile(self, _file, configDirs=[]):
-        """ Expects either:
-        1. an absolute path or one relative to one of the configuration
-           paths specified with -c|--config and supplied as the second argument.
-           or...
-           
-        2. a file-like object
-
-The profile is considered as the entire
-file, from the root. It is merged with the current contents, if any, of this 
-profile.
-"""
-        if type(_file) == StringType:
-            filesToSearch = [_file]
-            filesToSearch.extend([os.sep.join(i, _file) for i in configDirs])
-            filesToSearch = [os.path.abspath(i) for i in filesToSearch]
-            
-            for f in filesToSearch:
-                if os.path.exists(f) and os.path.isfile(f):
-                    confobj = PelotonConfigObj(f)
-                    self.merge(confobj)
-                    break
-            else:
-                raise ConfigurationError("Could not find or open profile %s" % _file)
-        else:
-            confobj = PelotonConfigObj(_file)
-            self.merge(confobj)
-
-    def __repr__(self):
-#        r = PelotonConfigObj.__repr__(self)
-#        r = r.replace('ConfigObj', 'PelotonProfile')
-#        return r
-        return "PelotonProfile(%s)" % str(self)
-                                                        
-class BaseProfileComparator(object):
-    """ Base class for all profile-comparing classes. In all methods,
-if optimistic is set True the test will be generous in the logic of 
-the particular implementation.
 """
     def ge(self, x, y, optimistic=True):
         "Return true if x >= y in the logic of this comparator."

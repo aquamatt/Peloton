@@ -1,0 +1,3 @@
+launch=PelotonSettings()
+launch.minpscs=2
+launch.workersperpsc=2

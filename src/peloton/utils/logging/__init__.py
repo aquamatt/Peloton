@@ -32,7 +32,7 @@ You may optionaly set the default log entry format here."""
     
     __LOGGER__ = _logger
     __LOGGER__.initialise(rootLoggerName, logLevel, logdir, logfile, logToConsole)
-    getLogger().info("SET DEFAULT LOG LEVEL FROM OPTIONS:  self.initOptions.loglevel")
+    getLogger().info("SET DEFAULT LOG LEVEL FROM OPTIONS:  self.profile.loglevel")
 
 def closeHandlers():
     """ Close all log handlers cleanly. """

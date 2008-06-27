@@ -8,7 +8,6 @@ from twisted.internet import reactor
 from twisted.spread import pb
 from twisted.internet.error import CannotListenError
 from peloton.adapters import AbstractPelotonAdapter
-from peloton.profile import PelotonProfile
 from peloton.coreio import PelotonRequestInterface
 from peloton.coreio import PelotonInternodeInterface
 from peloton.events import RemoteEventHandler
@@ -25,25 +24,25 @@ through which real work can be done.
         AbstractPelotonAdapter.__init__(self, kernel, 'TwistedPB')
         self.logger = self.kernel.logger
     
-    def start(self, configuration, cmdOptions):
+    def start(self):
         """ In this startup the adapter seeks to bind to a port. It obtains
-the host/port to which to bind from the configuration offered to it, but it
+the host/port to which to bind from the kernel profile, but it
 may, according to whether the 'anyport' switch is set or not, seek an 
 alternative port should its chosen target be bound by another application.
 """
-        interface,port = configuration['psc.bind'].split(':')
+        interface,port = self.kernel.settings.bind.split(':')
         port = int(port)
         
         svr = pb.PBServerFactory(self)
         while True:
             try:
                 self.connection = reactor.listenTCP(port, svr, interface=interface)
-                configuration['psc.bind'] = "%s:%d" % (interface, port)
-                configuration['psc.bind_interface'] = interface
-                configuration['psc.bind_port'] = port
+                self.kernel.profile['bind']= "%s:%d" % (interface, port)
+                self.kernel.profile['bind_interface'] = interface
+                self.kernel.profile['bind_port'] = port
                 break
             except CannotListenError:
-                if cmdOptions.anyport:
+                if self.kernel.settings.anyport == True:
                     port += 1
                 else:
                     raise RuntimeError("Cannot bind to port %d" % port)
@@ -89,10 +88,9 @@ and wanted contact."""
                       'serviceName' : serviceName,
                       'publishedName' : publishedName,
                       'runtimeConfig' : runtimeConfig,
-                      'loglevel' : self.kernel.initOptions.loglevel,
-                      'logdir' : self.kernel.initOptions.logdir,
-                      'servicePath' : self.kernel.initOptions.servicepath,
-                      'gridMode' : self.kernel.config['grid.gridmode'],
+                      'loglevel' : self.kernel.settings.loglevel,
+                      'logdir' : self.kernel.settings.logdir,
+                      'servicePath' : self.kernel.settings.servicepath,
                       }
         
         return workerInfo
@@ -122,7 +120,6 @@ class PelotonClientAdapter(pb.Referenceable):
     """ Referenceable used by client to call methods on the PSC. """
     def __init__(self, kernel, clientObj):
         self.dispatcher = kernel.dispatcher
-        self.profile = kernel.profile
         self.routingTable = kernel.routingTable
         self.requestInterface = PelotonRequestInterface(kernel)
         self.logger = kernel.logger
@@ -176,7 +173,7 @@ must be a Referenceable providing remote_eventReceived."""
         """ Returns the serialised profile for the referenced PSC or self if guid
 is None. """
         if not guid:
-            return repr(self.profile)
+            return repr(self.kernel.profile)
         else:
             try:
                 return repr(self.routingTable.pscByGUID[guid].profile)

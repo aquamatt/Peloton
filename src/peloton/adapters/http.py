@@ -49,19 +49,19 @@ resources and session tracking is used. But... well...
         source.extend(['templates','request_info.html.genshi'])
         self.infoTemplate = template({}, "/".join(source))
         
-    def start(self, configuration, options):
-        """ Implement to initialise the adapter based on the 
-parsed configuration file (configuration) and command line 
-options (options). This method must also hook this adapter
+    def start(self):
+        """ Implement to initialise the adapter. This method must also 
+hook this adapter
 into the reactor, probably calling reactor.listenTCP or adding
 itself to another protocol as a resource (this is the case for most
 HTTP based adapters)."""
         try:
-            self.connection = reactor.listenTCP(int(configuration['psc.httpPort']),
+            self.connection = reactor.listenTCP(self.kernel.settings.httpPort,
                               server.Site(self),
-                              interface=configuration['psc.bind_interface'])
+                              interface=self.kernel.profile.bind_interface)
         except CannotListenError:
-            self.kernel.logger.info("Cannot start HTTP interface: port %s in use" % configuration['psc.httpPort'])
+            self.kernel.logger.info("Cannot start HTTP interface: port %s in use" % \
+                                    self.kernel.settings.httpPort)
             self.connection = None
         
 

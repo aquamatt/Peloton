@@ -122,9 +122,9 @@ def public_getAge(self, name):
 			</programlisting>
 		</informalexample>
 		<para>
-			... but this is not required. <code>template</code> will
+			... but this is not required.  A <code>template</code> will
 			<emphasis>always</emphasis> need a dictionary, so if the input
-			is not one already it will pass the data first through
+			is not one already it will pass the data through
 			<code>valueToDict</code> first.
 		</para>
 	</sect2>

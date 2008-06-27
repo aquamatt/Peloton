@@ -20,11 +20,10 @@ import time
 from peloton.events import MethodEventHandler
 from peloton.events import AbstractEventHandler
 from peloton.utils import crypto
-from peloton.utils.config import PelotonConfigObj
 from peloton.utils.structs import RoundRobinList
-from peloton.profile import PelotonProfile # needed for eval
-from peloton.profile import ServicePSCComparator
 from peloton.utils import getClassFromString
+from peloton.utils.config import PelotonSettings # needed for eval
+from peloton.profile import ServicePSCComparator
 from peloton.exceptions import NoWorkersError
 from peloton.pscproxies import LocalPSCProxy
 from peloton.pscproxies import PSC_PROXIES
@@ -62,8 +61,8 @@ the following steps:
         # 1. locate and load the profile
         pqcn = "%s.%s.%s" % (serviceName.lower(), serviceName.lower(), serviceName)
         cls = getClassFromString(pqcn, reload=True)
-        self.__service = cls(serviceName, self.kernel.config['grid.gridmode'], None, None)
-        self.__service.loadConfig(self.kernel.initOptions.servicepath, runconfig)
+        self.__service = cls(serviceName, None, None)
+        self.__service.loadConfig(self.kernel.settings.servicepath, runconfig)
         # 2. Start the sequencer
         ServiceLaunchSequencer(self.kernel, serviceName, self.__service.profile).start()
 
@@ -204,11 +203,11 @@ requirements of the service have been met."""
         self.dispatcher.deregister(self)
         
 
-class ServiceLibrary(PelotonConfigObj):
-    """ Extension of PelotonProfile to be a service library with
+class ServiceLibrary(PelotonSettings):
+    """ Extension of PelotonSettings to be a service library with
 handy utility methods. """
     def __init__(self, *args, **kwargs):
-        PelotonConfigObj.__init__(self, *args, **kwargs)
+        PelotonSettings.__init__(self, *args, **kwargs)
         self.__profiles = {}
         
         # holds transform chains as evaluated on the fly in coreio
@@ -427,6 +426,7 @@ We need to update the routing table. """
             clazz = self._getProxyForProfile(profile)
             pscProxy = clazz(self.kernel, profile)
         except Exception, ex:
+            self.logger.error(profile.prettyprint())
             self.logger.error("Cannot register PSC (%s) with RPC mechanisms %s : %s" \
                               % (profile['guid'], str(profile['rpc']), str(ex)))                
             raise

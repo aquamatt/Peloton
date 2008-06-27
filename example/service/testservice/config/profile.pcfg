@@ -1,17 +1,13 @@
-# $Id$
-#
-# Copyright (c) 2007-2008 ReThought Limited and Peloton Contributors
-# All Rights Reserved
-# See LICENSE for details
-name=Test Service
-comment=Just for testing... stuff...
-author=Peloton Pete
+name="Test Service"
+comment="Just for testing... stuff..."
+author="Peloton Pete"
 buildversion=1234
-version=1.0.1
+version="1.0.1"
 
-[psclimits]
-   mincpus=1
-  
-[launch]
-   minpscs=2
-   workersperpsc=2
+psclimits = PelotonSettings()
+psclimits.mincpus=1
+#psclimits.hostname="f:kylie*"
+#psclimits.flags=["BAMBI"]
+psclimits.excludeFlags=["IGNORE"]
+
+load('launch.pcfg')  

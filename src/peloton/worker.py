@@ -60,7 +60,7 @@ results to its controling PSC.
 will in general be the host on which this worker resides but we
 allow for other scenarios by passing the host through at this point.
 """
-        HandlerBase.__init__(self, None, None)
+        HandlerBase.__init__(self)
         self.pscHost = pscHost
         self.pscPort = pscPort
         self.token = token
@@ -103,7 +103,6 @@ if not, let the PSC know we've failed and why, then initiate closedown. """
         self.name = startupInfo['serviceName']
         self.publishedName = startupInfo['publishedName']
         self.servicepath = startupInfo['servicePath']
-        self.gridMode = startupInfo['gridMode']
         
         logging.closeHandlers()
         logging.initLogging(rootLoggerName='WORKER: %s' % self.name, 
@@ -179,7 +178,7 @@ Raises ServiceConfigurationError if the name is invalid.
         try:
             pqcn = "%s.%s.%s" % (self.name.lower(), self.name.lower(), self.name)
             cls = getClassFromString(pqcn)
-            self.__service = cls(self.name, self.gridMode, self.dispatcher, logging.getLogger(self.name))
+            self.__service = cls(self.name, self.dispatcher, logging.getLogger(self.name))
             self.__service.initSupportServices()
             self.__service.loadConfig(self.servicepath, runtimeConfig)
         except Exception, ex:

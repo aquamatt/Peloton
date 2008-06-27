@@ -12,13 +12,17 @@
 """
 import sys
 import peloton.utils.logging as logging
+from peloton.utils.config import PelotonSettings
 import signal
 from twisted.internet import reactor
 
 class HandlerBase(object):
-    def __init__(self, options, args):
-        self.initOptions = options
-        self.initArgs = args
+    def __init__(self, settings = {}):
+        self.settings = settings
+        if settings.has_key('profile'):
+            self.profile = profile = settings.profile
+        else:
+            self.profile = PelotonSettings()
         self.logger = logging.getLogger()
         # hide sys.exit
         self._trapExit()

@@ -1,0 +1,120 @@
+# $Id$
+#
+# Copyright (c) 2007-2008 ReThought Limited and Peloton Contributors
+# All Rights Reserved
+# See LICENSE for details
+
+#================= GRID ======================
+grid="Peloton Grid" 
+
+#options are any or registered
+domainRegistrationPolicy="any"
+
+# absolute or relative to location of this config
+gridKeyfile="grid.key"
+
+# The bus *must* be AMQP, whatever the implementation. Each
+# grid defines its own vhost in the AMQP server.
+messagingVHost="peloton"
+
+# Allows for running multiple grids with a single MQ backend
+messagingRealm="/data"
+
+# AMQP server node
+messagingHost="localhost:5672"
+
+#================= DOMAIN ====================
+# domain configuration
+# there may be many domains in a site
+domain="Pelotonica"
+
+# Allow 'any' service to be started or only
+#       'registered' services
+serviceStartupPolicy="any"
+
+# absolute or relative location of this config
+domainKeyfile="domain.key"
+
+administrators=["admin@example.com"]
+
+#psc_user="peloton"
+#psc_group="peloton"
+    
+#worker_user="pelotonw"
+#worker_group="peloton"
+
+#================= PSC =======================
+bind="0.0.0.0:9100"
+httpPort=8080
+pscFolder="/tmp/psc"
+
+# All EXCEPT PelotonPBAdapter
+adapters = ["peloton.adapters.http.PelotonHTTPAdapter",]
+
+profile = PelotonSettings()
+profile.cpus=1
+profile.ram=1024
+# Accept RPC via Twisted or message bus
+profile.rpc=['pb','bus']
+
+plugins = PelotonSettings()
+# MESSAGE BUS MUST BE INITIALISED FIRST !!
+plugins['amqp_qpid'] = PelotonSettings()
+plugins['amqp_qpid'].name="eventbus"
+plugins['amqp_qpid'].comment="AMQP message bus interface (QPID)"
+plugins['amqp_qpid'].classname="peloton.plugins.amqpQpid.AMQPEventBus"
+plugins['amqp_qpid'].order=0 # ensure this is loaded FIRST
+plugins['amqp_qpid'].enabled=False
+plugins['amqp_qpid'].username="peloton_sys"
+plugins['amqp_qpid'].password="pelotonica"  
+
+plugins['shell'] = PelotonSettings()
+plugins['shell'].comment="An SSH interface to Peloton"
+plugins['shell'].classname="peloton.plugins.shell.PelotonShell"
+plugins['shell'].enabled=False
+plugins['shell'].port=9110
+plugins['shell'].username="admin"
+plugins['shell'].password="admin"
+    
+plugins['cockpit'] = PelotonSettings()
+plugins['cockpit'].comment="An SSH control interface, high level"
+plugins['cockpit'].classname="peloton.plugins.cockpit.Cockpit"
+plugins['cockpit'].enabled=False
+plugins['cockpit'].port=9111
+plugins['cockpit'].username="admin"
+plugins['cockpit'].password="admin"
+    
+plugins['backpack'] = PelotonSettings()
+plugins['backpack'].name="sessionStore" # overide name to standard
+                  # so that whatever the implementation,
+                  # the session store is always obtained with
+                  # this name
+plugins['backpack'].comment="The Peloton session store"
+plugins['backpack'].classname="peloton.plugins.backpack.BackPackPlugin"
+plugins['backpack'].storeName="sessionStore"
+plugins['backpack'].enabled=True
+plugins['backpack'].storageBackend="peloton.plugins.backpack.BackPackSQLite"
+#plugins['backpack'].storeFile="%s/sessionStore.db" % pscFolder
+plugins['backpack'].storeFile=":memory:"
+# cache parameters
+plugins['backpack'].cacheTTL=120
+plugins['backpack'].cacheMaxEntries=-1 # -1=unlimited
+
+#========== ENABLE PLUGINS =======================    
+  
+plugins['amqp_qpid'].enabled=True
+plugins['shell'].enabled=True
+plugins['cockpit'].enabled=False
+plugins['backpack'].enabled=True
+
+plugins['bambi'] = PelotonSettings()
+plugins['bambi'].comment="Bambi for testing ONLY!!"
+plugins['bambi'].classname="peloton.plugins.bambi.BambiPlugin"
+plugins['bambi'].enabled=False
+
+plugins['pseudomq'] = PelotonSettings()   
+plugins['pseudomq'].name="eventbus"
+plugins['pseudomq'].comment="PseudoMQ test harness for testing ONLY"
+plugins['pseudomq'].classname="peloton.plugins.pseudomq.PseudoMQ"
+plugins['pseudomq'].host="127.0.0.1:9111"
+plugins['pseudomq'].enabled=False    

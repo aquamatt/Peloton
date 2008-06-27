@@ -41,7 +41,7 @@
 		<sect2>
 			<title>Python libraries</title>
 			<para>
-				The following pythonlibraries are either required always required when using 
+				The following python libraries are either required always required when using 
 				particular modules and must be installed either by installer scripts 
 				(distutils, Debian package etc) or by the system administrator. The summary table
 				(see <xref linkend='dependency_summary_table'/>)
@@ -50,28 +50,11 @@
 			<orderedlist>
 	             <listitem>
 	                   <para>
-	                   	    <filename>Twisted</filename> Version &gt;=8.0.1 obtainable
-						   from <ulink url='http://www.twistedmatrix.com'/>.
+	                   	    <filename>Twisted</filename> Version &gt;=8.1.0 obtainable
+						   from <ulink url='http://www.twistedmatrix.com'/>. If you have version
+						   8.0.1 you <emphasis>must</emphasis> install the newer 8.1.0 as the former 
+						   contains a bug in the exception mechanism that will cause &peloton; to fail.
 	                   </para>
-						<para>
-							Twisted 8.0.1 introduces a bug not present in the 2.5 series with
-							regard the re-raising of Failures. If one processes raises an exception
-							which is caught in another that tries to pass it  onto yet another deferred,
-							Twisted 8.0.1 raises an exception. The issue is with pb.py in the spread 
-							module and can be demonstrated with 
-							<filename>peloton/patches/test_patch_8_0_1.py</filename>. The same
-							<filename>patches</filename> directory contains <filename>pb_r23300.py</filename>
-							which is the entirety of pb.py r23300 which resolves this issue (which 
-							was raised on Twisted Trac as issue 3174). Please use this file if installing
-							from the 8.0.1 tarball.
-						</para>
-				 </listitem>
-				 <listitem>
-					 <para>
-						 <filename>ZopeInterface</filename> is a requirement of Twisted; if you've installed from
-						 the above Twisted tarball you'll need to get the latest Zope interface egg from: 
-						 <ulink url='http://www.zope.org/Products/ZopeInterface'/>.
-					 </para>
 				 </listitem>
 					<listitem>
 						<para> Client-side libraries for AMQP. There are few choices in
@@ -128,16 +111,21 @@
 						<ulink url='http://sourceforge.net/projects/pycrypto'/>.
 					</para>
 				</listitem>
+				<listitem>
+					<para>
+						<code>simplejson</code> is a library for serialising too and from JSON
+						strings. Debian/Ubuntu users can <code>apt-get install python-simplejson</code>
+						whilst the rest can obtain it from 
+						<ulink url='http://http://code.google.com/p/simplejson/'/>.
+					</para>
+				</listitem>
 			</orderedlist>
 		</sect2>
 		<sect2>
 			 <title>Non-Python libraries</title>
-			 <orderedlist>
-			     <listitem>
-			         <para>
-					</para>
-				</listitem>
-			</orderedlist>
+			 <para>
+				 None thus far.
+			 </para>
 	    </sect2>
 		<sect2>
 			 <title>Third party applications</title>
@@ -164,8 +152,8 @@
 						   </para>
 					   </note>
                        <para>
-                           Documentation for setting up RabbitMQ can be found on the site: in particular the instructions
-                            for clustering must be followed carefully - do not forget to copy the cookie to all hosts; without
+                           Documentation for setting up RabbitMQ can be found on the site. In particular the instructions
+                            for clustering must be followed carefully - do not forget to copy the cookie to all hosts. Without
                             this hosts will not cluster together. More information about AMQP, its internals and security
                             model can be obtained from the very readable specification located at
                             <ulink url='https://jira.amqp.org/confluence/display/AMQP/Download'/>.
@@ -176,6 +164,18 @@
                        </para>
                  </listitem>
             </orderedlist>
+		</sect2>
+		<sect2>
+			<title>Installation on Microsoft Windows platforms</title>
+			<para>
+				Installation on Microsoft Windows is possible but there are a few 
+				modifications and extensions required to the codebase to fully support
+				the platform. 
+			</para>
+			<para>
+				These changes are being made and a release will be available that works
+				with Windows sometime in July 2008.
+			</para>
 		</sect2>
 		<sect2 id='dependency_summary'>
 			<title>Dependency summary</title>
@@ -213,19 +213,19 @@
 				<tbody>
                     <row>
                         <entry>Twisted</entry>
-                        <entry>8.0.1</entry>
+                        <entry>8.1.0</entry>
 						<entry>P/PB</entry>
                         <entry>&tick;</entry>
                         <entry>Python asynchronous networking library</entry>
 						<entry>MIT</entry>
                     </row>
                     <row>
-                        <entry>Zope Interface</entry>
-                        <entry>3.3</entry>
+                        <entry>SimpleJSON</entry>
+                        <entry>1.9.1</entry>
                         <entry>P</entry>
                         <entry>&tick;</entry>
-                        <entry>Zope Interface library</entry>
-						<entry>ZPL</entry>
+                        <entry>JSON (de)serialisation library</entry>
+						<entry>MIT</entry>
                     </row>
                     <row>
                         <entry>RabbitMQ</entry>
@@ -307,15 +307,10 @@
 		</sect2>
 	</sect1>
 	<sect1>
-		<title>The bleedin' edge developer's super-quick start guide</title>
+		<title>The super-quick-start guide</title>
 		<para>
-			If you're not a bleedin' edge developer looking to hack and explore and
-			risk getting lost, move on and wait for the complete release of this
-			code which will include friendly documentation and more utility
-			scripts to get you up and running with little effort.
-		</para>
-		<para>
-			If you're still here, the following should get you going just about.
+			The following should get developers started quickly such that they
+			can explore the potential of &peloton;.
 		</para>
 		<orderedlist>
 			<listitem>
@@ -326,12 +321,14 @@
 			<listitem>
 				<para>
 					Checkout the trunk to a location we will hence forth refer to
-					as <filename>$PELOTON</filename>.
+					as <filename>$PELOTON</filename>, or unzip one of the tarballs
+					from the Sourceforge project page.
 				</para>
 			</listitem>
 			<listitem>
 				<para>
-					If using RabbitMQ, initialise by running the bash script
+					If using RabbitMQ (see below for details of running without RabbitMQ
+					for testing), initialise by running the bash script
 					<filename>$PYTHON/bin/initrabbitmq</filename> which creates
 					some users, vhosts, realms and permissions.
 				</para>
@@ -362,30 +359,27 @@
 				<para>
 					We will now start one Peloton Service Controler (PSC). Many
 					PSCs form a domain and each PSC will start workers that actually
-					run services. This PSC will use configuration files in the 
-					<filename>$PELOTON/example/config</filename> directory and 
+					run services. This PSC will use the configuration file in the
+					<filename>$PELOTON/example/config</filename> directory named 
+					<filename>psc.pcfg</filename> and 
 					set a single service path pointing to <filename>$PELOTON/example/service</filename>
 					which contains the <filename>TestService</filename>. <code>TestService</code>
 					contains a few methods that demonstrate various points and provides a
-					handy place to put little test code of your own.
+					handy place to put a little test code of your own.
 				</para>
 				<para>
 					Start as follows:
 				</para>
 				<informalexample>
-					<programlisting>
-> cd $PELOTON/src/peloton
-> python psc.py -c $PELOTON/example/config -s $PELOTON/example/service \
-    --nodetach --loglevel=debug --flags=BAMBI
+					<programlisting> > cd $PELOTON/src/peloton
+ > python psc.py -c $PELOTON/example/config/psc.pcfg -s $PELOTON/example/service \
+    --nodetach --loglevel=debug 
 					</programlisting>
 				</informalexample>
 				<para>
-					The arguments are self-explanatory except for the flags; the 
-					test service we will start in a moment will only start on nodes
-					with the BAMBI flag set (for demonstration purposes). 
-					For further arguments
-					run <filename>psc.py</filename> with the <code>-h</code>
-					argument.
+					The arguments are self-explanatory.
+					For further options
+					run <filename>python psc.py -h</filename>.
 				</para>
 				<para>
 					Now the PSC is listening to web-based protocol requests
@@ -405,14 +399,15 @@
 					</programlisting>
 				</informalexample>
 				<para>
-					You will see log output scroll up the PSC console and the service
-					will start.
+					You should see log output scroll up the PSC console and the service
+					will start. The logging is set to <code>DEBUG</code> so an awful lot
+					of messages should appear!
 				</para>
 			</listitem>
 			<listitem>
 				<para>
 					Now in the <filename>$PELOTON/example/service/testservice/scripts</filename>
-					folder you will find two scripts to test the service (all are noddy and
+					folder you will find scripts to test the service (all are noddy and
 					have the hostname to which to connect hard coded at the top of the file).
 				</para>
 				<para>
@@ -442,7 +437,7 @@
 				<informalexample>
 					<programlisting>
 > cd $PELOTON/src/peloton
-> python psc.py -c $PELOTON/example/config -s $PELOTON/example/service \
+> python psc.py -c $PELOTON/example/config/psc.pcfg -s $PELOTON/example/service \
     --nodetach --loglevel=debug --flags=BAMBI
     --disable=shell # ONLY IF ANOTHER PSC IS RUNNING
     --anyport       # ONLY IF ANOTHER PSC IS RUNNING
@@ -452,11 +447,13 @@
 			<listitem>
 				<para>
 					Now from the SSH console you can again issue a
-					<code>start('TestService') </code> and you will see
-					the service start on all nodes that have the BAMBI flag set.
-					Experiment with starting some nodes with no BAMBI flag. You can
-					invert the behaviour by changing the service's configuration file
-					(exercise for the reader).
+					<code>start('TestService')</code> and you will see
+					the service start on all nodes. You can control what nodes
+					run a given service by altering the service profile and, for example,
+					asserting that it should run only on nodes that have certain flags. 
+					The TestService will NOT run on a node that has the <code>IGNORE</code>
+					flag set; start a node with <code>--flags=IGNORE</code>, request that 
+					<code>TestService</code> be started and see the result.
 				</para>
 			</listitem>
 			<listitem>
@@ -493,7 +490,7 @@
 			Within these limits, PseudoMQ is a practical way to test &peloton; without installing
 			RabbitMQ. It is not a completely de-centralised system, there is one node named the master
 			and the system will not recover from the death of a master (remember: this is quick'n'dirty,
-			not production code, node even development environment code!) To start the master:
+			not production code, not even development environment code!) To start the master:
 		</para>
 		<informalexample>
 			<programlisting>
@@ -503,7 +500,7 @@
 				[... plus remaining args]</programlisting>
 		</informalexample>
 		<para>
-			All non-server nodes must be started
+			All non-server nodes must be started as:
 		</para>
 		<informalexample>
 			<programlisting>
@@ -513,8 +510,8 @@
 		</informalexample>
 		<para>
 			For interest, the configuration of plugins is set in 
-			<filename>config/domain/pelotonica/psc/common.pcfg</filename> under
-			the <filename>example</filename> folder.
+			the PSC configuration file in
+			the <filename>example/config/psc.pcfg</filename>.
 		</para>
 	</sect1>
 </article>

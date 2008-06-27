@@ -21,7 +21,7 @@ common objects, such as a logger and kernel hooks. These are provided
 through this class. """
     def __init__(self, kernel):
         self.logger = logging.getLogger()
-        self.config = kernel.config
+        self.profile = kernel.profile
         self.__kernel__ = kernel
 
 class PelotonRequestInterface(PelotonInterface):
@@ -199,7 +199,7 @@ for use in such tools."""
         return services
     
     def public_showProfile(self):
-        return self.__kernel__.profile
+        return self.__kernel__.profile.prettyprint()
     
     def public_start(self, serviceName, runconfig=None):
         self.__kernel__.launchService(serviceName, runconfig)

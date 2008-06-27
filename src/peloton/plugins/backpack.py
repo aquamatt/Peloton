@@ -47,7 +47,7 @@ KNOWN ISSUES:
     def initialise(self):
         # get class for persistence and initialise
         self.backEnd = \
-            getClassFromString(self.config['storageBackend'])(self.kernel, self.config)
+            getClassFromString(self.config.storageBackend)(self.kernel, self.config)
 
         self.get = self.backEnd.get
         self.set = self.backEnd.set
@@ -59,7 +59,7 @@ KNOWN ISSUES:
     
     def start(self):
         self.backEnd.start()
-        self.kernel.registerCallable(self.config['storeName'], self.iface)
+        self.kernel.registerCallable(self.config.storeName, self.iface)
     
     def stop(self):
         self.backEnd.stop()
@@ -87,9 +87,9 @@ class BackPackPersistentStore(object):
     def __init__(self, kernel, config):
         self.kernel = kernel
         self.config = config
-        self.cacheTTL=config.as_int('cacheTTL')
+        self.cacheTTL=config.cacheTTL
         self.masterGUID = ''
-        self.mbusChannel = 'psc.plugins.backpack.%s' % self.config['storeName']
+        self.mbusChannel = 'psc.plugins.backpack.%s' % self.config.storeName
     
     def start(self):
         raise NotImplementedError()
@@ -108,7 +108,7 @@ class BackPackSQLite(BackPackPersistentStore, AbstractEventHandler):
     def start(self):
         if self.kernel.hasFlag('backpackMaster'):
             self.isMaster = True
-            storeFile = self.config['storeFile']
+            storeFile = self.config.storeFile
             self.ttl = -1
         else:
             self.isMaster = False
@@ -209,20 +209,20 @@ used when responding to an invalidation request."""
             reactor.callLater(0.2, self._connectMaster)
             return
         
-        d = proxy.getInterface(self.config['storeName'])
+        d = proxy.getInterface(self.config.storeName)
         d.addCallback(self._masterFound)
         d.addErrback(self._masterError)
         
     def _masterFound(self, master):
         self.masterRef = master
         self.CONNECTING_MASTER = False
-        self.kernel.logger.info("Connected to backpack master for %s" % self.config['storeName'])
+        self.kernel.logger.info("Connected to backpack master for %s" % self.config.storeName)
         # flush any set calls that need making
         while  self.remoteUpdateQueue:
             self.masterRef.callRemote(*self.remoteUpdateQueue.pop(0))
         
     def _masterError(self, err):
-        self.kernel.logger.error("Error connecting to master data base for %s: %s" % (self.config['storeName'], err.getErrorMessage()))
+        self.kernel.logger.error("Error connecting to master data base for %s: %s" % (self.config.storeName, err.getErrorMessage()))
         self.CONNECTING_MASTER = False
         reactor.callLater(1, self._seekMaster)
     

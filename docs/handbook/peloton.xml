@@ -12,6 +12,7 @@
         <!ENTITY events SYSTEM "peloton_events.xml">
         <!ENTITY firstservice SYSTEM "peloton_firstservice.xml">
         <!ENTITY kerneldev SYSTEM "peloton_kerneldev.xml">
+        <!ENTITY appendix_config SYSTEM "peloton_appendix_config.xml">
 	    ]>
 
 <!--
@@ -21,8 +22,6 @@
 # All Rights Reserved
 # See LICENSE for details
 -->
-
-
 <article>
 	<articleinfo>
 		<title>
@@ -51,6 +50,7 @@
 &transforms;
 &events;
 &kerneldev;
+&appendix_config;
 <!-- END OF DOC   -->
 
 </article>

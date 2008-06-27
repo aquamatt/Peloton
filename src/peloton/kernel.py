@@ -22,17 +22,16 @@ from twisted.internet.threads import deferToThread
 from twisted.spread import pb
 
 from peloton.base import HandlerBase
+from peloton.utils.config import PelotonSettings
 from peloton.events import EventDispatcher
 from peloton.events import MethodEventHandler
 from peloton.utils import crypto
 from peloton.utils import getClassFromString
-from peloton.utils import locateFile
 from peloton.utils import getExternalIPAddress
 from peloton.utils.structs import RoundRobinList
 from peloton.mapping import ServiceLoader
 from peloton.mapping import RoutingTable
 from peloton.mapping import ServiceLibrary
-from peloton.profile import PelotonProfile
 from peloton.exceptions import ConfigurationError
 from peloton.exceptions import PluginError
 from peloton.exceptions import WorkerError
@@ -49,19 +48,15 @@ coreIO interfaces.
 """
 
     #: List of classes that provide IO adapters for the Peloton node.
-    __ADAPTERS__ = ["peloton.adapters.pb.PelotonPBAdapter",
-                "peloton.adapters.http.PelotonHTTPAdapter",
-                ]
-
-    def __init__(self, options, args, config):
+    __PRIMARY_ADAPTERS__ = ["peloton.adapters.pb.PelotonPBAdapter",]
+    
+    def __init__(self, settings):
         """ Prepare the kernel."""
-        HandlerBase.__init__(self, options, args)
+        HandlerBase.__init__(self, settings)
         self.adapters = {}
         self.serviceLibrary = ServiceLibrary()
         self.workerStore = {}
-        self.config = config
         self.plugins = {}
-        self.profile = PelotonProfile()
         self.dispatcher = EventDispatcher(self)
         
         # used to validate new worker connections
@@ -83,13 +78,12 @@ the server is stopped. Returns an exit code.
 
 The bootstrap routine is as follows:
     1.  Read the domain and grid keys
-    2.  Load the profile for this PSC
-    3.  Generate this PSCs session keys and our UID
-    4.  Start all the network protocol adapters
-    5.  Start kernel plugins
-    6.  Initialise routing table, schedule grid-joining workflow to 
+    2.  Generate this PSCs session keys and our UID
+    3.  Start all the network protocol adapters
+    4.  Start kernel plugins
+    5.  Initialise routing table, schedule grid-joining workflow to 
         start when the reactor starts
-    7. Start the reactor
+    6. Start the reactor
     
 The method returns only when the reactor stops.
 """        
@@ -98,67 +92,40 @@ The method returns only when the reactor stops.
         # (1) read in the domain and grid key - all PSCs in a domain must have 
         # access to the same key file (or identical copy, of course)
         self.domainCookie, self.domainKey = \
-            self._readKeyFile(self.config['domain.keyfile'])
+            self._readKeyFile(self.settings.domainKeyfile)
         self.gridCookie, self.gridKey = \
-            self._readKeyFile(self.config['grid.keyfile'])
+            self._readKeyFile(self.settings.gridKeyfile)
 
-        # (2) Load the PSC profile
-        # First try to load from a profile section in the main config
-        try:
-            self.profile.loadFromConfig(self.config['psc'])
-        except ConfigurationError:
-            # no profile section.. no big deal
-            pass
-        
-        # PSC configuration in a file
-        if self.initOptions.profile:
-            self.profile.loadFromFile(self.initOptions.profile)
-        
-        if not self.profile:
-            raise ConfigurationError("There is no profile for the PSC!")
-        
-        # load and overlay with any profile from file
-        if self.initOptions.profile:
-            self.profile.loadFromFile(self.initOptions.profile, 
-                                      self.initOptions.configdirs)
-
-        # add flags from the command line to any flags that may be
-        # in the profile from disk
-        if self.profile.has_key('flags'):
-            self.profile.flags.extend(self.initOptions.flags)
-        else:
-            self.profile['flags'] = self.initOptions.flags
-            
-        # (3) generate session keys
+        # (2) generate session keys
         self.sessionKey = crypto.newKey(512)
         self.publicKey = self.sessionKey.publickey()
         self.guid = str(uuid.uuid1())
         self.profile['guid'] = self.guid
-        self.logger.info("Node UUID: %s" % self.profile['guid'])
+        self.logger.info("Node UUID: %s" % self.profile.guid)
         
-        # (4) hook in the PB adapter and any others listed
-        self.logger.info("Adapters list should be in config, not in code!")
-        self._startAdapters()
+        # (3) hook in the PB adapter and any others listed
+        self._startAdapters(PelotonKernel.__PRIMARY_ADAPTERS__)
         # the profile address may be different to the bind interface
         # as this should be the address that other nodes can contact
         # us on, ie an external address. So we check to see if the
         # configured interface is 0.0.0.0 or 127.* in which case
         # we use another method to determine our external interface
-        if self.config['psc.bind_interface'].startswith('0.0.0.0') or \
-            self.config['psc.bind_interface'].startswith('127.'):
+        if self.profile['bind_interface'].startswith('0.0.0.0') or \
+            self.profile['bind_interface'].startswith('127.'):
             self.profile['ipaddress'] = getExternalIPAddress()
             self.logger.info("Auto-detected external address: %s" % self.profile['ipaddress'])
         else:
-            self.profile['ipaddress'] = self.config['psc.bind_interface']
-        self.profile['port'] = self.config['psc.bind_port']        
+            self.profile['ipaddress'] = self.profile['bind_interface']
+        self.profile['port'] = self.profile['bind_port']        
         self.profile['hostname'] = socket.getfqdn()
+        self._startAdapters(self.settings.adapters)
 
-        # (5) Start any kernel plugins, e.g. message bus, shell and
+        # (4) Start any kernel plugins, e.g. message bus, shell and
         #     then instruct the dispatcher to get the external bus
         self._startPlugins()
         self.dispatcher.joinExternalBus()
 
-        # (6) Initialise the routing table and schedule grid-joining 
+        # (5) Initialise the routing table and schedule grid-joining 
         #     workflow to happen on reactor start
         #  -- this checks the domain cookie matches ours; quit if not.
         self.serviceLoader = ServiceLoader(self)
@@ -166,16 +133,19 @@ The method returns only when the reactor stops.
         self.domainManager = DomainManager(self)
         reactor.callWhenRunning(self.routingTable.notifyConnect)
 
-        # (7) ready to start!
+        # (6) ready to start!
         reactor.run()
         
         return 0
 
     def _readKeyFile(self, keyfile):
         """ Read in the named keyfile and return a tuple of cookie and
-key."""
+key. Keyfile is relative to the config file or an absolute path"""
         try:
-            keyfile = locateFile(keyfile, self.initOptions.configdirs)
+            if keyfile[0]!='/':
+                keyfile = os.path.abspath( \
+                        os.path.split(self.settings.configfile)[0] \
+                        +os.sep+keyfile)
             if os.path.isfile(keyfile):
                 cookie, key = crypto.loadKeyAndCookieFile(keyfile)
             else:
@@ -186,7 +156,7 @@ key."""
 
     def hasFlag(self, flag):
         """ Return true if 'flag' was set on the command line. """
-        return flag in self.initOptions.flags
+        return flag in self.profile.flags
 
     def closedown(self, x=0):
         """Closedown in an orderly fashion."""
@@ -218,27 +188,46 @@ key."""
             reactor.stop()
 
     def _startPlugins(self):
-        pluginConfs = self.config['psc.plugins']
-        pluginNames = pluginConfs.keys()
-        # iterate over each plugin
-        self.logger.info("@todo: add an optional startPos integer to profiles to sort for startup.")
-        for plugin in pluginNames:
+        """ Start plugins as in configuration adhering to the sort order
+implied by any plugin configurations specifying the 'order' attribute. """
+
+        def pluginsort(pa, pb):
+            """ Sort plugins according to the 'order' attribute. If 
+'order' not specified for either pa or pb, return 0 (equality); if
+'order' specified only for one - that is considered the smallest; 
+otherwise compare based on 'order' values. 
+
+Note that pa/pb are actually tupples of (name, profile)"""
+            _pa = pa[1]
+            _pb=pb[1]
+            if not _pa.has_key('order'):
+                _pa.order=9999
+            if not _pb.has_key('order'):
+                _pb.order=9999
+
+            return cmp(_pa.order, _pb.order)
+
+        pluginConfs = self.settings['plugins']
+        plugins = pluginConfs.items()
+        plugins.sort(pluginsort)
+        for plugin, _ in plugins:
             self.startPlugin(plugin)
     
     def startPlugin(self, plugin):
         """ Start the plugin named 'plugin'. """
-        pconf = self.config['psc.plugins'][plugin]
+        pconf = self.settings['plugins'][plugin]
         # check that has children, including 'class' otherwise this
         # is just some random key in the 'plugins' section of the 
         # config
-        if not pconf.has_key('class'):
+        if not pconf.has_key('classname'):
+            self.logger.error("No classname specified for plugin %s" % plugin)
             return
 
         if (pconf.has_key('enabled') and \
-            pconf['enabled'].upper() == 'TRUE' and \
-            plugin not in self.initOptions.disable) \
+            pconf['enabled'] == True and \
+            plugin not in self.settings.disable) \
             or \
-            plugin in self.initOptions.enable:
+            plugin in self.settings.enable:
             self.logger.info("Starting plugin: %s" % plugin)
         else:
             self.logger.info("Plugin %s disabled" % plugin)
@@ -252,7 +241,7 @@ key."""
                 except:
                     raise
         else:
-            pluginClass = getClassFromString(pconf['class'])
+            pluginClass = getClassFromString(pconf['classname'])
             plogger = logging.getLogger(plugin)
             try:
                 pluginInstance = pluginClass(self, plugin, pconf, plogger)
@@ -279,16 +268,17 @@ key."""
         for p in self.plugins.keys()[::-1]:
             self.stopPlugin(p)
 
-    def _startAdapters(self):
+    def _startAdapters(self, adapterList):
         """Prepare all protocol adapters for use. Each adapter
 has a start(config, initOptions) method which does initial setup and 
 hooks into the reactor. It is passed the entire config stack 
 (self.config) and command line options"""
-        for adapter in PelotonKernel.__ADAPTERS__:
+        for adapter in adapterList:
+            self.logger.info("Starting adapter: %s" % adapter)
             cls = getClassFromString(adapter)
             _adapter = cls(self)
             self.adapters[_adapter.name] = _adapter
-            _adapter.start(self.config, self.initOptions)
+            _adapter.start()
     
     def _stopAdapters(self):
         """ Close down all adapters currently bound. """
@@ -326,7 +316,7 @@ stopped by the process started here.
 """
         profile, _ = self.serviceLibrary.getProfile(publishedName)
         if numWorkers == None:
-            numWorkers = int( profile.getpath('launch.workersperpsc') )
+            numWorkers = profile.launch.workersperpsc
             
         self.workerStore[publishedName] = \
             ServiceWorkerGroup(self, serviceName, publishedName)

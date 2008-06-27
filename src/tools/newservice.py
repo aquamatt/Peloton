@@ -49,7 +49,7 @@ class ServiceBuilder(object):
         # 2. name of file
         # 3. template to use
         files=[ [serviceFolder, "%s.py" % serviceFolder, 'service.genshi', TEXT],
-                ["%s/config" % serviceFolder, "profile.pcfg", 'profileconf.genshi', TEXT],
+                ["%s/config" % serviceFolder, "service.pcfg", 'profileconf.genshi', TEXT],
                 ["%s/docs" % serviceFolder, "%s.xml"%serviceFolder, 'docs.genshi', XML],
                 ["%s/tests" % serviceFolder, "test%s"%serviceName, 'tests.genshi', TEXT],
                 [serviceFolder, "__init__.py", "init.genshi", TEXT],

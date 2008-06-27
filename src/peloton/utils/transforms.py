@@ -72,15 +72,12 @@ def defaultHTMLTransform(conf={}):
         return htmlFormatter.format(data)
     return _fn
 
-from peloton.utils.json import JSONSerializer
+import simplejson
 class JSONFormatter(object):
-    def __init__(self):
-        self.writer = JSONSerializer()
-        
     def format(self,v):
         """ Returns content-type, content. """
         try:
-            s = self.writer.write(v)
+            s = simplejson.dumps(v)
         except:
             s = u'"Unserialisable response: %s"' % str(v)
         return s

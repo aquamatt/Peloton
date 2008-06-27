@@ -73,7 +73,7 @@ class Tutorial(PelotonService):
 		</para>
 		<informalexample>
 			<programlisting> > cd $PELOTON_HOME/src/peloton
- > python psc.py -c $PELOTON_HOME/example/config -s $SERVICE_HOME \
+ > python psc.py -c $PELOTON_HOME/example/config/psc.pcfg -s $SERVICE_HOME \
  	             --nodetach --loglevel=debug				
 			</programlisting>
 		</informalexample>

@@ -7,26 +7,17 @@
 -->
 <sect1>
 	<title>Configuration</title>
-	<warning>
-		<para>
-			THE CONFIGURATION SYSTEM IS UNDERGOING A COMPLETE OVERHAUL
-			AS IT IS SEEN AS OVERLY COMPLEX BOTH IN USE AND IN IMPLEMENTATION.
-		</para>
-	</warning>
 	<para>
-		There are three groups of configuration files in the &peloton; system:
+		&peloton; configuration falls into two categories:
 	</para>
 	<itemizedlist>
 		<listitem>
 			<para>
-				Configuration of the "grid", the collection of &peloton;
-				domains that may span many networks.
-			</para>
-		</listitem>
-		<listitem>
-			<para>
-				Configuration of the "domain", a group of nodes collectively
-				forming a closely connected mesh on a single network.
+				Configuration of the PSC (which runs services); configuration of the 
+				domain (group of PSCs on a single network) and the grid (collection of
+				domains). A single configuration file for the PSC describes all these components.
+				Administrators have the freedom to break this file into multiple files according
+				to any scheme that suits.
 			</para>
 		</listitem>
 		<listitem>
@@ -36,51 +27,123 @@
 		</listitem>
 	</itemizedlist>
 	<para>
-		Each configuration group consists of a collection of configurations,
-		generally a common configuration and then a number of overiding or additional
-		configuration files that are invoked based on runtime settings such as 
-		the grid's 'gridmode' (which is a value such as 'test', 'UAT', 'prod', etc.).
+		Configuration files are Python files. Any Python code can go in there; any modules can
+		be imported but the code and the modules can only be used for computing the settings
+		as some of this data is serialised for posting over the wire and the inclusion of anything
+		other than strings, numbers, lists, dicts etc will cause a failure.
+	</para>
+	<para>
+		A configuration file consists of two components: <firstterm>settings</firstterm> refer
+		to the entirety of the configuration file and all its sub-sections whilst 
+		the <firstterm>profile</firstterm>, the entire
+		contents of which is the public description of the service or PSC that is sent across
+		the wire to other PSCs for various operations, is a sub-section of the settings. 
 	</para>
 	<para>
 		Services may be started with an additional run-time configuration file
 		that changes the way it works. For example, a service providing web output
 		may have a runtime configuration that re-assigns the location of the 'resource'
-		folder. Thus more than one instance of the same service could be run with
+		folder and published name as follows:
+	</para>
+	<informalexample>
+		<programlisting> profile.resourceRoot = '/var/myservice/altroot'
+ profile.publishedName = 'Finglewick'</programlisting>
+	</informalexample>
+	<para>
+		Thus more than one instance of the same service could be run with
 		different run-time names pointing to different resource folders to support
-		different websites, for example.
+		different websites, for example. Note that in this example, <code>profile</code>
+		is already defined in the master configuration file and should not be 
+		re-bound in the override file.
+	</para>
+	<sect2>
+		<title>Writing configuration files</title>
+		<para>
+			&peloton; configuration files are parsed into a <code>PelotonSettings</code>
+			instance. This is a <code>dict</code>-like class that exposes its items as attributes
+			to facilitate usage in common scenarios. When writing a configuration file, sub-sections
+			should be separate <code>PelotonSettings</code> instances; anywhere you might consider a
+			dictionary you will also wish to use this class. It is in the global namespace by default
+			when the configuration file is parsed so you do not need to import it yourself. An example
+			use-case is as follows:
+		</para>
+		<informalexample>
+			<programlisting> # service.pcfg
+ poolId = 1023
+ dbusername = 'shampoo'
+
+ profile = PelotonSettings()
+ profile.name = "Foo Service"
+ profile.version = "0.1.1"
+
+ profile.launch = PelotonSettings()
+ profile.launch.minpscs=2
+ profile.launch.workersperpsc=2
+ ...</programlisting>
+		</informalexample>
+	<para>
+		Anything defined outside of <code>profile</code> will be available only to the 
+		service module; anything in <code>profile</code> will be broadcast around the mesh and
+		used for the purpose of starting services and determining the suitability of a host
+		to run it. The examples included in the source are more extensive but in the above case
+		we see that both the <code>profile</code> and its sub-category <code>profile.launch</code>
+		(which determines the requirements to be met when starting this service) are instances
+		of <code>PelotonSettings</code>.
 	</para>
 	<para>
-		Due to the confusion that could arise with so many configuration files
-		required to get a grid, domain and service running, the layout of configuration
-		folders and the names of files within is strictly regulated as follows:
+		A full listing of the parameters used by the core system appear in 
+		<xref linkend='appendix_config_params'/>.
 	</para>
-	<informalfigure>
-		<programlisting>    
-$ROOT/grid.pcfg
-     /domain.pcfg    &lt;----- COMMON DOMAIN CONFIG
-     /psc.pcfg       &lt;----- COMMON PSC CONFIG
-     /domain/&lt;name>/common.pcfg
-                    &lt;gridmode>.pcfg
-                    ...
-     /domain/&lt;name>/psc/common.pcfg
-                        &lt;gridmode&gt;.pcfg
-                        ...
-		</programlisting>
-	</informalfigure>
+	</sect2>
+	<sect2>
+		<title>Importing and modularising configuration</title>
+		<para>
+			Clearly a single config file may become hard to manage and there
+			are many good reasons for breaking it up into components. To facilitate
+			this you can <code>load</code> configuration files into one another. There
+			are two forms: the first loads the new file into the current namespace; the 
+			second loads the target into a new <code>PelotonSettings</code> and binds
+			it to a specified name in the current namespace. So:
+		</para>
+		<informalexample>
+			<programlisting> ## service.pcfg 
+ maxIndex = 100
+ load('limits/connections.pcfg')
+ load('limits/db.pcfg', 'dblimits')
+
+ ## limits/connections.pcfg 
+ httpConnections = 100
+ xmlrpcConnections = 50				
+
+ ## limits/db.pcfg 
+ username = jonny
+ password = flibber
+				
+ ===========================================
+ # the above is equivalent to a single file:
+ ## service.pcfg
+ maxIndex = 100
+ httpConnections = 100
+ xmlrpcConnections = 50				
+				
+ dblimits = PelotonSettings()
+ dblimits.username = jonny
+ dblimits.password = flibber</programlisting>
+		</informalexample>
+		<para>
+			In this way your master config file can build itself up from multiple
+			files. Equaly, you can do conditional loads, testing for environment 
+			variables, perhaps, before choosing which of a number of files to 
+			import to a particular section.
+		</para>
+	</sect2>
 	<sect2>
 		<title>Accessing Configuration</title>
-		<note>
-			<para>
-				The contents of this section will most likely remain valid through
-				the change in configuration system planned subsequent to the initial
-				public release.
-			</para>
-		</note>
 		<para>
-			The service's configuration or <firstterm>profile</firstterm> is made available
-			to the service in the <code>profile</code> attribute (<code>self.profile</code>).
+			The service's <code>settings</code> and <code>profile</code> is made available
+			to the service in the <code>self.settings</code> and <code>self.profile</code> attributes 
 			Thus if in configuration you set a <code>DATABASE_NAME</code> you will find it
-			in <code>self.profile.DATABASE_NAME</code>.
+			in <code>self.settings.DATABASE_NAME</code>.
 		</para>
 		<para>
 			Often you will want a service to perform some high-level initialisation

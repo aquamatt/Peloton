@@ -13,7 +13,7 @@ class AbstractPelotonAdapter(object):
         self.enabled = False
         self.name = name
     
-    def start(self, configuration, options):
+    def start(self):
         """ Implement to initialise the adapter based on the 
 parsed configuration file (configuration) and command line 
 options (options). This method must also hook this adapter

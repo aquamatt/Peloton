@@ -6,111 +6,10 @@
 """ Test the peloton.utils.config code """
 
 from unittest import TestCase
-from peloton.utils.config import PelotonConfig
 from peloton.utils.config import findTemplateTargetsFor
+from peloton.utils.config import PelotonSettings
 from peloton.utils.structs import FilteredOptionParser
 import os
-
-class Test_PelotonConfig(TestCase):
-    def setUp(self):
-        """ Create a temp dir and write test config files to it."""
-        import testConfig
-        root = os.path.split(testConfig.__file__)[0]+"/testConfigs"
-        self.dirNameA = "%s/root_a" % root
-        self.dirNameB = "%s/root_b" % root
-
-        self.parser = FilteredOptionParser()
-        self.parser.add_option("-c", "--configdir",
-                          dest="configdirs",
-                          action="append",
-                          default=['/etc/peloton'])
-        
-        self.parser.add_option("-g", "--grid",
-                          default="peligrid")
-        
-        self.parser.add_option("-d", "--domain",
-                          default="pelotonica")
-        
-        self.parser.add_option("-b", "--bind", 
-                          dest='bindhost')
-    
-        
-    def tearDown(self):
-        pass
-    
-    def test_loadConfig(self):
-        opts,args = self.parser.parse_args(["--configdir=%s"%self.dirNameA, 
-                                '-c',self.dirNameB,
-                                '-g', 'megabank',
-                                '-d', 'foo'])
-        pc = PelotonConfig(opts)
-        
-        self.assertEquals(pc['grid.gridmode'], 'test')
-        self.assertEquals(pc['domain.name'], 'Test Front office')
-        self.assertEquals(pc['psc.bind'], '0.0.0.0:9101')
-        self.assertEquals(pc['psc.special.value'], '123')
-
-        opts,args = self.parser.parse_args(["--configdir=%s"%self.dirNameA, 
-                                '-g', 'megabank',
-                                '-d', 'foo'])
-        pc = PelotonConfig(opts)
-        self.assertEquals(pc['grid.gridmode'], 'test')
-        self.assertEquals(pc['domain.name'], 'Front office')
-        self.assertEquals(pc['psc.bind'], '0.0.0.0:9100')
-        
-    def test_substitution(self):
-        opts,args = self.parser.parse_args(["--configdir=%s"%self.dirNameA, 
-                                '-c',self.dirNameB,
-                                '-g', 'megabank',
-                                '-d', 'foo'])
-        pc = PelotonConfig(opts)
-        
-        self.assertEquals(pc['psc.special.subst'], pc['psc.bind'])
-
-    def test_haskey(self):
-        opts,args = self.parser.parse_args(["--configdir=%s"%self.dirNameA, 
-                                '-c',self.dirNameB,
-                                '-g', 'megabank',
-                                '-d', 'foo'])
-        pc = PelotonConfig(opts)
-        self.assertTrue(pc.has_key('psc.special.subst'))
-        self.assertFalse(pc.has_key('psc.special.foobar'))
-
-    def test_overideFromCommandLine(self):
-        opts,args = self.parser.parse_args(["--configdir=%s"%self.dirNameA, 
-                                '-c',self.dirNameB,
-                                '-g', 'megabank',
-                                '-d', 'foo',
-                                '--bind=192.168.2.1:9090'])
-        pc = PelotonConfig(opts)
-        self.assertEquals(pc['psc.bind'], '192.168.2.1:9090')
-
-    def test_updateItems(self):
-        opts,args = self.parser.parse_args(["--configdir=%s"%self.dirNameA, 
-                                '-c',self.dirNameB,
-                                '-g', 'megabank',
-                                '-d', 'foo',
-                                '--bind=192.168.2.1:9090'])
-        pc = PelotonConfig(opts)
-        self.assertEquals(pc['psc.bind'], '192.168.2.1:9090')
-        pc['psc.bind'] = '111.222.333.444:111'
-        self.assertEquals(pc['psc.bind'], '111.222.333.444:111')
-        
-    def test_deleteitems(self):
-        opts,args = self.parser.parse_args(["--configdir=%s"%self.dirNameA, 
-                                '-c',self.dirNameB,
-                                '-g', 'megabank',
-                                '-d', 'foo',
-                                '--bind=192.168.2.1:9090'])
-        pc = PelotonConfig(opts)
-        self.assertEquals(pc['psc.bind'], '192.168.2.1:9090')
-        del pc['psc.bind']
-        self.assertRaises(KeyError, pc.__getitem__,'psc.bind')
-        self.assertEquals(pc['psc.special.value'], '123')
-        del pc['psc']
-        self.assertRaises(KeyError, pc.__getitem__,'psc.special.value')
-        self.assertEquals(pc['psc'], {})        
-
 
 class Test_templateTools(TestCase):
     def setUp(self):
@@ -147,4 +46,38 @@ class Test_templateTools(TestCase):
         self.assertEquals(len(templates), 2)
         self.assertTrue('xml' in targets)
         self.assertTrue('html' in targets)
+        
+class Test_pelotonSettings(TestCase):
+    def setUp(self):
+        fdir = os.path.split(__file__)[0]+'/testConfigs'
+        self.config = \
+            PelotonSettings(initFile=os.path.abspath(fdir+'/example_conf.pcfg'))
+    
+    def test_values(self):
+        self.assertEquals(self.config['a'], 10)
+        self.assertEquals(self.config['c']['value'],'mango')
+        
+    def test_repr(self):
+        newconfig = eval(repr(self.config))
+        self.assertEquals(newconfig['a'], 10)
+        self.assertEquals(newconfig['c']['value'],'mango')
+
+    def test_attrToItem(self):
+        self.assertEquals(self.config.a, 10)
+        self.assertEquals(self.config.c.value,'mango')
+        
+    def test_assignment(self):
+        self.config.c['index_value'] = 'index'
+        self.config.c.attr_value = 'attr' # want this to go as index
+        
+        self.assertEquals(self.config.c.index_value, 'index')
+        self.assertEquals(self.config.c.attr_value, 'attr')
+        self.assertEquals(self.config.c['index_value'], 'index')
+        self.assertEquals(self.config.c['attr_value'], 'attr')
+        
+        self.config['d'] = PelotonSettings()
+        self.config['d'].name='hello'
+        self.assertEquals(self.config.d.name, 'hello')
+        self.assertEquals(self.config['d'].name, 'hello')
+        self.assertEquals(self.config['d']['name'], 'hello')
         

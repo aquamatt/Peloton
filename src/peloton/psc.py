@@ -40,10 +40,10 @@ from peloton.utils.structs import FilteredOptionParser
 from peloton.psc_platform import makeDaemon
 
 from peloton.kernel import PelotonKernel
-from peloton.utils.config import PelotonConfig
+from peloton.utils.config import PelotonSettings
 from peloton.utils import deCompound
 
-def start(options, args):
+def start(pc):
     """ Start a PSC. By default the first step is to daemonise, either by 
 a double fork (on a POSIX system) or by re-spawning the process (on Windows)
 to detach from the console; this can be over-ridden by specifying --nodetach 
@@ -52,18 +52,17 @@ on the command line.
 The kernel is then started. This creates worker processes as required via the
 subprocess module.
 """
-    if not options.nodetach:
+    if not pc.nodetach:
         makeDaemon()
 
-    pc = PelotonConfig(options)
-
     logging.initLogging(rootLoggerName='PSC', 
-                        logLevel=getattr(logging, options.loglevel),
-                        logdir=options.logdir, 
+                        logLevel=getattr(logging, pc.loglevel),
+                        logdir=pc.logdir, 
                         logfile='psc.log', 
-                        logToConsole=options.nodetach)
+                        logToConsole=pc.nodetach)
     logging.getLogger().info("Kernel starting; pid = %d" % os.getpid())
-    kernel = PelotonKernel(options, args, pc)
+    
+    kernel = PelotonKernel(pc)
     logging.setBusLogger(kernel)
     ex = kernel.start()
     return ex
@@ -81,28 +80,15 @@ def main():
                       default=False,
                       help="Prevent PSC detaching from terminal [default: %default]")
     
-    parser.add_option("-c", "--configdir",
-                      help="Path to directory containing configuration data. You may provide several config directories. [default: %default]",
-                      action="append",
-                      dest="configdirs",
-                      default=[peloton.getPlatformDefaultDir('config')])
-    
-#    parser.add_option("-g", "--grid",
-#                      help="""Short name for the grid to join [default: %default]""",
-#                      default="peligrid")
-    
-    parser.add_option("-d", "--domain",
-                      help="""Short name for the domain to join [default: %default]""",
-                      default="pelotonica")
+    parser.add_option("-c", "--configfile",
+                      help="Path to configuration file for the PSC [default: %default].",
+                      dest="configfile",
+                      default='psc.pcfg')
     
     parser.add_option("-b", "--bind", 
                       help="""specify the host:port to which this instance should bind. Overides
 values set in configuration.""",
                       dest='bindhost')
-    
-    parser.add_option("-p", "--profile",
-                      help="""Path to a PSC profile""",
-                      dest="profile")
     
     parser.add_option("--anyport",
                       action="store_true",
@@ -173,8 +159,29 @@ the logging-to-file system will be enabled.""")
     else:
         options.loglevel = "ERROR"
 
+    # Load configuration from file
+    pc = PelotonSettings()
     try:
-        exitCode = start(options, args)
+        pc.load(options.configfile)
+    except IOError:
+        sys.stderr.write("There is no profile for the PSC!\n")
+        return 1
+    
+    if pc.profile.has_key('flags'):
+        pc.profile.flags.extend(options.flags)
+    else:
+        pc.profile.flags = options.flags
+        
+    # copy in the necessary from options to config
+    keys =['configfile', 'nodetach', 'bindhost', 
+           'anyport', 'servicepath', 
+           'loglevel', 'logdir', 
+           'enable', 'disable']
+    for k in keys:
+        pc[k] = getattr(options, k)
+        
+    try:
+        exitCode = start(pc)
     except:
         logging.getLogger().exception('Untrapped error in PSC: ')
         exitCode = 99
@@ -182,5 +189,7 @@ the logging-to-file system will be enabled.""")
     return exitCode
 
 if __name__ == '__main__':
+    # returns 1 if no profile can be read
+    # returns 99 for untrapped error
     sys.exit(main())
 

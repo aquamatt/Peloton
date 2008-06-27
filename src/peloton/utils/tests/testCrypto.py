@@ -9,7 +9,7 @@ from unittest import TestCase
 from peloton.utils import crypto
 import random
 
-class Test_PelotonProfile(TestCase):
+class Test_Crypto(TestCase):
     def setUp(self):
         self.key = crypto.newKey(512)
     

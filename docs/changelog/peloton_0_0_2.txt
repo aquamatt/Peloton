@@ -7,3 +7,10 @@ Changes to Version 0.0.2
   is un-necessary, complicating and resulted in too much  cruft code.
   There are other, better, simpler mechanisms for version  management
   less likely to result in confusion.
+* Configuration system no longer uses configobj but has python-format
+  files and simple structure to replace the complex and hideous
+  hierarchy that was imposed previously.
+* peloton.utils.json removed; new dependency on simplejson
+* patches removed - Twisted 8.1.0 is the minimum 8 series version to
+  be used.
+  

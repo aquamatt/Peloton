@@ -1,0 +1,12 @@
+# $Id$
+#
+# Copyright (c) 2007-2008 ReThought Limited and Peloton Contributors
+# All Rights Reserved
+# See LICENSE for details
+
+load('profile.pcfg', 'profile')
+#load('/home/mp/python/peloton/example/service/testservice/config/subconf.pcfg')
+#load('/home/mp/python/peloton/example/service/testservice/config/subconf.pcfg', 'profile')
+
+# other settings for the service can go here..., e.g.
+poolId = 1023
