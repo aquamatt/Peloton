@@ -119,6 +119,7 @@ class PelotonInternodeAdapter(pb.Referenceable):
 class PelotonClientAdapter(pb.Referenceable):
     """ Referenceable used by client to call methods on the PSC. """
     def __init__(self, kernel, clientObj):
+        self.kernel = kernel
         self.dispatcher = kernel.dispatcher
         self.routingTable = kernel.routingTable
         self.requestInterface = PelotonRequestInterface(kernel)

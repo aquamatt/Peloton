@@ -116,7 +116,7 @@
 						<code>simplejson</code> is a library for serialising too and from JSON
 						strings. Debian/Ubuntu users can <code>apt-get install python-simplejson</code>
 						whilst the rest can obtain it from 
-						<ulink url='http://http://code.google.com/p/simplejson/'/>.
+						<ulink url='http://code.google.com/p/simplejson/'/>.
 					</para>
 				</listitem>
 			</orderedlist>

@@ -8,7 +8,7 @@ code can be hooked into GUIs or console tools via handler hooks. """
 
 from twisted.internet import reactor
 from twisted.spread import pb
-from peloton.profile import PelotonProfile
+from peloton.utils.config import PelotonSettings
 
 class EventHandler(pb.Referenceable):
     def __init__(self, callback):
