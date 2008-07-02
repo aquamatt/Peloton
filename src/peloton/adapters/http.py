@@ -82,6 +82,9 @@ HTTP based adapters)."""
             resp = self.infoTemplate({'rq':request}, {})
             self.deferredResponse(resp, 'text/html',request)
         
+        elif request.postpath and request.postpath[0] == "favicon.ico":
+            self.returnFavicon(request)
+
         else:
             if request.postpath[-1] == '':
                 request.postpath = request.postpath[:-1]
@@ -127,6 +130,15 @@ HTTP based adapters)."""
             d.addErrback(self.deferredError, target, request)
 
         return server.NOT_DONE_YET
+        
+    def returnFavicon(self, request):
+        request.setHeader('Content-Type','image/x-icon')
+        thisDir = os.path.split(__file__)[0]
+        iconPath = "%s/favicon.ico" % thisDir
+        fsize = os.stat(iconPath)[6]
+        request.setHeader('Content-Length',fsize)
+        res = open(iconPath, 'rb')
+        FileTransfer(res, fsize, request)        
         
     def deferredResponse(self, resp, mimeType, request):
         # str ensures not unicode which is not liked by 
