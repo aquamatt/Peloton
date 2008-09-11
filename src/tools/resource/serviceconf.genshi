@@ -1,0 +1,6 @@
+# $$Id$$
+
+load('profile.pcfg', 'profile')
+
+# other settings for the service can go here..., e.g.
+poolId = 1023

@@ -9,3 +9,9 @@ class ${name}(PelotonService):
         y = int(y)
         return x+y
 		
+
+    def public_returnDict(self, *args, **kwargs):
+        """ Simply return the kwargs as a dict, and the
+args as a list in the dict keyed on 'args' """
+        kwargs['args'] = args
+        return kwargs

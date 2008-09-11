@@ -1,0 +1,4 @@
+# $$Id$$SS
+launch=PelotonSettings()
+launch.minpscs=1
+launch.workersperpsc=2

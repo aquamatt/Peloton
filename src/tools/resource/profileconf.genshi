@@ -1,13 +1,12 @@
 # $$Id$$
-name=${name}
-comment=${name} service
+name="${name}"
+comment="${name} service"
 author="author"
 buildversion=0
 version="0.0.1"
 
 psclimits = PelotonSettings()
 psclimits.mincpus=1
+psclimits.excludeFlags=["IGNORE"]
 
-launch = PelotonSettings()  
-launch.minpscs=2
-launch.workersperpsc=2
+load('launch.pcfg')  
