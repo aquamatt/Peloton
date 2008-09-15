@@ -329,7 +329,7 @@
 				<para>
 					If using RabbitMQ (see below for details of running without RabbitMQ
 					for testing), initialise by running the bash script
-					<filename>$PYTHON/bin/initrabbitmq</filename> which creates
+					<filename>$PELOTON/bin/initrabbitmq</filename> which creates
 					some users, vhosts, realms and permissions.
 				</para>
 			</listitem>
