@@ -495,7 +495,7 @@
 		<informalexample>
 			<programlisting>
 > cd $PELOTON/src/peloton
-> python psc.py --disable=amqp-qpid --enable=pseudomq 
+> python psc.py --disable=amqp_qpid --enable=pseudomq 
 				--flags=mqserver 
 				[... plus remaining args]</programlisting>
 		</informalexample>
@@ -505,7 +505,7 @@
 		<informalexample>
 			<programlisting>
 > cd $PELOTON/src/peloton
-> python psc.py --disable=amqp-qpid --enable=pseudomq 
+> python psc.py --disable=amqp_qpid --enable=pseudomq 
 				[... plus remaining args]</programlisting>
 		</informalexample>
 		<para>
