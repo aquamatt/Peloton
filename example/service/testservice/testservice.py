@@ -15,14 +15,15 @@ class TestService(PelotonService):
     def eventTrap(self, msg, exchange, key, ctag):
         self.logger.info("PID %d got message: %s" % (os.getpid(), msg['count']))
         
-    def public_startCount(self):
-        """ Long-running call; sends 10 counts on the event bus. """
-        count = 5
+    def public_startCount(self, n = 5):
+        """ Long-running call; sends n counts on the event bus. """
+        count = int(n)
         while count:
+            self.logger.debug("COUNT: %d" % count)
             self.fireEvent('testservice.test', 'events', count=count)
             time.sleep(0.5)
             count -= 1
-        return ("DONE")
+        return ("DONE %d"%count)
         
     def public_index(self):
         return "Hi! You've got the TestService!"

@@ -99,17 +99,18 @@ were given to start with to validate our presence. """
     def _pscOK(self, startupInfo):
         """ Now start the service. If OK, message the PSC accordingly;
 if not, let the PSC know we've failed and why, then initiate closedown. """
-
         self.name = startupInfo['serviceName']
         self.publishedName = startupInfo['publishedName']
         self.servicepath = startupInfo['servicePath']
-        
         logging.closeHandlers()
+        logToConsole = False
+        if startupInfo['logdir'] == None:
+            logToConsole = True
         logging.initLogging(rootLoggerName='WORKER: %s' % self.name, 
                             logLevel=getattr(logging, startupInfo['loglevel']),
                             logdir=startupInfo['logdir'],
                             logfile="worker_%s.log" % self.name,
-                            logToConsole=False)
+                            logToConsole=logToConsole)
         logging.setBusLogger(self)
         self.logger = logging.getLogger()
         
@@ -125,8 +126,7 @@ if not, let the PSC know we've failed and why, then initiate closedown. """
             self.logger.exception('[1]')
         try:
             self.startService()
-            self.pscReference.callRemote('fireEvent', 
-                                  'psc.service.notification',
+            self.dispatcher.fireEvent( 'psc.service.notification',
                                   'domain_control',
                                   serviceName=self.name,
                                   publishedName=self.publishedName,
@@ -197,8 +197,7 @@ the service might require.
     def stopService(self):
         """ Calls stop() on the managed service. """
         try:
-            self.pscReference.callRemote('fireEvent', 
-                                  'psc.service.notification',
+            self.dispatcher.fireEvent( 'psc.service.notification',
                                   'domain_control',
                                   serviceName=self.name,
                                   publishedName=self.publishedName,
