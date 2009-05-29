@@ -101,7 +101,7 @@
 				 <listitem>
 					 <para>
 						 PySQLite - the Python library for working with SQLlite which is used by the <code>Backpack</code>
-						 storage module.
+						 storage module. SQLite is included with later versions of Python, so check before installing.
 					 </para>
 				 </listitem>
 				<listitem>
