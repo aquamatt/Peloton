@@ -12,5 +12,5 @@ rabbitmqctl map_user_vhost peloton_client peloton
 #rabbitmqctl set_permissions peloton_client peloton /data/peloton read
 
 # when using the qpid plugin
-rabbitmqctl set_permissions peloton_sys peloton /data all
-rabbitmqctl set_permissions peloton_client peloton /data read
+#rabbitmqctl set_permissions peloton_sys peloton /data all
+#rabbitmqctl set_permissions peloton_client peloton /data read

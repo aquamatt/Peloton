@@ -108,6 +108,20 @@
 			<programlisting> iface.callRemote("deregister", handler)</programlisting>
 		</informalexample>
 	</sect2>
+    <sect2>
+        <title>Firing events via REST</title>
+        <para>
+            Events can be fired via the RESTful HTTP interface:
+        </para>
+		<informalexample>
+			<programlisting> http://host:port/fireEvent/&lt;channel&gt;/&lt;exchange&gt;/arg1/arg2/argn/?keyword_args</programlisting>
+		</informalexample>
+        <para>
+            In the event payload, arguments are collected into a list assigned to the
+            <code>__peloton_args</code> key, and the keyword arguments are added to the payload
+            dictionary.
+        </para>
+    </sect2>
 	<sect2>
 		<title>Events in services</title>
 		<para>

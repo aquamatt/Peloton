@@ -138,7 +138,7 @@ def loadServiceProfile(servicePath, runconfig=None):
             serviceProfile.load(os.path.abspath("%s/%s" % (configDir, runconfig)))
     
     # validate
-    logging.getLogger().warn("IMPLEMENT PROFILE VALIDATION")
+    # logging.getLogger().warn("IMPLEMENT PROFILE VALIDATION")
     # -- confirm that resource root is in a valid location (allows restrictions
     #    to ensure that you can't accidentally publish /
     

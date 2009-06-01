@@ -201,7 +201,7 @@ pass the message to them. """
                                       key=routing_key, ctag=ctag)
                 except:
                     # error in handler; remove it:
-                    self.logger.exception("Error in event handler; removing.")
+                    self.logger.debug("Defunct error handler: removing.")
                     handlersToGo.append(handler)
 
             for h in handlersToGo:

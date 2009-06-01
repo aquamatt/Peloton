@@ -81,7 +81,7 @@ class ServiceBuilder(object):
         for folder, file, template, tmplCls in files:
             tmpl = self.templateLoader.load(template, cls=tmplCls)
             of = open(prefix+'/'+folder+'/'+file, 'wt')
-            of.writelines(tmpl.generate(**keyData).render(strip_whitespace=False))
+            of.writelines(tmpl.generate(**keyData).render())#strip_whitespace=False))
             of.close()
 
 def main(args):

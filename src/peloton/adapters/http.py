@@ -77,6 +77,9 @@ HTTP based adapters)."""
                 self.kernel.serviceLibrary.getProfile(request.postpath[1])
             resourceRoot = profile['resourceRoot']
             self.deliverStaticContent(resourceRoot, request.postpath[2:], request)
+
+        elif request.postpath and request.postpath[0] == "fireEvent":
+            self.fireEvent(request.postpath[1:], request) 
             
         elif request.postpath and request.postpath[0] == "inspect":
             resp = self.infoTemplate({'rq':request}, {})
@@ -130,7 +133,22 @@ HTTP based adapters)."""
             d.addErrback(self.deferredError, target, request)
 
         return server.NOT_DONE_YET
+
+    def fireEvent(self, args, request):
+        """ Fire an event on the message bus. Payload is the request arguments dictionary
+with an additional key, __peloton_args__ with the request arguments list. 
+
+args[0] is the channel on which to fire the event.
+args[1] is the exchange
+
+"""
+        payload = request.args
+        payload['__peloton_args'] = args[2:]
+        self.kernel.dispatcher.fireEvent(args[0], args[1], **payload)
+        request.write("OK")
+        request.finish()
         
+ 
     def returnFavicon(self, request):
         request.setHeader('Content-Type','image/x-icon')
         thisDir = os.path.split(__file__)[0]
