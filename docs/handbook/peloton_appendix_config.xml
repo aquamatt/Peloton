@@ -4,14 +4,14 @@
 		The following is a list of parameters that are used by the core &peloton;
 		system in configuration files and profiles.
 	</para>
-	<sect2>
+	<sect1>
 		<title>Service Profile</title>
 		<para>
 			Service configuration files contain arbitrary settings for the service itself and
 			one obligatory <code>profile</code> <code>PelotonSettings</code> instance for
 			which the following names have assigned meanings:
 		</para>
-		<sect3>
+		<sect2>
 			<title><code>profile</code></title>
 			<variablelist>
 			   <varlistentry>
@@ -35,8 +35,8 @@
 				  <listitem><para>major.minor.patch version number (string)</para></listitem>
 			   </varlistentry>
 			</variablelist> 		
-		</sect3>
-		<sect3>
+		</sect2>
+		<sect2>
 			<title><code>profile.psclimits</code></title>
 			<para>
 				Any requirements to be demanded of a PSC running this service.
@@ -68,9 +68,9 @@
 				  <listitem><para>List of flags that MUST NOT be specified on the target PSC</para></listitem>
 			   </varlistentry>
 			</variablelist> 		
-		</sect3>
-	</sect2>
-	<sect2>
+		</sect2>
+	</sect1>
+	<sect1>
 		<title>PSC</title>
 		<variablelist>
 		   <varlistentry>
@@ -193,8 +193,8 @@
 			   </listitem>
 		   </varlistentry>
 		</variablelist> 		
-	</sect2>
-	<sect2>
+	</sect1>
+	<sect1>
 		<title>PSC Profile</title>
 		<para>
 			The PSC profile is defined in a <code>PelotonSettings</code>
@@ -237,8 +237,8 @@
 			   </listitem>
 		   </varlistentry>
 		</variablelist>
-	</sect2>
-	<sect2>
+	</sect1>
+	<sect1>
 		<title>PSC Plugins</title>
 		<para>
 			Kernel plugins to be started are listed and configured in 
@@ -331,5 +331,5 @@
 			All other settings in a kernel plugin profile are relevant to 
 			the plugin itself.
 		</para>
-	</sect2>
+	</sect1>
 </appendix>

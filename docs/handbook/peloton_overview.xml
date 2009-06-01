@@ -127,8 +127,10 @@
 			&peloton; provides, or will provide the following features:
 		</para>
 		<note>
+            <para>
 			Features on the roadmap but not currently implemented are marked  with [F],
 			those partially implemented are marked [P].
+            </para>
 		</note>
 		<itemizedlist>
 			<listitem>
