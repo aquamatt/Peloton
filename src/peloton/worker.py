@@ -111,7 +111,7 @@ if not, let the PSC know we've failed and why, then initiate closedown. """
                             logdir=startupInfo['logdir'],
                             logfile="worker_%s.log" % self.name,
                             logToConsole=logToConsole)
-        logging.setBusLogger(self)
+        logging.setAdditionalLoggers(self)
         self.logger = logging.getLogger()
         
         # add any sevice directories to sys.path if not already there

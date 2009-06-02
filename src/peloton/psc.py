@@ -63,7 +63,7 @@ subprocess module.
     logging.getLogger().info("Kernel starting; pid = %d" % os.getpid())
     
     kernel = PelotonKernel(pc)
-    logging.setBusLogger(kernel)
+    logging.setAdditionalLoggers(kernel)
     ex = kernel.start()
     return ex
 

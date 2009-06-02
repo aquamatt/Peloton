@@ -47,8 +47,9 @@ if specified. """
         __LOGGER__.getLogger().info("Logger initialised with defaults!")
     return __LOGGER__.getLogger(name)
 
-def setBusLogger(kernel):
+def setAdditionalLoggers(kernel):
     __LOGGER__.BusLogHandler(kernel)
+    __LOGGER__.IRCLogHandler(kernel)    
 
 #class BasePelotonLogger(object):
 #    """ Base class for all Peloton logger systems """
