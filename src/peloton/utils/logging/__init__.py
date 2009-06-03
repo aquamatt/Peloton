@@ -49,7 +49,10 @@ if specified. """
 
 def setAdditionalLoggers(kernel):
     __LOGGER__.BusLogHandler(kernel)
-    __LOGGER__.IRCLogHandler(kernel)    
+    if hasattr(kernel.settings, "enableIRClogging") and \
+            eval(kernel.settings.enableIRClogging):
+        __LOGGER__.IRCLogHandler(kernel)    
+
 
 #class BasePelotonLogger(object):
 #    """ Base class for all Peloton logger systems """

@@ -10,6 +10,8 @@ import logging
 import logging.handlers
 import os
 import cPickle as pickle
+from peloton.utils.logging.pirc import connectIRC 
+from peloton.utils import chop
 
 class NullHandler(logging.Handler):
     """ A logging handler that simply looses everying down the bit bucket..."""
@@ -111,7 +113,10 @@ Twisted IRC module.
 
         # instantiate the IRC tranceiver here
         # http://twistedmatrix.com/projects/core/documentation/howto/clients.html
-        self.__irc = None
+        self.__postMessage = connectIRC(kernel.settings.IRCServer, 
+                                        int(kernel.settings.IRCPort),
+                                        kernel.settings.IRCChannel,
+                                        kernel.settings.IRCNick)
         
     def makeEvent(self, record):
         event={}
@@ -119,7 +124,7 @@ Twisted IRC module.
                 'lineno', 'module', 'name', 'pathname',  
                 'process', 'threadName']
         for key in keys:
-            event[key] = getattr(record, key)
+            event[key] = chop(str(getattr(record, key)))
             
         # sometimes record has key msg, others message... not
         # sure why two versions of record exist. Same class 
@@ -130,22 +135,26 @@ Twisted IRC module.
         else:
             event['message'] = record.msg
 
-        msgString = """%(levelname)
-Created: %(created)s
-Filename: %(filename)s
-Function: %(funcName)s
-Line    : %(lineno)s
-Module  : %(module)s
-Name    : %(name)s
-Path    : %(path)s
-Process : %(process)s
-Thread  : %(thread)s
-Message : %(message)s
+        if event['levelname'] == 'DEBUG':
+            msgString = """[%(levelname)s]
+    Created  : %(created)s
+    Filename : %(filename)s
+    Function : %(funcName)s
+    Line     : %(lineno)s
+    Module   : %(module)s
+    Name     : %(name)s
+    Path     : %(pathname)s
+    Process  : %(process)s
+    Thread   : %(threadName)s
+    Message  : %(message)s
 """
+        else:
+            msgString = """[%(levelname)s] %(message)s"""
+
         return msgString % event
     
     def send(self, event):
-        self.__irc.message(event)
+        self.__postMessage(event)
     
     def emit(self, record):
         try:
