@@ -13,13 +13,19 @@ import tapcore
 import sys
 import time
 import math
+from tools.ptap.pirc import connectIRC
 
-VERSION = "0.1.0"
+VERSION = "0.2.0"
 
 disconnectedTime = 0
 tapConn = None
 options = None
 profiles = {}
+
+def prt(msg):
+    """ Overcomes fact that print is a keyword as well as function. """
+    print msg
+outputMessage = prt # method to use to output message
 
 def eventReceived(msg, exchange, key, ctag):
     if not profiles.has_key(msg['sender_guid']):
@@ -41,22 +47,22 @@ def eventReceived(msg, exchange, key, ctag):
             t = time.localtime(created)
             millis = int(math.modf(created)[0]*1000.0)
             msg['time'] = "%s.%03d" % (time.strftime('%H:%M:%S', t), millis)
-            print("""%(time)s %(__source)s : %(levelname)s [%(name)s] %(message)s""" % msg)
+            outputMessage("""%(time)s %(__source)s : %(levelname)s [%(name)s] %(message)s""" % msg)
         except Exception, ex:
-            print "Error: " + str(ex)
+            outputMessage("Error: " + str(ex))
         
     else:
-        print("\n:: %s | %s" % (exchange, key))
+        outputMessage("\n:: %s | %s" % (exchange, key))
         for k,v in msg.items():
-            print("%s \t: %s" % (str(k), str(v)))
+            outputMessage("%s \t: %s" % (str(k), str(v)))
 
 def tapConnected():
     global disconnectedTime
     if disconnectedTime > 0:
-        print("Re-connected after %ds" % disconnectedTime)
+        outputMessage("Re-connected after %ds" % disconnectedTime)
         disconnectedTime = 0
     else:
-        print("Connected!")
+        outputMessage("EVTap connected!")
     
 def setProfile(profile):
     global profiles
@@ -69,11 +75,11 @@ def setMasterProfile(profile):
 def disconnected():
     global disconnectedTime
     if disconnectedTime == 0:
-        print("DISCONNECTED -- attempting reconnect")
+        outputMessage("EVTAP DISCONNECTED -- attempting reconnect")
     disconnectedTime += 1
     
 def main():
-    global tapConn, options
+    global tapConn, options, outputMessage
     usage = "usage: %prog [options]" 
     parser = FilteredOptionParser(usage=usage, version="EVTAP version %s" % VERSION)
 
@@ -92,9 +98,35 @@ def main():
     parser.add_option("--exchange", "-x",
                       help="Exchange [default %default]",
                       default="logging")
+    
+    parser.add_option("--enableirc", "-i",
+                        help="Enable IRC server output",
+                        action="store_true")
+
+    parser.add_option("--irchost", 
+                        help="IRC Server Hostname [default %default]",
+                        default="192.168.25.32")
+
+    parser.add_option("--ircport",
+                        help="IRC Server port [default %default]",
+                        default="6667")
+
+    parser.add_option("--ircchannel",
+                        help="IRC channel on which to publish messages [default %default]",
+                        default="#peloton")
+
+    parser.add_option("--ircnick",
+                        help="IRC nickname [default %default]",
+                        default="peloton")
 
     options, args = parser.parse_args()
     
+
+    if options.enableirc:
+        outputMessage = connectIRC(options.irchost, int(options.ircport), 
+                options.ircchannel, options.ircnick)
+        outputMessage("Bus2IRC bridge connected.")
+
     tapConn = tapcore.TAPConnector(options.host, int(options.port), 'tap', 'tap')
     tapConn.addListener("loggedin", tapConnected)
     tapConn.addListener("profileReceived", setProfile)

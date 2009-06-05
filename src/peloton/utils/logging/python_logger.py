@@ -10,7 +10,6 @@ import logging
 import logging.handlers
 import os
 import cPickle as pickle
-from peloton.utils.logging.pirc import connectIRC 
 from peloton.utils import chop
 
 class NullHandler(logging.Handler):
@@ -102,64 +101,4 @@ class BusLogHandler(logging.Handler):
         except Exception, ex:
             print(ex)
 
-class IRCLogHandler(logging.Handler):
-    """ A logging handler that puts log messages to an IRC channel using the
-Twisted IRC module.
-    """
-    def __init__(self, kernel):
-        logging.Handler.__init__(self)
-        self.kernel = kernel
-        logging.getLogger().addHandler(self)
-
-        # instantiate the IRC tranceiver here
-        # http://twistedmatrix.com/projects/core/documentation/howto/clients.html
-        self.__postMessage = connectIRC(kernel.settings.IRCServer, 
-                                        int(kernel.settings.IRCPort),
-                                        kernel.settings.IRCChannel,
-                                        kernel.settings.IRCNick)
-        
-    def makeEvent(self, record):
-        event={}
-        keys = ['created', 'filename', 'funcName', 'levelname', 
-                'lineno', 'module', 'name', 'pathname',  
-                'process', 'threadName']
-        for key in keys:
-            event[key] = chop(str(getattr(record, key)))
-            
-        # sometimes record has key msg, others message... not
-        # sure why two versions of record exist. Same class 
-        # from same location (checked)
-        
-        if hasattr(record, 'message'):
-            event['message'] = record.message
-        else:
-            event['message'] = record.msg
-
-        if event['levelname'] == 'DEBUG':
-            msgString = """[%(levelname)s]
-    Created  : %(created)s
-    Filename : %(filename)s
-    Function : %(funcName)s
-    Line     : %(lineno)s
-    Module   : %(module)s
-    Name     : %(name)s
-    Path     : %(pathname)s
-    Process  : %(process)s
-    Thread   : %(threadName)s
-    Message  : %(message)s
-"""
-        else:
-            msgString = """[%(levelname)s] %(message)s"""
-
-        return msgString % event
-    
-    def send(self, event):
-        self.__postMessage(event)
-    
-    def emit(self, record):
-        try:
-            event = self.makeEvent(record)
-            self.send(event)
-        except Exception, ex:
-            print(ex)
 

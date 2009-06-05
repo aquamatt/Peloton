@@ -49,9 +49,6 @@ if specified. """
 
 def setAdditionalLoggers(kernel):
     __LOGGER__.BusLogHandler(kernel)
-    if hasattr(kernel.settings, "enableIRClogging") and \
-            eval(kernel.settings.enableIRClogging):
-        __LOGGER__.IRCLogHandler(kernel)    
 
 
 #class BasePelotonLogger(object):

@@ -23,13 +23,6 @@ messagingRealm="/data"
 # AMQP server node
 messagingHost="localhost:5672"
 
-# IRC logger settings
-enableIRClogging="True"
-IRCServer="192.168.25.32"
-IRCPort="6667"
-IRCNick="peloton"
-IRCChannel="#peloton"
-
 #================= DOMAIN ====================
 # domain configuration
 # there may be many domains in a site
