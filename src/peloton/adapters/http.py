@@ -83,7 +83,7 @@ HTTP based adapters)."""
             
         elif request.postpath and request.postpath[0] == "inspect":
             resp = self.infoTemplate({'rq':request}, {})
-            self.deferredResponse(resp, 'text/html',request)
+            self.deferredResponse(resp, 'html', None, 'text/html',request)
         
         elif request.postpath and request.postpath[0] == "favicon.ico":
             self.returnFavicon(request)
@@ -108,11 +108,18 @@ HTTP based adapters)."""
 
             args = request.postpath[2:]
             kwargs={}
+            # JSON requests which set the callback argument will get a JSONP formatted response
+            callbackName = None
             for k,v in request.args.items():
-                if len(v) == 1:
+                self.kernel.logger.debug("Key %s value %s" % (k,v))
+                if target == 'json' and k == 'callback':
+                    callbackName = v[0]
+                elif len(v) == 1:
                     kwargs[k] = v[0]
                 else:
                     kwargs[k] = v
+
+            self.kernel.logger.info("Callback name %s" % callbackName)
 
             try:
                 profile, _ = self.kernel.serviceLibrary.getProfile(service)
@@ -129,7 +136,7 @@ HTTP based adapters)."""
                     
             sessionId="TOBESORTED"
             d = self.requestInterface.public_call(sessionId, target, service, method, args, kwargs )
-            d.addCallback(self.deferredResponse, mimeType, request)
+            d.addCallback(self.deferredResponse, target, callbackName, mimeType, request)
             d.addErrback(self.deferredError, target, request)
 
         return server.NOT_DONE_YET
@@ -158,10 +165,12 @@ args[1] is the exchange
         res = open(iconPath, 'rb')
         FileTransfer(res, fsize, request)        
         
-    def deferredResponse(self, resp, mimeType, request):
+    def deferredResponse(self, resp, target, callbackName, mimeType, request):
         # str ensures not unicode which is not liked by 
         # twisted.web
         resp = str(resp)
+        if target == 'json' and callbackName:
+            resp = "%s(%s)" % (callbackName, resp)
         request.setHeader('Content-Type', mimeType)
         request.setHeader('Content-Length', len(resp))
         request.write(resp)

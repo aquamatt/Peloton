@@ -148,6 +148,12 @@ class Tutorial(PelotonService):
 			Call <filename>sum.raw</filename>. 
 		</para>
 		<para>
+			If you make a JSON call and want a JSONP response, i.e. the data wrapped in a function call, specify the function wrapper in the <code>callback</code> argument, e.g.:
+		</para>
+		<informalexample>
+			<programlisting> http://localhost:8080/Tutorial/sum.json/1/2?callback=foo</programlisting>
+		</informalexample>
+		<para>
 			Now an integer is a fairly dull data type to serialise. Let's change
 			the code to add a new method. Edit <filename>tutorial.py</filename>
 			and add something that returns a dictionary, for example:
